@@ -1,0 +1,27 @@
+body {
+    margin: 0;
+}
+
+button.mybt {
+    background: rgb(39, 130, 51);
+    cursor: pointer;
+    transition: background .3s ease
+}
+
+button.mybt:hover {
+    background: rgb(18, 77, 26)
+}
+
+button.mybt:disabled {
+    cursor: default;
+    background: rgb(150, 180, 155);
+}
+.theme-col {
+    color:rgb(4, 46, 4);
+}
+button.mybt,
+button.mybt:hover {
+    border: none;
+    color: #fff;
+    padding: 10px
+}
