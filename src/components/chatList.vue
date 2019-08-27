@@ -12,7 +12,7 @@
     <ol>
       <li
         v-for="friend of friends"
-        v-bind:key="friend._id"
+        :key="friend._id"
         :id="friend._id"
         @click="$emit('open', friend._id)"
       >

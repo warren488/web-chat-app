@@ -8,58 +8,69 @@
         :key="currChat"
         :friendship_id="currChat"
         :messages="currMessages"
+        @reply="replyHandler"
         class="chatBody"
         msg="Welcome to Your Vue.js + TypeScript App"
       />
-      <chat-text></chat-text>
+      <chat-text @newMessage="handleNewMessage"></chat-text>
     </div>
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import chatList from "@/components/chatList.vue"; // @ is an alias to /src
-import chatText from "@/components/chatText.vue"; // @ is an alias to /src
-import chatBody from "@/components/chatBody.vue"; // @ is an alias to /src
+import chatList from "@/components/chatList.vue";
+import chatText from "@/components/chatText.vue";
+import chatBody from "@/components/chatBody.vue";
 import { getFriends, getCookie, getMessages } from "@/common";
+import { mapGetters, mapActions } from "vuex";
+import io from "socket.io-client";
 
 export default Vue.extend({
   name: "home",
   data() {
     return {
-      friends: [],
       messages: Object({}),
-      currentChat: ""
+      currentChat: "",
+      currentMessages: []
     };
   },
   methods: {
+    ...mapActions(["setFriends"]),
+    handleNewMessage(message) {
+      this.messages[this.currChat].push(message);
+    },
     openChat(frienship_id: string) {
-      getMessages(frienship_id).then(({ data }) => {
-        this.messages[frienship_id] = data;
+      if (!this.messages[frienship_id]) {
+        getMessages(frienship_id).then(({ data }) => {
+          this.messages[frienship_id] = data;
+          this.currentMessages = this.messages[frienship_id];
+          this.currentChat = frienship_id;
+        });
+      } else {
+        this.currentMessages = this.messages[frienship_id];
         this.currentChat = frienship_id;
-      });
-    }
+      }
+    },
+    replyHandler() {}
   },
   created() {
-    getFriends().then(({ data }) => {
-      this.friends = data;
-      return this.openChat(this.friends[0]._id);
-    });
-    setTimeout(() => {
-      this.messages[this.currChat].push(this.messages[this.currChat][0]);
-    }, 5000);
+    if (!this.initFriends) {
+      this.setFriends().then(() => {
+        this.openChat(this.friends[0]._id);
+      });
+    }
+    const socket = io("http://localhost:3001");
   },
   computed: {
-    myFriends(): Array<Object> {
-      return this.friends;
-    },
+    ...mapGetters(["friends"]),
     currChat(): string {
       return this.currentChat;
     },
     currMessages() {
       console.log(this.messages);
       console.log(this.currChat);
-      return this.messages[this.currChat];
+      return this.currentMessages;
     }
   },
   components: {

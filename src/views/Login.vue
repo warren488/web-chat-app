@@ -38,9 +38,10 @@
 </template>
 <script lang="ts">
 import Modal from "@/components/modal.vue"; // @ is an alias to /src
-import { login, setCookie } from "@/common/index.ts";
+import { login, setCookie, getFriends } from "@/common/index.ts";
 import Vue from "vue";
 import axios, { AxiosPromise } from "axios";
+import { mapActions } from "vuex";
 export default Vue.extend({
   components: { Modal },
   data() {
@@ -56,6 +57,7 @@ export default Vue.extend({
     };
   },
   methods: {
+    ...mapActions(["setFriends"]),
     async login(): Promise<Boolean> {
       if (
         !this.isTrueString(this.userData.username) ||
@@ -68,13 +70,10 @@ export default Vue.extend({
       let authData;
       try {
         authData = (await login(this.userData)).data;
-        console.log(authData);
-
-        let token = authData.token;
-        let username = authData.username;
-        setCookie("username", username, 1000000);
-        setCookie("token", token, 1000000);
-        window.location.href = "/home";
+        setCookie("username", authData.username, 1000000);
+        setCookie("token", authData.token, 1000000);
+        await this.setFriends();
+        this.$router.push("/home");
         return true;
       } catch (error) {
         console.log(JSON.stringify(error));

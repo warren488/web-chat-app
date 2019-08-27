@@ -2,8 +2,8 @@
   <div class="chat__main">
     <ol class="chat__messages" id="messages">
       <li
-        v-for="(message, i) of allMessages"
-        :key="i"
+        v-for="message of allMessages"
+        :key="message._id"
         :class="{
           [message.status]: message.from === getCookie('username'),
           me: message.from === getCookie('username')
@@ -16,7 +16,7 @@
               {{ message.from === getCookie("username") ? "me" : message.from }}
             </h4>
             <span>{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
-            <p class="reply" @click="replyClick(this)">reply</p>
+            <p class="reply" @click="replyClick(message._id)">reply</p>
           </div>
           <div class="message__body">
             <p class="wrap">{{ message.text }}</p>
@@ -29,9 +29,9 @@
                       : message.quoted.from
                   }}
                 </h4>
-                <span>{{
-                  new Date(message.createdAt).toLocaleTimeString()
-                }}</span>
+                <span>
+                  {{ new Date(message.createdAt).toLocaleTimeString() }}
+                </span>
               </div>
               <p class="wrap">{{ message.quoted.text }}</p>
             </span>
@@ -40,40 +40,13 @@
       </li>
     </ol>
   </div>
-  <!-- <li class="{{#equal ../username from 'is' }}{{status}} {{/equal}} {{#equal ../username from 'is' }}me{{/equal}}"
-                id='{{_id}}'>
-                <div class="message">
-                    <div class='message__title'>
-                        <h4>{{#equal ../username from 'is' }}me{{/equal}}{{#equal ../username from 'not' }}{{from}}{{/equal}}
-                        </h4>
-                        <span>{{createdAt}}</span>
-                        <p class='reply' onclick="replyClick(this)">reply</p>
-                    </div>
-                    <div class="message__body">
-                        <p class="wrap">{{text}}</p>
-                        {{#if quoted}}
-                        {{#quoted}}
-                        <span class="quoted">
-                            <div class='message__title'>
-                                <h4>{{#equal ../../username from 'is' }}me{{/equal}}{{#equal ../../username from 'not' }}{{from}}{{/equal}}
-                                </h4>
-                                <span>{{createdAt}}</span>
-                            </div>
-                            <p class="wrap">{{text}}</p>
-                        </span>
-                        {{/quoted}}
-                        {{/if}}
-                    </div>
-
-                </div>
-  </li>-->
 </template>
 
 <script lang="ts">
 import { getCookie, getMessages } from "@/common";
 interface Message {
-  name: String;
-  text: String;
+  name: string;
+  text: string;
 }
 import Vue from "vue";
 
@@ -83,15 +56,28 @@ export default Vue.extend({
     messages: Array
   },
   data() {
-    return {};
+    return {
+      highlighted: ""
+    };
   },
   created() {},
   methods: {
-    getCookie
+    getCookie,
+    replyClick(msgId: string) {
+      document.getElementById(this.highlighted).classList.remove("highlighted");
+      this.highlighted = msgId;
+      document.getElementById(msgId).classList.add("highlighted");
+      this.$emit("reply");
+    }
   },
   computed: {
     allMessages(): Array<Message> {
       return this.messages;
+    }
+  },
+  watch: {
+    messages(newVal, oldVal) {
+      console.log("prop changed!!");
     }
   }
 });

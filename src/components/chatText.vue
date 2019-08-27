@@ -1,8 +1,9 @@
 <template>
   <div class="chat__footer">
-    <form id="message-form">
+    <form @submit.prevent="sendMessage" id="message-form">
       <button id="emoji-button" type="button">&#128578;</button>
       <input
+        ref="msgText"
         type="text"
         id="msg-txt"
         name="message"
@@ -16,7 +17,7 @@
       <button
         type="button"
         class="no-show"
-        onclick="cancelReply(this)"
+        @click="$emit('cancelReply')"
         id="cancel-reply"
       >
         <img src="../assets/close.svg" alt />
@@ -29,7 +30,20 @@
 import Vue from "vue";
 
 export default Vue.extend({
-  name: ""
+  name: "",
+  methods: {
+    sendMessage() {
+      this.$emit("newMessage", {
+        text: this.$refs.msgText.value,
+        from: "me",
+        class: "me",
+        createdAt: Date.now(),
+        id: ``,
+        status: "pending"
+      });
+      this.$refs.msgText.value = "";
+    }
+  }
 });
 </script>
 
