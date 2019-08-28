@@ -30,7 +30,7 @@
                   }}
                 </h4>
                 <span>
-                  {{ new Date(message.createdAt).toLocaleTimeString() }}
+                  {{ new Date(message.quoted.createdAt).toLocaleTimeString() }}
                 </span>
               </div>
               <p class="wrap">{{ message.quoted.text }}</p>
@@ -53,21 +53,17 @@ import Vue from "vue";
 export default Vue.extend({
   props: {
     frienship_id: String,
-    messages: Array
+    messages: Array,
+    highlighted: String
   },
   data() {
-    return {
-      highlighted: ""
-    };
+    return {};
   },
   created() {},
   methods: {
     getCookie,
-    replyClick(msgId: string) {
-      document.getElementById(this.highlighted).classList.remove("highlighted");
-      this.highlighted = msgId;
-      document.getElementById(msgId).classList.add("highlighted");
-      this.$emit("reply");
+    replyClick(msgId: string): void {
+      this.$emit("replyClick", msgId);
     }
   },
   computed: {
@@ -76,8 +72,15 @@ export default Vue.extend({
     }
   },
   watch: {
-    messages(newVal, oldVal) {
-      console.log("prop changed!!");
+    highlighted(newVal: string, oldVal: string): void {
+      let previouslyHighlightedElem = document.getElementById(oldVal);
+      let newlyHighlightedElem = document.getElementById(newVal);
+      if (previouslyHighlightedElem) {
+        previouslyHighlightedElem.classList.remove("highlighted");
+      }
+      if (newlyHighlightedElem) {
+        newlyHighlightedElem.classList.add("highlighted");
+      }
     }
   }
 });
@@ -162,12 +165,18 @@ li.received .message .message__body > p.wrap::after {
   margin: 0px 0px 0px 5px;
 }
 
-li[id=""].pending .message .message__body > p.wrap::after {
+li.pending .message .message__body > p.wrap::after {
   content: "\2755";
   color: #900;
   background: red;
   border-radius: 3px;
   float: right;
   margin: 0px 0px 0px 5px;
+}
+.highlighted,
+.highlighted:hover,
+li.highlighted {
+  background-color: #337ba867;
+  border-radius: 10px;
 }
 </style>

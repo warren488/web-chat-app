@@ -8,11 +8,16 @@
         :key="currChat"
         :friendship_id="currChat"
         :messages="currMessages"
-        @reply="replyHandler"
+        :highlighted="highlightedMessageId"
+        @replyClick="replyHandler"
         class="chatBody"
         msg="Welcome to Your Vue.js + TypeScript App"
       />
-      <chat-text @newMessage="handleNewMessage"></chat-text>
+      <chat-text
+        :highlighted="highlightedMessageId"
+        @newMessage="handleNewMessage"
+        @cancelReply="cancelReply"
+      ></chat-text>
     </div>
   </div>
 </template>
@@ -32,13 +37,26 @@ export default Vue.extend({
     return {
       messages: Object({}),
       currentChat: "",
-      currentMessages: []
+      currentMessages: [],
+      highlightedMessageId: null
     };
   },
   methods: {
     ...mapActions(["setFriends"]),
     handleNewMessage(message) {
-      this.messages[this.currChat].push(message);
+      this.cancelReply();
+      let quoted;
+      // TODO: FIXME: implement sort and search algorith for messages or get data from the sub component
+      // massive performance issue
+      for (const chatMessage of this.messages[this.currentChat]) {
+        if (chatMessage._id === message.hID) {
+          quoted = chatMessage;
+        }
+      }
+      this.messages[this.currChat].push({
+        ...message,
+        quoted
+      });
     },
     openChat(frienship_id: string) {
       if (!this.messages[frienship_id]) {
@@ -52,7 +70,16 @@ export default Vue.extend({
         this.currentChat = frienship_id;
       }
     },
-    replyHandler() {}
+    replyHandler(msgId) {
+      this.highlightedMessageId = msgId;
+    },
+    /**
+     * @function cancelReply
+     * @description cancels the act of replying to a certain message (sets the property which then alerts sub-conponents)
+     */
+    cancelReply() {
+      this.highlightedMessageId = null;
+    }
   },
   created() {
     if (!this.initFriends) {
@@ -68,8 +95,6 @@ export default Vue.extend({
       return this.currentChat;
     },
     currMessages() {
-      console.log(this.messages);
-      console.log(this.currChat);
       return this.currentMessages;
     }
   },

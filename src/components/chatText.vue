@@ -16,9 +16,9 @@
       </button>
       <button
         type="button"
-        class="no-show"
+        :class="{ 'no-show': highlighted === null }"
         @click="$emit('cancelReply')"
-        id="cancel-reply"
+        class="cancel-reply"
       >
         <img src="../assets/close.svg" alt />
       </button>
@@ -28,20 +28,28 @@
 
 <script lang="ts">
 import Vue from "vue";
+import { getCookie } from "@/common";
 
 export default Vue.extend({
   name: "",
+  props: {
+    highlighted: String
+  },
   methods: {
     sendMessage() {
       this.$emit("newMessage", {
         text: this.$refs.msgText.value,
-        from: "me",
-        class: "me",
+        from: getCookie("username"),
         createdAt: Date.now(),
-        id: ``,
-        status: "pending"
+        status: "pending",
+        hID: this.highlighted
       });
       this.$refs.msgText.value = "";
+    }
+  },
+  watch: {
+    highlighted() {
+      this.$refs.msgText.focus();
     }
   }
 });
@@ -98,7 +106,17 @@ export default Vue.extend({
     margin: 0px;
   }
 }
-#cancel-reply img {
-  height: 1rem;
+.cancel-reply {
+  transition: width 0.5s;
+  width: 1em;
+  img {
+    height: 1rem;
+  }
+}
+.no-show {
+  // display: none
+  width: 0px;
+  overflow: hidden;
+  // margin: 0px;
 }
 </style>
