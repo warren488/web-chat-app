@@ -45,3 +45,72 @@ export const getMessages = async (friendship_id: string) => {
     }
   });
 };
+
+export const getLastMessage = async (friendship_id: string) => {
+  return await axios({
+    method: "GET",
+    url: `http://localhost:3001/api/users/me/${friendship_id}/lastmessage`,
+    headers: {
+      "Content-type": "application/json",
+      "x-auth": getCookie("token")
+    }
+  });
+};
+
+export const notifyMe = data => {
+  let text = data.from + ": " + data.message;
+  // Let's check if the browser supports notifications
+  if (!("Notification" in window)) {
+    alert("This browser does not support desktop notification");
+  }
+
+  // Let's check whether notification permissions have already been granted
+  else if (Notification.permission === "granted") {
+    // If it's okay let's create a notification
+    var notification = new Notification(text);
+  }
+
+  // Otherwise, we need to ask the user for permission
+  else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(function(permission) {
+      // If the user accepts, let's create a notification
+      if (permission === "granted") {
+        var notification = new Notification(text);
+      }
+    });
+  }
+
+  // At last, if the user has denied notifications, and you
+  // want to be respectful there is no need to bother them any more.
+};
+
+export const scrollBottom = function scrollBottom({ force, test }) {
+  let newMessage: HTMLElement = this.$refs.messageScroll.querySelector(
+    "ol li:last-child"
+  );
+  let doScroll = !!force;
+  console.log(force);
+  if (newMessage) {
+    let clientHeight = this.$refs.messageScroll.clientHeight;
+    let scrollTop = this.$refs.messageScroll.scrollTop;
+    let scrollHeight = this.$refs.messageScroll.scrollHeight;
+
+    let newMessageHeight = newMessage.clientHeight;
+    let lastMessage = this.$refs.messageScroll.querySelector(
+      "ol li:nth-last-child(2)"
+    );
+
+    let lastMessageHeight = lastMessage ? lastMessage.clientHeight : 0;
+    doScroll = !doScroll
+      ? clientHeight + scrollTop + newMessageHeight + lastMessageHeight >=
+        scrollHeight
+      : doScroll;
+    if (doScroll) {
+      this.$refs.messageScroll.scrollTop =
+        scrollHeight + newMessageHeight + newMessageHeight;
+    }
+  }
+
+  // this.$refs.messageScroll.scrollTop = scrollHeight;
+  // console.log(clientHeight, scrollHeight, scrollTop);
+};
