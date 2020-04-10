@@ -27,7 +27,9 @@
             name="password"
           />
         </div>
-        <div class="feedback"></div>
+        <div class="feedback" ref="feedback">
+          {{ feedbackText }}
+        </div>
         <div class="form-field">
           <button class="mybt">Login</button>
           <a href="/signup">no account? signup here</a>
@@ -53,7 +55,8 @@ export default Vue.extend({
       modal: {
         show: false,
         text: ""
-      }
+      },
+      feedback: "feedback"
     };
   },
   methods: {
@@ -78,6 +81,12 @@ export default Vue.extend({
       } catch (error) {
         console.log(JSON.stringify(error));
         console.log(error.response);
+        if (
+          error.response.status === 404 &&
+          error.response.data.message === "user not found"
+        ) {
+          this.feedback = "User not found";
+        }
         return false;
       }
     },
@@ -88,6 +97,9 @@ export default Vue.extend({
   computed: {
     modalData(): Object {
       return { show: this.modal.show, text: this.modal.text };
+    },
+    feedbackText() {
+      return this.feedback;
     }
   }
 });
