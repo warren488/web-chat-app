@@ -11,12 +11,21 @@
     </header>
     <ol>
       <li
-        v-for="friend of friends"
+        v-for="friend of myFriends"
         :key="friend._id"
         :id="friend._id"
+        :class="{ active: friend._id === currentChat }"
         @click="$emit('open', friend._id)"
       >
-        {{ friend.username }}
+        <h1>{{ friend.username }}</h1>
+        <p class="last-message" v-if="friend.lastMessage[0]">
+          <span v-if="friend.lastMessage[0].status !== 'typing'">{{
+            friend.lastMessage[0].from === getCookie("username")
+              ? "me:"
+              : `${friend.lastMessage[0].from}:`
+          }}</span>
+          {{ friend.lastMessage[0].text ? friend.lastMessage[0].text : "" }}
+        </p>
       </li>
     </ol>
   </div>
@@ -24,11 +33,21 @@
 
 <script lang="ts">
 import Vue from "vue";
+import { getCookie } from "@/common";
 
 export default Vue.extend({
   name: "HelloWorld",
   props: {
-    friends: Array
+    friends: Array,
+    currentChat: String
+  },
+  methods: {
+    getCookie
+  },
+  computed: {
+    myFriends() {
+      return this.friends;
+    }
   }
 });
 </script>
@@ -54,12 +73,12 @@ header h1 {
 }
 .chatList {
   background: linear-gradient(
-    325deg,
-    rgb(39, 130, 51) 0,
-    rgb(110, 129, 49) 100%
+    89.81deg,
+    rgb(58, 97, 54) 0.03%,
+    rgb(0, 93, 64) 64.36%
   );
-  padding: 5px;
-  color: white;
+  // padding: 5px;
+  color: beige;
 }
 ol {
   text-decoration: none;
@@ -68,14 +87,21 @@ ol {
   li {
     margin: 0px;
     padding: 15px 5px 5px;
-    text-transform: uppercase;
-    font-weight: bold;
     width: 100%;
-    border-bottom: thin white solid;
+    border-bottom: thin beige solid;
+    h1 {
+      text-transform: uppercase;
+      font-weight: bold;
+    }
     &:hover {
       border-bottom: thin rgb(57, 83, 60) solid;
       color: rgb(57, 83, 60);
       cursor: pointer;
+    }
+    &.active {
+      background-color: beige;
+      border-bottom-color: transparent;
+      color: rgb(57, 83, 60);
     }
   }
 }
