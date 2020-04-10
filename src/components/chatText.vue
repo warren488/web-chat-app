@@ -1,28 +1,42 @@
 <template>
-  <div class="chat__footer">
-    <form @submit.prevent="sendMessage" id="message-form">
-      <button id="emoji-button" type="button">&#128578;</button>
-      <input
-        ref="msgText"
-        type="text"
-        id="msg-txt"
-        name="message"
-        placeholder="send message..."
-        autocomplete="off"
-        autofocus
-      />
-      <button id="send-button">
-        <img src="../assets/send.svg" alt />
-      </button>
-      <button
-        type="button"
-        :class="{ 'no-show': highlighted === null }"
-        @click="$emit('cancelReply')"
-        class="cancel-reply"
+  <div>
+    <div class="chat__footer">
+      <form @submit.prevent="sendMessage" id="message-form">
+        <button @click="toggleEmojis" id="emoji-button" type="button">
+          &#128578;
+        </button>
+        <input
+          ref="msgText"
+          type="text"
+          id="msg-txt"
+          name="message"
+          placeholder="send message..."
+          autocomplete="off"
+          autofocus
+          @keydown="$emit('typing')"
+        />
+        <button id="send-button">
+          <img src="../assets/send.svg" alt />
+        </button>
+        <button
+          type="button"
+          :class="{ 'no-show': highlighted === null }"
+          @click="$emit('cancelReply')"
+          class="cancel-reply"
+        >
+          <img src="../assets/close.svg" alt />
+        </button>
+      </form>
+    </div>
+    <div ref="emojis" class="emojis" id="my-emojis">
+      <span
+        @click="addEmoji"
+        v-for="(emoji, i) in emojis"
+        :key="i"
+        :data-value="emoji"
+        >{{ emoji }}</span
       >
-        <img src="../assets/close.svg" alt />
-      </button>
-    </form>
+    </div>
   </div>
 </template>
 
@@ -32,14 +46,117 @@ import { getCookie } from "@/common";
 
 export default Vue.extend({
   name: "",
+  data() {
+    return {
+      emojis: [
+        "😀",
+        "😁",
+        "😂",
+        "😃",
+        "😄",
+        "😅",
+        "😆",
+        "😇",
+        "😈",
+        "😉",
+        "😊",
+        "😋",
+        "😌",
+        "😍",
+        "😎",
+        "😏",
+        "😐",
+        "😑",
+        "😒",
+        "😓",
+        "😔",
+        "😕",
+        "😖",
+        "😗",
+        "😘",
+        "😙",
+        "😚",
+        "😛",
+        "😜",
+        "😝",
+        "😞",
+        "😟",
+        "😠",
+        "😡",
+        "😢",
+        "😣",
+        "😤",
+        "😥",
+        "😦",
+        "😧",
+        "😨",
+        "😩",
+        "😪",
+        "😫",
+        "😬",
+        "😭",
+        "😮",
+        "😯",
+        "😰",
+        "😱",
+        "😲",
+        "😳",
+        "😴",
+        "😵",
+        "😶",
+        "😷",
+        "🙁",
+        "🙂",
+        "🙃",
+        "🙄",
+        "🤐",
+        "🤑",
+        "🤒",
+        "🤓",
+        "🤔",
+        "🤕",
+        "🤠",
+        "🤡",
+        "🤢",
+        "🤣",
+        "🤤",
+        "🤥",
+        "🤧",
+        "🤨",
+        "🤩",
+        "🤪",
+        "🤫",
+        "🤬",
+        "🤭",
+        "🤮",
+        "🤯",
+        "🧐"
+      ]
+    };
+  },
   props: {
-    highlighted: String
+    highlighted: String,
+    typing: {}
   },
   methods: {
+    addEmoji(e) {
+      if (e.target.dataset.value) {
+        this.$refs.msgText.value += e.target.dataset.value;
+        this.$refs.msgText.focus();
+      }
+    },
+    toggleEmojis() {
+      this.$refs.emojis.classList.toggle("show");
+    },
     sendMessage() {
+      let msg = this.$refs.msgText.value;
+      if (!msg) {
+        return;
+      }
       this.$emit("newMessage", {
-        text: this.$refs.msgText.value,
+        text: msg,
         from: getCookie("username"),
+        // server uses it's own timestamp... hmmmm
         createdAt: Date.now(),
         status: "pending",
         hID: this.highlighted
@@ -109,6 +226,7 @@ export default Vue.extend({
 .cancel-reply {
   transition: width 0.5s;
   width: 1em;
+  overflow: hidden;
   img {
     height: 1rem;
   }
@@ -116,7 +234,30 @@ export default Vue.extend({
 .no-show {
   // display: none
   width: 0px;
-  overflow: hidden;
   // margin: 0px;
+}
+.emojis {
+  overflow-y: scroll;
+  cursor: pointer;
+  height: 0px;
+  min-height: 0px;
+}
+
+.emojis span {
+  font-family: "Font Awesome 5 Free";
+  font-size: 2rem;
+}
+
+#emoji-button {
+  background-color: transparent;
+  cursor: pointer;
+  padding: 0px;
+  margin-left: 10px;
+  font-size: 2rem;
+}
+
+.emojis.show {
+  /* display: block; */
+  min-height: 150px;
 }
 </style>
