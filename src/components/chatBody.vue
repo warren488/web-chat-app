@@ -1,5 +1,5 @@
 <template>
-  <div class="chat__main">
+  <div ref="messageScroll" class="chat__main">
     <ol class="chat__messages" id="messages">
       <li
         v-for="message of allMessages"
@@ -43,7 +43,7 @@
 </template>
 
 <script lang="ts">
-import { getCookie, getMessages } from "@/common";
+import { getCookie, getMessages, scrollBottom } from "@/common";
 interface Message {
   name: string;
   text: string;
@@ -59,6 +59,9 @@ export default Vue.extend({
   data() {
     return {};
   },
+  mounted() {
+    scrollBottom.call(this, { force: true, test: false });
+  },
   created() {},
   methods: {
     getCookie,
@@ -70,6 +73,9 @@ export default Vue.extend({
     allMessages(): Array<Message> {
       return this.messages;
     }
+  },
+  updated() {
+    scrollBottom.call(this, { force: false, test: false });
   },
   watch: {
     highlighted(newVal: string, oldVal: string): void {
@@ -119,7 +125,6 @@ export default Vue.extend({
   box-shadow: 1px 1px 3px gray;
 }
 .chat__messages {
-  overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   padding: 10px;
 }
