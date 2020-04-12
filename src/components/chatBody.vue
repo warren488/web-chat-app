@@ -1,5 +1,6 @@
 <template>
   <div ref="messageScroll" class="chat__main">
+    <button class="chat__view-more" @click="viewMore">View more</button>
     <ol class="chat__messages" id="messages">
       <li
         v-for="message of allMessages"
@@ -43,7 +44,7 @@
 </template>
 
 <script lang="ts">
-import { getCookie, getMessages, scrollBottom } from "@/common";
+import { getCookie, getMessages, getMessagePage, scrollBottom } from "@/common";
 interface Message {
   name: string;
   text: string;
@@ -67,6 +68,9 @@ export default Vue.extend({
     getCookie,
     replyClick(msgId: string): void {
       this.$emit("replyClick", msgId);
+    },
+    viewMore() {
+      this.$emit("viewMore");
     }
   },
   computed: {
