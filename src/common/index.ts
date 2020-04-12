@@ -35,14 +35,44 @@ export const setCookie = (name: string, value: string, days: number) => {
   document.cookie = name + "=" + (value || "") + expires + "; path=/";
 };
 
-export const getMessages = async (friendship_id: string) => {
+export const getMessages = async (
+  friendship_id: string,
+  limit: number = 50
+) => {
   return await axios({
     method: "GET",
-    url: `http://localhost:3001/api/users/me/${friendship_id}/messages`,
+    url: `http://localhost:3001/api/users/me/${friendship_id}/messages?limit=${limit}`,
     headers: {
       "Content-type": "application/json",
       "x-auth": getCookie("token")
     }
+  }).then(({ data }) => {
+    let orderedData = [];
+    for (let i = data.length - 1; i >= 0; i--) {
+      orderedData.push(data[i]);
+    }
+    return { data: orderedData };
+  });
+};
+
+export const getMessagePage = async (
+  friendship_id: string,
+  limit: number = 50,
+  timestamp
+) => {
+  return await axios({
+    method: "GET",
+    url: `http://localhost:3001/api/users/me/${friendship_id}/messagespage?limit=${limit}&timestamp=${timestamp}`,
+    headers: {
+      "Content-type": "application/json",
+      "x-auth": getCookie("token")
+    }
+  }).then(({ data }) => {
+    let orderedData = [];
+    for (let i = data.length - 1; i >= 0; i--) {
+      orderedData.push(data[i]);
+    }
+    return { data: orderedData };
   });
 };
 
