@@ -14,6 +14,7 @@
         :messages="currMessages"
         :highlighted="highlightedMessageId"
         @replyClick="replyHandler"
+        @viewMore="viewMore"
         class="chatBody"
         msg="Welcome to Your Vue.js + TypeScript App"
       />
@@ -36,6 +37,7 @@ import {
   getFriends,
   getCookie,
   getMessages,
+  getMessagePage,
   getLastMessage,
   notifyMe
 } from "@/common";
@@ -44,6 +46,7 @@ import io from "socket.io-client";
 
 export default Vue.extend({
   name: "home",
+  mounted() {},
   data() {
     return {
       messages: Object({}),
@@ -58,6 +61,29 @@ export default Vue.extend({
     // scrollBottom: scrollBottom.bind(this),
     ...mapActions(["setFriends"]),
     ...mapMutations(["updateLastMessage", "hideTyping", "showTyping"]),
+    viewMore() {
+      /** get the next 100 message from the chat history
+       * starting with the timestamp of our latest message
+       * (which will be the first in the messages array)and going backward
+       */
+      getMessagePage(
+        this.currentChat,
+        100,
+        this.messages[this.currentChat][0].createdAt
+      ).then(({ data }) => {
+        /**
+         * spread data first and then the current message as data will be our older messages
+         * it needs to always come first
+         * @todo - I need to account for instances where we will get the messages that have the same timestamp
+         * as the timestamp used to create this page (line 71)
+         */
+        this.messages[this.currentChat] = [
+          ...data,
+          ...this.messages[this.currentChat]
+        ];
+        this.currentMessages = this.messages[this.currentChat];
+      });
+    },
     handleNewMessage(message) {
       if (!message) {
         return;
@@ -83,6 +109,8 @@ export default Vue.extend({
           ...message,
           quoted
         }) - 1;
+      console.log(this.messages[this.currChat][index]);
+      this.currentMessages = this.messages[this.currChat];
       /** send message to the server via the socket */
       this.socket.emit(
         "sendMessage",
@@ -175,81 +203,164 @@ export default Vue.extend({
     if (!this.initFriends) {
       this.setFriends().then(() => {
         this.openChat(this.friends[0]._id);
+        /** this is written multiple times here for different scenarios
+         * find a more efficient way to do this this is all needed because
+         * in order to connect to all friends "checkin" we need friends to
+         * exist but we also need the socket to be connected
+         */
+        this.socket = io("http://localhost:3001");
+        /**  @todo : will this run several times for connection drops? */
+        this.socket.on("connect", () => {
+          /**
+           * @function checkin
+           * @todo add a kind of a queue to the DB (or from another service) so that we can get messages from that queue, for disconnects or so
+           * @todo chat page specific logic for getting frienship ID should really use this to determine if to allow functionality on the page
+           * @memberof AuthChat
+           */
+          this.friends.forEach(friend => {
+            let friendship_id = friend._id;
+            getMessages(friendship_id, 10).then(({ data }) => {
+              this.messages[friendship_id] = data;
+              // this.currentMessages = this.messages[friendship_id];
+              // this.currentChat = friendship_id;
+              this.socket.emit("checkin", {
+                friendship_id: friendship_id,
+                token: getCookie("token")
+              });
+            });
+          });
+        });
+        this.socket.on("newMessage", data => {
+          /** if its us then do nothing, we already displayed it on the screen */
+          /**
+           * @todo - check to see if the message has already been displayed to the screen
+           * instead of just checking if it was us and then
+           * decide if to display it, this can help with using multiple places at once
+           */
+          if (data.from === getCookie("username")) {
+            return;
+          }
+          /** if we get a message about the other persons typing */
+          if (data.type === "typing") {
+            // if its saying the person has started typing
+            if (data.status === "start") {
+              this.showTyping(data.friendship_id);
+              if (data.friendship_id === this.currChat) {
+                document.querySelector(".typing").classList.remove("op");
+              }
+              // if its saying the person has stopped typing
+            } else if (data.status === "stop") {
+              this.hideTyping(data.friendship_id);
+              if (data.friendship_id === this.currChat) {
+                document.querySelector(".typing").classList.add("op");
+              }
+            }
+            return;
+          }
+          // send desktop notification
+          notifyMe({ from: data.from, message: data.text });
+          this.messages[data.friendship_id].push(data);
+          this.updateLastMessage({
+            friendship_id: data.friendship_id,
+            lastMessage: data
+          });
+          /** let the next user know that this message is green ticked */
+          this.socket.emit(
+            "gotMessage",
+            {
+              friendship_id: data.friendship_id,
+              token: getCookie("token"),
+              Ids: data.Ids
+            },
+            () => console.log("message ticked")
+          );
+        });
+        this.socket.on("received", data => {
+          data.forEach(Id => {
+            let message = document.getElementById(Id);
+            if (message) {
+              message.classList.remove("pending");
+              message.classList.remove("sent");
+              message.classList.add("received");
+            }
+          });
+        });
+      });
+    } else {
+      this.socket = io("http://localhost:3001");
+      /**  @todo : will this run several times for connection drops? */
+      this.socket.on("connect", () => {
+        /**
+         * @function checkin
+         * @todo add a kind of a queue to the DB (or from another service) so that we can get messages from that queue, for disconnects or so
+         * @todo chat page specific logic for getting frienship ID should really use this to determine if to allow functionality on the page
+         * @memberof AuthChat
+         */
+        this.socket.emit(
+          "checkin",
+          /** @fixme : THIS SHOULD BE THE FRIENDSHIP ID OF THE FRIEND WE ARE CURRENTLY CHATTING WITH */
+          { friendship_id: this.currChat, token: getCookie("token") },
+          (err, data) =>
+            !err
+              ? console.log("checkin successful")
+              : console.log("checkin unsuccessful")
+        );
+      });
+      this.socket.on("newMessage", data => {
+        /** if its us then do nothing, we already displayed it on the screen */
+        /**
+         * @todo - check to see if the message has already been displayed to the screen and then
+         * decide if to display it, this can help with using multiple places at once
+         */
+        if (data.from === getCookie("username")) {
+          return;
+        }
+        /** if we get a message about the other persons typing */
+        if (data.type === "typing") {
+          // if its saying the person has started typing
+          if (data.status === "start") {
+            this.showTyping(data.friendship_id);
+            if (data.friendship_id === this.currChat) {
+              document.querySelector(".typing").classList.remove("op");
+            }
+            // if its saying the person has stopped typing
+          } else if (data.status === "stop") {
+            this.hideTyping(data.friendship_id);
+            if (data.friendship_id === this.currChat) {
+              document.querySelector(".typing").classList.add("op");
+            }
+          }
+          return;
+        }
+        // send desktop notification
+        notifyMe({ from: data.from, message: data.text });
+        this.messages[data.friendship_id].push(data);
+        this.updateLastMessage({
+          friendship_id: data.friendship_id,
+          lastMessage: data
+        });
+        /** let the next user know that this message is green ticked */
+        this.socket.emit(
+          "gotMessage",
+          {
+            friendship_id: data.friendship_id,
+            token: getCookie("token"),
+            Ids: data.Ids
+          },
+          () => console.log("message ticked")
+        );
+      });
+      this.socket.on("received", data => {
+        data.forEach(Id => {
+          let message = document.getElementById(Id);
+          if (message) {
+            message.classList.remove("pending");
+            message.classList.remove("sent");
+            message.classList.add("received");
+          }
+        });
       });
     }
-    this.socket = io("http://localhost:3001");
-    /**  @todo : will this run several times for connection drops? */
-    this.socket.on("connect", () => {
-      /**
-       * @function checkin
-       * @todo add a kind of a queue to the DB (or from another service) so that we can get messages from that queue, for disconnects or so
-       * @todo chat page specific logic for getting frienship ID should really use this to determine if to allow functionality on the page
-       * @memberof AuthChat
-       */
-      this.socket.emit(
-        "checkin",
-        /** @fixme : THIS SHOULD BE THE FRIENDSHIP ID OF THE FRIEND WE ARE CURRENTLY CHATTING WITH */
-        { friendship_id: this.currChat, token: getCookie("token") },
-        (err, data) =>
-          !err
-            ? console.log("checkin successful")
-            : console.log("checkin unsuccessful")
-      );
-    });
-    this.socket.on("newMessage", data => {
-      /** if its us then do nothing, we already displayed it on the screen */
-      /**
-       * @todo - check to see if the message has already been displayed to the screen and then
-       * decide if to display it, this can help with using multiple places at once
-       */
-      if (data.from === getCookie("username")) {
-        return;
-      }
-      /** if we get a message about the other persons typing */
-      if (data.type === "typing") {
-        // if its saying the person has started typing
-        if (data.status === "start") {
-          this.showTyping(data.friendship_id);
-          if (data.friendship_id === this.currChat) {
-            document.querySelector(".typing").classList.remove("op");
-          }
-          // if its saying the person has stopped typing
-        } else if (data.status === "stop") {
-          this.hideTyping(data.friendship_id);
-          if (data.friendship_id === this.currChat) {
-            document.querySelector(".typing").classList.add("op");
-          }
-        }
-        return;
-      }
-      // send desktop notification
-      notifyMe({ from: data.from, message: data.text });
-      this.messages[data.friendship_id].push(data);
-      this.updateLastMessage({
-        friendship_id: data.friendship_id,
-        lastMessage: data
-      });
-      /** let the next user know that this message is green ticked */
-      this.socket.emit(
-        "gotMessage",
-        {
-          friendship_id: data.friendship_id,
-          token: getCookie("token"),
-          Ids: data.Ids
-        },
-        () => console.log("message ticked")
-      );
-    });
-    this.socket.on("received", data => {
-      data.forEach(Id => {
-        let message = document.getElementById(Id);
-        if (message) {
-          message.classList.remove("pending");
-          message.classList.remove("sent");
-          message.classList.add("received");
-        }
-      });
-    });
   },
   computed: {
     ...mapGetters(["friends"]),
