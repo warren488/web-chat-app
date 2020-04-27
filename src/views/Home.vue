@@ -1,30 +1,86 @@
 <template>
   <div class="home">
-    <div class="chat__sidebar">
-      <chatList :friends="friends" @open="openChat" :currentChat="currChat" />
-    </div>
-    <div class="main-chat">
-      <header class="chatHeader" v-if="currFriend">
+    <modal
+      :showModal="modalData.openProfile"
+      @close="modalData.openProfile = false"
+    >
+      <template v-slot:full-replace>
+        <profile :readonly="true" :displayData="modalData.visibleProfile" />
+      </template>
+    </modal>
+    <header class="main-header">
+      <span> options</span>
+      <button class="mybt" @click="mode = 'friends'">friends</button>
+      <button class="mybt" @click="mode = 'search'">search</button>
+      <button class="mybt" @click="() => $router.push('/profile')">
+        profile
+      </button>
+      <!-- <div class="chat-header" v-if="currFriend">
         <h1>{{ currFriend.username }}</h1>
         <p class="typing op">typing...</p>
-      </header>
-      <chatBody
-        :key="currChat"
-        :friendship_id="currChat"
-        :messages="currMessages"
-        :highlighted="highlightedMessageId"
-        @replyClick="replyHandler"
-        @viewMore="viewMore"
-        class="chatBody"
-        msg="Welcome to Your Vue.js + TypeScript App"
-      />
-      <chat-text
-        :highlighted="highlightedMessageId"
-        @newMessage="handleNewMessage"
-        @cancelReply="cancelReply"
-        @typing="handleTyping"
-      ></chat-text>
-    </div>
+      </div> -->
+    </header>
+    <main class="main-section">
+      <div class="chat__sidebar">
+        <chatList
+          :title="mode"
+          :filter="filter"
+          :friends="mode === 'friends' ? friends : searchResults"
+          @open="openChat"
+          :currentChat="currChat"
+        />
+      </div>
+      <div class="main-chat">
+        <div class="active-chat" v-if="currFriend">
+          <header class="chat-header">
+            <img
+              @click="profileImageOpen = !profileImageOpen"
+              :class="{
+                'chat-header__profile-img': true,
+                'chat-header__profile-img--open': profileImageOpen
+              }"
+              v-if="!currFriend.imgUrl"
+              src="../assets/abstract-user-flat-1.svg"
+              alt=""
+            />
+            <img
+              @click="profileImageOpen = !profileImageOpen"
+              :class="{
+                'chat-header__profile-img': true,
+                'chat-header__profile-img--open': profileImageOpen
+              }"
+              v-if="currFriend.imgUrl"
+              :src="currFriend.imgUrl"
+              alt=""
+            />
+            <div>
+              <h1>{{ currFriend.username }}</h1>
+              <p class="typing op">typing...</p>
+            </div>
+          </header>
+          <chatBody
+            ref="chatBody"
+            :key="currChat"
+            :friendship_id="currChat"
+            :messages="currMessages"
+            :highlighted="highlightedMessageId"
+            @replyClick="replyHandler"
+            @viewMore="viewMore"
+            class="chatBody"
+            msg="Welcome to Your Vue.js + TypeScript App"
+          />
+          <chat-text
+            :highlighted="highlightedMessageId"
+            @newMessage="handleNewMessage"
+            @cancelReply="cancelReply"
+            @typing="handleTyping"
+          ></chat-text>
+        </div>
+        <div class="empty-chat" v-if="!currFriend">
+          Open a chat
+        </div>
+      </div>
+    </main>
   </div>
 </template>
 
@@ -33,12 +89,17 @@ import Vue from "vue";
 import chatList from "@/components/chatList.vue";
 import chatText from "@/components/chatText.vue";
 import chatBody from "@/components/chatBody.vue";
+import modal from "@/components/modal.vue";
+/** using profile view as a component... hmmm */
+import profile from "@/views/Profile.vue";
 import {
   getFriends,
   getCookie,
   getMessages,
   getMessagePage,
   getLastMessage,
+  getUsers,
+  baseURI,
   notifyMe
 } from "@/common";
 import { mapGetters, mapActions, mapMutations } from "vuex";
@@ -49,16 +110,20 @@ export default Vue.extend({
   mounted() {},
   data() {
     return {
+      mode: "friends",
+      profileImageOpen: false,
+      modalData: { openProfile: false, visibleProfile: {} },
       messages: Object({}),
       currentChat: "",
       currentMessages: [],
+      searchResults: [],
       highlightedMessageId: null,
       socket: null,
-      typing: {}
+      typing: {},
+      unreadIndex: {}
     };
   },
   methods: {
-    // scrollBottom: scrollBottom.bind(this),
     ...mapActions(["setFriends"]),
     ...mapMutations(["updateLastMessage", "hideTyping", "showTyping"]),
     viewMore() {
@@ -75,13 +140,9 @@ export default Vue.extend({
          * spread data first and then the current message as data will be our older messages
          * it needs to always come first
          * @todo - I need to account for instances where we will get the messages that have the same timestamp
-         * as the timestamp used to create this page (line 71)
+         * as the timestamp used to create this page 3rd param of getMessagePage call
          */
-        this.messages[this.currentChat] = [
-          ...data,
-          ...this.messages[this.currentChat]
-        ];
-        this.currentMessages = this.messages[this.currentChat];
+        this.messages[this.currentChat].unshift(...data);
       });
     },
     handleNewMessage(message) {
@@ -109,7 +170,10 @@ export default Vue.extend({
           ...message,
           quoted
         }) - 1;
-      console.log(this.messages[this.currChat][index]);
+      this.unreadIndex[this.currChat].push({
+        ...message,
+        orderedIndex: index
+      });
       this.currentMessages = this.messages[this.currChat];
       /** send message to the server via the socket */
       this.socket.emit(
@@ -120,6 +184,10 @@ export default Vue.extend({
           hID: message.hID
         },
         (err, data) => {
+          if (err) {
+            console.log();
+          }
+
           this.messages[this.currChat][index]._id = data;
           this.messages[this.currChat][index].status = "sent";
         }
@@ -167,12 +235,22 @@ export default Vue.extend({
         }, 100);
       }
     },
-    openChat(frienship_id: string) {
-      if (!this.messages[frienship_id]) {
-        getMessages(frienship_id).then(({ data }) => {
-          this.messages[frienship_id] = data;
-          this.currentMessages = this.messages[frienship_id];
-          this.currentChat = frienship_id;
+    openChat(friend) {
+      let friendship_id = friend._id;
+      if (this.mode === "search") {
+        this.modalData.visibleProfile = friend;
+        this.modalData.openProfile = true;
+        return;
+      }
+      console.log(friendship_id);
+
+      if (!this.messages[friendship_id]) {
+        return getMessages(friendship_id).then(({ data, unreadIndex }) => {
+          console.log(`setting unread index ${friendship_id}`);
+          this.unreadIndex[friendship_id] = unreadIndex;
+          this.messages[friendship_id] = data;
+          this.currentMessages = this.messages[friendship_id];
+          this.currentChat = friendship_id;
           this.socket.emit(
             "checkin",
             // FIXME: THIS SHOULD BE THE FRIENDSHIP ID OF THE FRIEND WE ARE CURRENTLY CHATTING WITH
@@ -184,9 +262,15 @@ export default Vue.extend({
           );
         });
       } else {
-        this.currentMessages = this.messages[frienship_id];
-        this.currentChat = frienship_id;
+        console.log(`else ${friendship_id}`);
+        this.currentMessages = this.messages[friendship_id];
+        this.currentChat = friendship_id;
       }
+    },
+    filter(filterString: string) {
+      getUsers(filterString).then(({ data }) => {
+        this.searchResults = data;
+      });
     },
     replyHandler(msgId) {
       this.highlightedMessageId = msgId;
@@ -202,13 +286,16 @@ export default Vue.extend({
   created() {
     if (!this.initFriends) {
       this.setFriends().then(() => {
-        this.openChat(this.friends[0]._id);
+        if (this.friends.length > 0) {
+          this.openChat(this.friends[0]._id);
+        }
         /** this is written multiple times here for different scenarios
          * find a more efficient way to do this this is all needed because
          * in order to connect to all friends "checkin" we need friends to
          * exist but we also need the socket to be connected
+         * UPDATE: i think i only need the friends foreach in here, everything else can be done outside
          */
-        this.socket = io("http://localhost:3001");
+        this.socket = io(baseURI);
         /**  @todo : will this run several times for connection drops? */
         this.socket.on("connect", () => {
           /**
@@ -217,12 +304,16 @@ export default Vue.extend({
            * @todo chat page specific logic for getting frienship ID should really use this to determine if to allow functionality on the page
            * @memberof AuthChat
            */
-          this.friends.forEach(friend => {
+          this.friends.forEach((friend, index) => {
+            if (index === 0) {
+              // we dont want to mess with the first one because this will be done in the openChat call
+              return;
+            }
             let friendship_id = friend._id;
-            getMessages(friendship_id, 10).then(({ data }) => {
+            getMessages(friendship_id, 10).then(({ data, unreadIndex }) => {
+              console.log(`setting unread index ${friendship_id}`);
+              this.unreadIndex[friendship_id] = unreadIndex;
               this.messages[friendship_id] = data;
-              // this.currentMessages = this.messages[friendship_id];
-              // this.currentChat = friendship_id;
               this.socket.emit("checkin", {
                 friendship_id: friendship_id,
                 token: getCookie("token")
@@ -259,7 +350,13 @@ export default Vue.extend({
           }
           // send desktop notification
           notifyMe({ from: data.from, message: data.text });
-          this.messages[data.friendship_id].push(data);
+          console.log(data);
+          this.messages[data.friendship_id].push({
+            createdAt: data.createdAt,
+            from: data.from,
+            text: data.text,
+            _id: data.Ids[0]
+          });
           this.updateLastMessage({
             friendship_id: data.friendship_id,
             lastMessage: data
@@ -276,7 +373,13 @@ export default Vue.extend({
           );
         });
         this.socket.on("received", data => {
-          data.forEach(Id => {
+          data.Ids.forEach(Id => {
+            this.unreadIndex[data.friendship_id].forEach(function(msg) {
+              if (msg._id === Id) {
+                this.messages[data.friendship_id][msg.ordderedIndex].status =
+                  "received";
+              }
+            });
             let message = document.getElementById(Id);
             if (message) {
               message.classList.remove("pending");
@@ -285,9 +388,31 @@ export default Vue.extend({
             }
           });
         });
+        this.socket.on("disconnect", data => {
+          console.log("disconnected");
+        });
+        this.socket.on("sweep", ({ range, friendship_id }) => {
+          // mark all the indexes within this range as read
+          this.unreadIndex[friendship_id].forEach((message, index) => {
+            if (
+              message.createdAt <= range[0] &&
+              message.createdAt >= range[1]
+            ) {
+              this.messages[friendship_id][message.orderedIndex].status =
+                "received";
+              let messageNode = document.getElementById(message._id);
+              if (messageNode) {
+                messageNode.classList.remove("pending");
+                messageNode.classList.remove("sent");
+                messageNode.classList.add("received");
+              }
+            }
+            // delete the unused element but how will that affect the foreach loop
+          });
+        });
       });
     } else {
-      this.socket = io("http://localhost:3001");
+      this.socket = io(baseURI);
       /**  @todo : will this run several times for connection drops? */
       this.socket.on("connect", () => {
         /**
@@ -360,6 +485,25 @@ export default Vue.extend({
           }
         });
       });
+      this.socket.on("disconnect", data => {
+        console.log("disconnected");
+      });
+      this.socket.on("sweep", ({ range, friendship_id }) => {
+        // mark all the indexes within this range as read
+        this.unreadIndex[friendship_id].forEach((message, index) => {
+          if (message.createdAt <= range[0] && message.createdAt >= range[1]) {
+            this.messages[friendship_id][message.orderedIndex].status =
+              "received";
+            let messageNode = document.getElementById(message._id);
+            if (messageNode) {
+              messageNode.classList.remove("pending");
+              messageNode.classList.remove("sent");
+              messageNode.classList.add("received");
+            }
+          }
+          // delete the unused element but how will that affect the foreach loop
+        });
+      });
     }
   },
   computed: {
@@ -380,31 +524,87 @@ export default Vue.extend({
   components: {
     chatBody,
     chatList,
-    chatText
+    chatText,
+    modal,
+    profile
   }
 });
 </script>
 <style lang="scss" scoped>
+@keyframes bigup {
+  0% {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translateX(-50%) translateY(-50%);
+    z-index: 99999;
+  }
+  50% {
+    width: unset;
+    height: 90%;
+  }
+  75% {
+    border-radius: 0px;
+  }
+  100% {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translateX(-50%) translateY(-50%);
+    z-index: 99999;
+    width: unset;
+    height: 90%;
+    border-radius: 0px;
+  }
+}
+
 .chat__sidebar {
   width: 350px;
+  min-width: 350px;
   height: 100%;
 }
+
 .chatList {
   height: 100%;
 }
 .home {
   height: 100%;
   display: flex;
+  flex-wrap: wrap;
 }
 .main-chat {
-  width: 100%;
+  width: calc(100vw - 350px);
+}
+
+.active-chat {
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
+
+.empty-chat {
+  font-size: 30px;
+  font-weight: bold;
+  text-align: center;
+}
+
 .chatBody {
   flex-grow: 1;
 }
-.chatHeader {
+
+.main-header {
+  // width: 100%;
+  flex-grow: 1;
+  height: 50px;
+}
+
+.main-section {
+  display: flex;
+  height: calc(100vh - 50px);
+}
+
+.chat-header {
+  display: flex;
   background: linear-gradient(
     89.81deg,
     rgb(0, 93, 64) 0.03%,
@@ -413,6 +613,18 @@ export default Vue.extend({
   color: white;
   text-align: center;
   padding: 15px;
+
+  &__profile-img {
+    cursor: pointer;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-right: 16px;
+
+    &--open {
+      animation: bigup 0.5s ease forwards;
+    }
+  }
   h1 {
     text-transform: uppercase;
     font-weight: bold;

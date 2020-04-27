@@ -98,6 +98,7 @@ export default Vue.extend({
 
 <style>
 .chat__main {
+  max-height: 100vh;
   overflow-y: scroll;
 }
 .chat__messages li {

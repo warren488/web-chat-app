@@ -1,24 +1,26 @@
 <template>
   <transition name="modal">
-    <div v-if="showModal" class="modal-mask">
+    <div v-if="showModal" @keydown.esc="$emit('close')" class="modal-mask">
       <div class="modal-wrapper">
         <div class="modal-container">
-          <div class="modal-header">
-            <slot name="header"></slot>
-          </div>
+          <slot name="full-replace">
+            <div class="modal-header">
+              <slot name="header"></slot>
+            </div>
 
-          <div class="modal-body">
-            {{ text }}
-            <slot name="body"></slot>
-          </div>
+            <div class="modal-body">
+              {{ text }}
+              <slot name="body"></slot>
+            </div>
 
-          <div class="modal-footer">
-            <slot name="footer">
-              <button class="modal-default-button" @click="$emit('close')">
-                OK
-              </button>
-            </slot>
-          </div>
+            <div class="modal-footer">
+              <slot name="footer">
+                <button class="modal-default-button" @click="$emit('close')">
+                  OK
+                </button>
+              </slot>
+            </div>
+          </slot>
         </div>
       </div>
     </div>
@@ -52,7 +54,10 @@ export default {
 }
 
 .modal-container {
-  width: 300px;
+  min-width: 300px;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow: hidden;
   margin: 0px auto;
   padding: 40px 30px;
   background-color: #fff;

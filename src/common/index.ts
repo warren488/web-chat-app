@@ -1,11 +1,117 @@
 import axios from "axios";
-import { AuthResponse, getFriendsResponse } from "./interfaces";
+import {
+  AuthResponse,
+  RegisterResponse,
+  UserInfo,
+  UpdatedUserInfo,
+  getFriendsResponse
+} from "./interfaces";
+import * as firebase from "firebase";
+
+// Your web app's Firebase configuration
+var firebaseConfig = {
+  apiKey: "AIzaSyBD4TjGeZXKw7fWYR8X0UGfHAIvQqzUmF0",
+  authDomain: "myapp-4f894.firebaseapp.com",
+  databaseURL: "https://myapp-4f894.firebaseio.com",
+  projectId: "myapp-4f894",
+  storageBucket: "myapp-4f894.appspot.com",
+  messagingSenderId: "410181839308",
+  appId: "1:410181839308:web:7249de84cc8fdd3cc5d569"
+};
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+// export const baseURI = "http://localhost:3001";
+
+export const uploadToFireBase = file => {
+  // Create a root reference
+  var storageRef = firebase.storage().ref();
+
+  // Create a reference to 'images/mountains.jpg'
+  var ref = storageRef.child(`profileImages/.jpg${file.name}`);
+  return ref.put(file).then(function(snapshot) {
+    return snapshot.ref.getDownloadURL();
+  });
+};
+
+export function encodeBase64(file) {
+  return new Promise((resolve, reject) => {
+    var imgReader = new FileReader();
+    imgReader.onloadend = function() {
+      console.log("Base64 Format", resolve(imgReader.result));
+    };
+    imgReader.onerror = reject;
+    imgReader.readAsDataURL(file);
+  });
+}
+
+export const uploadImage = async ({ data, name }) => {
+  return await axios({
+    method: "POST",
+    url: `${baseURI}/api/image`,
+    headers: {
+      "x-auth": getCookie("token")
+    },
+    data: { imageData: data, name: name }
+  });
+};
 
 export const login = async (userData: Object): Promise<AuthResponse> => {
   return await axios({
     method: "POST",
-    url: "http://localhost:3001/api/login",
+    url: `${baseURI}/api/login`,
     data: userData
+  });
+};
+
+export const signup = async (userData: Object): Promise<RegisterResponse> => {
+  return await axios({
+    method: "POST",
+    url: `${baseURI}/api/signup`,
+    data: userData
+  });
+};
+
+export const checkusername = async (username): Promise<Boolean> => {
+  return await axios({
+    method: "GET",
+    url: `${baseURI}/api/users/${username}?exists=true`
+  }).then(res => {
+    return !res.data.exists;
+  });
+};
+
+export const getUserInfo = async (): Promise<UserInfo> => {
+  return await axios({
+    method: "GET",
+    headers: {
+      "x-auth": getCookie("token")
+    },
+    url: `${baseURI}/api/users/me`
+  });
+};
+
+export const getUsers = async (username): Promise<UserInfo> => {
+  return await axios({
+    method: "GET",
+    headers: {
+      "x-auth": getCookie("token")
+    },
+    url: `${baseURI}/api/users?username=${username}`
+  });
+};
+
+export const updateInfo = async (
+  userData: Object
+): Promise<UpdatedUserInfo> => {
+  return await axios({
+    method: "POST",
+    data: userData,
+    headers: {
+      "x-auth": getCookie("token")
+    },
+    url: `${baseURI}/api/users/me`
   });
 };
 
@@ -21,7 +127,20 @@ export const getFriends = async (): Promise<getFriendsResponse> => {
     headers: {
       "x-auth": getCookie("token")
     },
-    url: "http://localhost:3001/api/users/me/friends"
+    url: `${baseURI}/api/users/me/friends`
+  });
+};
+
+export const addFriend = async (
+  username: string
+): Promise<getFriendsResponse> => {
+  return await axios({
+    method: "POST",
+    headers: {
+      "x-auth": getCookie("token")
+    },
+    data: { username },
+    url: `${baseURI}/api/users/me/friends`
   });
 };
 
@@ -35,23 +154,61 @@ export const setCookie = (name: string, value: string, days: number) => {
   document.cookie = name + "=" + (value || "") + expires + "; path=/";
 };
 
+/**
+ * possibly do this on the socket intead
+ * currently doing it this way because the socket is a property of the homme component
+ * and i also want to call this function immediately inside of get messages (or any function that gets messages)
+ * we will not have reference to the inside those functions and i dont know if i want to pass it to them
+ * */
+export const markAsReceived = async (friendship_id, range) => {
+  return await axios({
+    method: "POST",
+    url: `${baseURI}/io/users/me/${friendship_id}/sweep`,
+    headers: {
+      "Content-type": "application/json",
+      "x-auth": getCookie("token")
+    },
+    data: {
+      range,
+      friendship_id
+    }
+  });
+};
+
 export const getMessages = async (
   friendship_id: string,
   limit: number = 50
 ) => {
   return await axios({
     method: "GET",
-    url: `http://localhost:3001/api/users/me/${friendship_id}/messages?limit=${limit}`,
+    url: `${baseURI}/api/users/me/${friendship_id}/messages?limit=${limit}`,
     headers: {
       "Content-type": "application/json",
       "x-auth": getCookie("token")
     }
-  }).then(({ data }) => {
-    let orderedData = [];
-    for (let i = data.length - 1; i >= 0; i--) {
-      orderedData.push(data[i]);
+  }).then(({ data: messages }) => {
+    /** remember in messages the last message is the first item in the array */
+    if (messages.length > 0) {
+      let recPromise = markAsReceived(friendship_id, [
+        messages[0].createdAt,
+        messages[messages.length - 1].createdAt
+      ]).catch(() => {
+        console.log("failed to mark as received");
+      });
     }
-    return { data: orderedData };
+    let orderedMessages = [];
+    let unreadIndex = [];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      let orderedIndex = orderedMessages.push(messages[i]);
+      if (messages[i].status !== "received") {
+        /**
+         * we can choose to loop through this index for searching or create an index for this index
+         * on the createdAt date
+         */
+        unreadIndex.push({ ...messages[i], orderedIndex });
+      }
+    }
+    return { data: orderedMessages, unreadIndex };
   });
 };
 
@@ -62,24 +219,39 @@ export const getMessagePage = async (
 ) => {
   return await axios({
     method: "GET",
-    url: `http://localhost:3001/api/users/me/${friendship_id}/messagespage?limit=${limit}&timestamp=${timestamp}`,
+    url: `${baseURI}/api/users/me/${friendship_id}/messagespage?limit=${limit}&timestamp=${timestamp}`,
     headers: {
       "Content-type": "application/json",
       "x-auth": getCookie("token")
     }
-  }).then(({ data }) => {
-    let orderedData = [];
-    for (let i = data.length - 1; i >= 0; i--) {
-      orderedData.push(data[i]);
+  }).then(({ data: messages }) => {
+    /** remember in data the last message is the first item in the array */
+    let recPromise = markAsReceived(friendship_id, [
+      messages[0].createdAt,
+      messages[messages.length - 1].createdAt
+    ]).catch(() => {
+      console.log("failed to mark as received");
+    });
+    let orderedMessages = [];
+    let unreadIndex = [];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      let orderedIndex = orderedMessages.push(messages[i]);
+      if (messages[i].status !== "received") {
+        /**
+         * we can choose to loop through this index for searching or create an index for this index
+         * on the createdAt date
+         */
+        unreadIndex.push({ ...messages[i], orderedIndex });
+      }
     }
-    return { data: orderedData };
+    return { data: orderedMessages, unreadIndex };
   });
 };
 
 export const getLastMessage = async (friendship_id: string) => {
   return await axios({
     method: "GET",
-    url: `http://localhost:3001/api/users/me/${friendship_id}/lastmessage`,
+    url: `${baseURI}/api/users/me/${friendship_id}/lastmessage`,
     headers: {
       "Content-type": "application/json",
       "x-auth": getCookie("token")
@@ -119,7 +291,6 @@ export const scrollBottom = function scrollBottom({ force, test }) {
     "ol li:last-child"
   );
   let doScroll = !!force;
-  console.log(force);
   if (newMessage) {
     let clientHeight = this.$refs.messageScroll.clientHeight;
     let scrollTop = this.$refs.messageScroll.scrollTop;

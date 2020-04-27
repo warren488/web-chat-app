@@ -13,21 +13,19 @@ html {
     margin-bottom: 0px;
     padding: 0;
     font-family: HelveticaNeue-Light, "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
-    font-weight: 300;
-    font-size: .95rem;
 }
 
-button.mybt {
+.mybt {
     background: rgb(39, 130, 51);
     cursor: pointer;
-    transition: background .3s ease
+    transition: background-color, width .3s ease;
 }
 
-button.mybt:hover {
+.mybt:hover {
     background: rgb(18, 77, 26)
 }
 
-button.mybt:disabled {
+.mybt:disabled {
     cursor: default;
     background: rgb(150, 180, 155);
 }
@@ -36,9 +34,13 @@ button.mybt:disabled {
     color: rgb(4, 46, 4);
 }
 
-button.mybt,
-button.mybt:hover {
+.mybt,
+.mybt:hover {
     border: none;
     color: #fff;
     padding: 10px
+}
+
+.mybt::-moz-focus-inner {
+    border: none;
 }

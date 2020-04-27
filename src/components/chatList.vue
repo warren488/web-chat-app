@@ -1,12 +1,14 @@
 <template>
   <div class="chatList">
     <header>
-      <h1>Friends</h1>
+      <h1>{{ header || "Friends" }}</h1>
       <input
         type="text"
         id="search"
         placeholder="Search..."
         class="search-bar"
+        v-model="filterString"
+        @input="filterFuncDebounced"
       />
     </header>
     <ol>
@@ -14,18 +16,39 @@
         v-for="friend of myFriends"
         :key="friend._id"
         :id="friend._id"
-        :class="{ active: friend._id === currentChat }"
-        @click="$emit('open', friend._id)"
+        :class="{ active: friend._id === currentChat, 'chat-preview': true }"
+        @click="() => emitOpen(friend)"
       >
-        <h1>{{ friend.username }}</h1>
-        <p class="last-message" v-if="friend.lastMessage[0]">
-          <span v-if="friend.lastMessage[0].status !== 'typing'">{{
-            friend.lastMessage[0].from === getCookie("username")
-              ? "me:"
-              : `${friend.lastMessage[0].from}:`
-          }}</span>
-          {{ friend.lastMessage[0].text ? friend.lastMessage[0].text : "" }}
-        </p>
+        <!-- <span> -->
+        <img
+          class="profile-img"
+          v-if="!friend.imgUrl"
+          src="../assets/abstract-user-flat-1.svg"
+          alt=""
+        />
+        <img
+          class="profile-img"
+          v-if="friend.imgUrl"
+          :src="friend.imgUrl"
+          alt=""
+        />
+        <!-- </span> -->
+        <div class="preview-text">
+          <h3>
+            {{ friend.username }}
+          </h3>
+          <p
+            class="last-message"
+            v-if="friend.lastMessage && friend.lastMessage[0]"
+          >
+            <span v-if="friend.lastMessage[0].status !== 'typing'">{{
+              friend.lastMessage[0].from === getCookie("username")
+                ? "me:"
+                : `${friend.lastMessage[0].from}:`
+            }}</span>
+            {{ friend.lastMessage[0].text ? friend.lastMessage[0].text : "" }}
+          </p>
+        </div>
       </li>
     </ol>
   </div>
@@ -34,19 +57,56 @@
 <script lang="ts">
 import Vue from "vue";
 import { getCookie } from "@/common";
+import { debounce } from "debounce";
 
 export default Vue.extend({
-  name: "HelloWorld",
+  created() {
+    let self = this;
+    this.filterFuncDebounced = debounce(function() {
+      if (self.filter) {
+        return self.filter(self.filterString);
+      }
+      return self.friends.filter(friend =>
+        friend.username.includes(self.filterString)
+      );
+    }, 300);
+  },
+  name: "chatList",
+  data() {
+    return {
+      filterString: ""
+    };
+  },
   props: {
+    title: String,
     friends: Array,
-    currentChat: String
+    currentChat: String,
+    filter: Function
   },
   methods: {
-    getCookie
+    getCookie,
+    emitOpen(friend) {
+      /** @todo - in the future we want to simply get and array of names
+       * and then load full user data once we open a profile instead of search results containing
+       * full data for all users returned
+       */
+      this.$emit("open", friend);
+    },
+    filterFunc: function() {
+      if (this.props.filter) {
+        return this.props.filter(this.filterString);
+      }
+      return this.friends.filter(friend =>
+        friend.username.includes(this.filterString)
+      );
+    }
   },
   computed: {
     myFriends() {
       return this.friends;
+    },
+    header() {
+      return this.title;
     }
   }
 });
@@ -54,9 +114,29 @@ export default Vue.extend({
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-h3 {
-  margin: 40px 0 0;
+.last-message {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.chat-preview {
+  display: flex;
+  align-items: center;
+}
+
+.preview-text {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.profile-img {
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  margin-right: 5px;
+}
+
 ul {
   list-style-type: none;
   padding: 0;
@@ -86,7 +166,7 @@ ol {
   padding-left: 0px;
   li {
     margin: 0px;
-    padding: 15px 5px 5px;
+    padding: 5px 5px 5px;
     width: 100%;
     border-bottom: thin beige solid;
     h1 {
