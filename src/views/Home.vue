@@ -100,7 +100,8 @@ import {
   getLastMessage,
   getUsers,
   baseURI,
-  notifyMe
+  notifyMe,
+  socketNewMessageHnadler
 } from "@/common";
 import { mapGetters, mapActions, mapMutations } from "vuex";
 import io from "socket.io-client";
@@ -137,8 +138,6 @@ export default Vue.extend({
         this.messages[this.currentChat][0].createdAt
       ).then(({ data }) => {
         /**
-         * spread data first and then the current message as data will be our older messages
-         * it needs to always come first
          * @todo - I need to account for instances where we will get the messages that have the same timestamp
          * as the timestamp used to create this page 3rd param of getMessagePage call
          */
@@ -284,6 +283,7 @@ export default Vue.extend({
     }
   },
   created() {
+    // does initFriends even exist??????
     if (!this.initFriends) {
       this.setFriends().then(() => {
         if (this.friends.length > 0) {
@@ -297,6 +297,9 @@ export default Vue.extend({
          */
         this.socket = io(baseURI);
         /**  @todo : will this run several times for connection drops? */
+        this.socket.on("reconnect", (...args) => {
+          console.log("reconnect", args);
+        });
         this.socket.on("connect", () => {
           /**
            * @function checkin
@@ -321,57 +324,7 @@ export default Vue.extend({
             });
           });
         });
-        this.socket.on("newMessage", data => {
-          /** if its us then do nothing, we already displayed it on the screen */
-          /**
-           * @todo - check to see if the message has already been displayed to the screen
-           * instead of just checking if it was us and then
-           * decide if to display it, this can help with using multiple places at once
-           */
-          if (data.from === getCookie("username")) {
-            return;
-          }
-          /** if we get a message about the other persons typing */
-          if (data.type === "typing") {
-            // if its saying the person has started typing
-            if (data.status === "start") {
-              this.showTyping(data.friendship_id);
-              if (data.friendship_id === this.currChat) {
-                document.querySelector(".typing").classList.remove("op");
-              }
-              // if its saying the person has stopped typing
-            } else if (data.status === "stop") {
-              this.hideTyping(data.friendship_id);
-              if (data.friendship_id === this.currChat) {
-                document.querySelector(".typing").classList.add("op");
-              }
-            }
-            return;
-          }
-          // send desktop notification
-          notifyMe({ from: data.from, message: data.text });
-          console.log(data);
-          this.messages[data.friendship_id].push({
-            createdAt: data.createdAt,
-            from: data.from,
-            text: data.text,
-            _id: data.Ids[0]
-          });
-          this.updateLastMessage({
-            friendship_id: data.friendship_id,
-            lastMessage: data
-          });
-          /** let the next user know that this message is green ticked */
-          this.socket.emit(
-            "gotMessage",
-            {
-              friendship_id: data.friendship_id,
-              token: getCookie("token"),
-              Ids: data.Ids
-            },
-            () => console.log("message ticked")
-          );
-        });
+        this.socket.on("newMessage", socketNewMessageHnadler.bind(this));
         this.socket.on("received", data => {
           data.Ids.forEach(Id => {
             this.unreadIndex[data.friendship_id].forEach(function(msg) {
@@ -431,50 +384,7 @@ export default Vue.extend({
               : console.log("checkin unsuccessful")
         );
       });
-      this.socket.on("newMessage", data => {
-        /** if its us then do nothing, we already displayed it on the screen */
-        /**
-         * @todo - check to see if the message has already been displayed to the screen and then
-         * decide if to display it, this can help with using multiple places at once
-         */
-        if (data.from === getCookie("username")) {
-          return;
-        }
-        /** if we get a message about the other persons typing */
-        if (data.type === "typing") {
-          // if its saying the person has started typing
-          if (data.status === "start") {
-            this.showTyping(data.friendship_id);
-            if (data.friendship_id === this.currChat) {
-              document.querySelector(".typing").classList.remove("op");
-            }
-            // if its saying the person has stopped typing
-          } else if (data.status === "stop") {
-            this.hideTyping(data.friendship_id);
-            if (data.friendship_id === this.currChat) {
-              document.querySelector(".typing").classList.add("op");
-            }
-          }
-          return;
-        }
-        // send desktop notification
-        notifyMe({ from: data.from, message: data.text });
-        this.messages[data.friendship_id].push(data);
-        this.updateLastMessage({
-          friendship_id: data.friendship_id,
-          lastMessage: data
-        });
-        /** let the next user know that this message is green ticked */
-        this.socket.emit(
-          "gotMessage",
-          {
-            friendship_id: data.friendship_id,
-            token: getCookie("token"),
-            Ids: data.Ids
-          },
-          () => console.log("message ticked")
-        );
-      });
+      this.socket.on("newMessage", socketNewMessageHnadler.bind(this));
       this.socket.on("received", data => {
         data.forEach(Id => {
           let message = document.getElementById(Id);
