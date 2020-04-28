@@ -21,8 +21,8 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-// export const baseURI = "http://localhost:3001";
+// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+export const baseURI = "http://localhost:3001";
 
 export const uploadToFireBase = file => {
   // Create a root reference
@@ -315,3 +315,82 @@ export const scrollBottom = function scrollBottom({ force, test }) {
   // this.$refs.messageScroll.scrollTop = scrollHeight;
   // console.log(clientHeight, scrollHeight, scrollTop);
 };
+
+/** =================================================================== */
+/**  ##     ##      ##     #  #     ####  #####
+ *  #  #   #  #    #  #    # #      #       #
+ *  #      #  #    #       ##       #       #
+ *   ##    #  #    #       #        ####    #
+ *     #   #  #    #       ##       #       #
+ *  #  #   #  #    #  #    # #      #       #
+ *   ##     ##      ##     #  #     ####    #
+ */
+
+export function socketNewMessageHnadler(data) {
+  /** if its us then do nothing, we already displayed it on the screen */
+  /**
+   * @todo - check to see if the message has already been displayed to the screen
+   * instead of just checking if it was us and then
+   * decide if to display it, this can help with using multiple places at once
+   */
+  if (data.from === getCookie("username")) {
+    return;
+  }
+  /** if we get a message about the other persons typing */
+  if (data.type === "typing") {
+    // if its saying the person has started typing
+    if (data.status === "start") {
+      this.showTyping(data.friendship_id);
+      if (data.friendship_id === this.currChat) {
+        document.querySelector(".typing").classList.remove("op");
+      }
+      // if its saying the person has stopped typing
+    } else if (data.status === "stop") {
+      this.hideTyping(data.friendship_id);
+      if (data.friendship_id === this.currChat) {
+        document.querySelector(".typing").classList.add("op");
+      }
+    }
+    return;
+  }
+  // send desktop notification
+  notifyMe({ from: data.from, message: data.text });
+  console.log(data);
+  this.messages[data.friendship_id].push({
+    createdAt: data.createdAt,
+    from: data.from,
+    text: data.text,
+    _id: data.Ids[0]
+  });
+  this.updateLastMessage({
+    friendship_id: data.friendship_id,
+    lastMessage: data
+  });
+  /** let the next user know that this message is green ticked */
+  this.socket.emit(
+    "gotMessage",
+    {
+      friendship_id: data.friendship_id,
+      token: getCookie("token"),
+      Ids: data.Ids
+    },
+    () => console.log("message ticked")
+  );
+}
+
+export function socketReceivedHandler(data) {
+  data.Ids.forEach(Id => {
+    this.unreadIndex[data.friendship_id].forEach(function(msg) {
+      if (msg._id === Id) {
+        this.messages[data.friendship_id][msg.ordderedIndex].status =
+          "received";
+      }
+    });
+    let message = document.getElementById(Id);
+    if (message) {
+      message.classList.remove("pending");
+      message.classList.remove("sent");
+      message.classList.add("received");
+    }
+  });
+}
