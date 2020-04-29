@@ -200,7 +200,10 @@ export const getMessages = async (
     let unreadIndex = [];
     for (let i = messages.length - 1; i >= 0; i--) {
       let orderedIndex = orderedMessages.push(messages[i]);
-      if (messages[i].status !== "received") {
+      if (
+        messages[i].status !== "received" &&
+        messages[i].from === getCookie("username")
+      ) {
         /**
          * we can choose to loop through this index for searching or create an index for this index
          * on the createdAt date
@@ -393,4 +396,41 @@ export function socketReceivedHandler(data) {
       message.classList.add("received");
     }
   });
+}
+
+export function socketSweepHandler({ range, friendship_id }) {
+  // mark all the indexes within this range as read
+  this.unreadIndex[friendship_id].forEach((message, index) => {
+    if (message.createdAt <= range[0] && message.createdAt >= range[1]) {
+      console.log(
+        `sweeping`,
+        this.messages[friendship_id][message.orderedIndex]
+      );
+      this.messages[friendship_id][message.orderedIndex].status = "received";
+      let messageNode = document.getElementById(message._id);
+      if (messageNode) {
+        messageNode.classList.remove("pending");
+        messageNode.classList.remove("sent");
+        messageNode.classList.add("received");
+      }
+    }
+    // delete the unused element but how will that affect the foreach loop
+  });
+}
+
+export function socketCheckinHandler() {
+  /**
+   * @function checkin
+   * @todo add a kind of a queue to the DB (or from another service) so that we can get messages from that queue, for disconnects or so
+   * @todo chat page specific logic for getting frienship ID should really use this to determine if to allow functionality on the page
+   * @memberof AuthChat
+   */
+  this.socket.emit(
+    "checkin",
+    { friendship_id: this.currChat, token: getCookie("token") },
+    (err, data) =>
+      !err
+        ? console.log("checkin successful")
+        : console.log("checkin unsuccessful")
+  );
 }

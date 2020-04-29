@@ -101,6 +101,8 @@ import {
   getUsers,
   baseURI,
   notifyMe,
+  socketReceivedHandler,
+  socketSweepHandler,
   socketNewMessageHnadler
 } from "@/common";
 import { mapGetters, mapActions, mapMutations } from "vuex";
@@ -125,7 +127,7 @@ export default Vue.extend({
     };
   },
   methods: {
-    ...mapActions(["setFriends"]),
+    ...mapActions(["setFriends", "setGroupMessages"]),
     ...mapMutations(["updateLastMessage", "hideTyping", "showTyping"]),
     viewMore() {
       /** get the next 100 message from the chat history
@@ -243,6 +245,9 @@ export default Vue.extend({
       }
       console.log(friendship_id);
 
+      /** if we get this far and dont have any messages, will we ever?
+       * maybe just use the socket here directly to make absolutely surethat we dont have any
+       */
       if (!this.messages[friendship_id]) {
         return getMessages(friendship_id).then(({ data, unreadIndex }) => {
           console.log(`setting unread index ${friendship_id}`);
@@ -283,6 +288,7 @@ export default Vue.extend({
     }
   },
   created() {
+    this.setGroupMessages();
     // does initFriends even exist??????
     if (!this.initFriends) {
       this.setFriends().then(() => {
@@ -325,44 +331,11 @@ export default Vue.extend({
           });
         });
         this.socket.on("newMessage", socketNewMessageHnadler.bind(this));
-        this.socket.on("received", data => {
-          data.Ids.forEach(Id => {
-            this.unreadIndex[data.friendship_id].forEach(function(msg) {
-              if (msg._id === Id) {
-                this.messages[data.friendship_id][msg.ordderedIndex].status =
-                  "received";
-              }
-            });
-            let message = document.getElementById(Id);
-            if (message) {
-              message.classList.remove("pending");
-              message.classList.remove("sent");
-              message.classList.add("received");
-            }
-          });
-        });
+        this.socket.on("received", socketReceivedHandler.bind(this));
         this.socket.on("disconnect", data => {
           console.log("disconnected");
         });
-        this.socket.on("sweep", ({ range, friendship_id }) => {
-          // mark all the indexes within this range as read
-          this.unreadIndex[friendship_id].forEach((message, index) => {
-            if (
-              message.createdAt <= range[0] &&
-              message.createdAt >= range[1]
-            ) {
-              this.messages[friendship_id][message.orderedIndex].status =
-                "received";
-              let messageNode = document.getElementById(message._id);
-              if (messageNode) {
-                messageNode.classList.remove("pending");
-                messageNode.classList.remove("sent");
-                messageNode.classList.add("received");
-              }
-            }
-            // delete the unused element but how will that affect the foreach loop
-          });
-        });
+        this.socket.on("sweep", socketSweepHandler.bind(this));
       });
     } else {
       this.socket = io(baseURI);
@@ -376,7 +349,6 @@ export default Vue.extend({
          */
         this.socket.emit(
           "checkin",
-          /** @fixme : THIS SHOULD BE THE FRIENDSHIP ID OF THE FRIEND WE ARE CURRENTLY CHATTING WITH */
           { friendship_id: this.currChat, token: getCookie("token") },
           (err, data) =>
             !err
@@ -385,34 +357,10 @@ export default Vue.extend({
         );
       });
       this.socket.on("newMessage", socketNewMessageHnadler.bind(this));
-      this.socket.on("received", data => {
-        data.forEach(Id => {
-          let message = document.getElementById(Id);
-          if (message) {
-            message.classList.remove("pending");
-            message.classList.remove("sent");
-            message.classList.add("received");
-          }
-        });
-      });
+      this.socket.on("received", socketReceivedHandler.bind(this));
+      this.socket.on("sweep", socketSweepHandler.bind(this));
       this.socket.on("disconnect", data => {
         console.log("disconnected");
-      });
-      this.socket.on("sweep", ({ range, friendship_id }) => {
-        // mark all the indexes within this range as read
-        this.unreadIndex[friendship_id].forEach((message, index) => {
-          if (message.createdAt <= range[0] && message.createdAt >= range[1]) {
-            this.messages[friendship_id][message.orderedIndex].status =
-              "received";
-            let messageNode = document.getElementById(message._id);
-            if (messageNode) {
-              messageNode.classList.remove("pending");
-              messageNode.classList.remove("sent");
-              messageNode.classList.add("received");
-            }
-          }
-          // delete the unused element but how will that affect the foreach loop
-        });
       });
     }
   },
