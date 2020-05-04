@@ -155,6 +155,9 @@ export default Vue.extend({
       }
       this.$emit("newMessage", {
         text: msg,
+        /** @todo changename failure
+         * @NB this will require extra special treatment as many things will use the
+         */
         from: getCookie("username"),
         // server uses it's own timestamp... hmmmm
         createdAt: Date.now(),

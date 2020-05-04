@@ -6,7 +6,10 @@ import {
   UpdatedUserInfo,
   getFriendsResponse
 } from "./interfaces";
-import * as firebase from "firebase";
+import * as firebase from "firebase/app";
+import "firebase/storage";
+import Vue from "vue";
+import store from "@/store";
 
 // Your web app's Firebase configuration
 var firebaseConfig = {
@@ -34,6 +37,14 @@ export const uploadToFireBase = file => {
     return snapshot.ref.getDownloadURL();
   });
 };
+
+export const eventBus = new Vue({
+  methods: {
+    dataLoaded() {
+      this.$emit("loaded");
+    }
+  }
+});
 
 export function encodeBase64(file) {
   return new Promise((resolve, reject) => {
@@ -63,6 +74,21 @@ export const login = async (userData: Object): Promise<AuthResponse> => {
     url: `${baseURI}/api/login`,
     data: userData
   });
+};
+
+export const logout = async () => {
+  await axios({
+    method: "POST",
+    headers: {
+      "x-auth": getCookie("token")
+    },
+    url: `${baseURI}/api/logout`
+  }).then(async data => {
+    await store.commit("resetState");
+    return data;
+  });
+  setCookie("token", "", -1000);
+  setCookie("username", "", -1000);
 };
 
 export const signup = async (userData: Object): Promise<RegisterResponse> => {
@@ -128,6 +154,12 @@ export const getFriends = async (): Promise<getFriendsResponse> => {
       "x-auth": getCookie("token")
     },
     url: `${baseURI}/api/users/me/friends`
+  }).then(({ data }) => {
+    let friendshipIds = [];
+    for (const friend of data) {
+      friendshipIds.push(friend._id);
+    }
+    return { data, friendshipIds };
   });
 };
 
@@ -199,7 +231,8 @@ export const getMessages = async (
     let orderedMessages = [];
     let unreadIndex = [];
     for (let i = messages.length - 1; i >= 0; i--) {
-      let orderedIndex = orderedMessages.push(messages[i]);
+      let orderedIndex = orderedMessages.push(messages[i]) - 1;
+      /** @todo changename failure */
       if (
         messages[i].status !== "received" &&
         messages[i].from === getCookie("username")
@@ -262,6 +295,15 @@ export const getLastMessage = async (friendship_id: string) => {
   });
 };
 
+export const authBeforeEnter = (to, from, next) => {
+  let token = getCookie("token");
+  if (!token) {
+    next("/login");
+    return;
+  }
+  next();
+};
+
 export const notifyMe = data => {
   let text = data.from + ": " + data.message;
   // Let's check if the browser supports notifications
@@ -288,6 +330,47 @@ export const notifyMe = data => {
   // At last, if the user has denied notifications, and you
   // want to be respectful there is no need to bother them any more.
 };
+
+export class FocusGrabber {
+  isLive: Boolean;
+  originalIndex: (string | null)[];
+  elements: HTMLElement[];
+  focusListener: () => void;
+  constructor(elArr: HTMLElement[], tabIndexMultiplier = 40) {
+    this.isLive = true;
+    this.originalIndex = [];
+    this.elements = elArr;
+    elArr.forEach((el, index) => {
+      this.focusListener = function() {
+        document.addEventListener("keydown", function reset(e) {
+          if (e.keyCode === 9) {
+            e.preventDefault();
+            elArr[0].focus();
+            document.removeEventListener("keydown", reset);
+          }
+        });
+      };
+      this.originalIndex.push(el.getAttribute("tabindex"));
+      el.setAttribute("tabindex", `${index + tabIndexMultiplier}`);
+      if (index === elArr.length - 1) {
+        el.addEventListener("focus", this.focusListener);
+      }
+    });
+  }
+
+  remove() {
+    this.elements.forEach((el, index) => {
+      if (this.originalIndex[index] !== null) {
+        el.setAttribute("tabindex", this.originalIndex[index]);
+      } else {
+        el.removeAttribute("tabindex");
+      }
+      if (index === this.elements.length - 1) {
+        el.removeEventListener("focus", this.focusListener);
+      }
+    });
+  }
+}
 
 export const scrollBottom = function scrollBottom({ force, test }) {
   let newMessage: HTMLElement = this.$refs.messageScroll.querySelector(
@@ -328,109 +411,3 @@ export const scrollBottom = function scrollBottom({ force, test }) {
  *  #  #   #  #    #  #    # #      #       #
  *   ##     ##      ##     #  #     ####    #
  */
-
-export function socketNewMessageHnadler(data) {
-  /** if its us then do nothing, we already displayed it on the screen */
-  /**
-   * @todo - check to see if the message has already been displayed to the screen
-   * instead of just checking if it was us and then
-   * decide if to display it, this can help with using multiple places at once
-   */
-  if (data.from === getCookie("username")) {
-    return;
-  }
-  /** if we get a message about the other persons typing */
-  if (data.type === "typing") {
-    // if its saying the person has started typing
-    if (data.status === "start") {
-      this.showTyping(data.friendship_id);
-      if (data.friendship_id === this.currChat) {
-        document.querySelector(".typing").classList.remove("op");
-      }
-      // if its saying the person has stopped typing
-    } else if (data.status === "stop") {
-      this.hideTyping(data.friendship_id);
-      if (data.friendship_id === this.currChat) {
-        document.querySelector(".typing").classList.add("op");
-      }
-    }
-    return;
-  }
-  // send desktop notification
-  notifyMe({ from: data.from, message: data.text });
-  console.log(data);
-  this.messages[data.friendship_id].push({
-    createdAt: data.createdAt,
-    from: data.from,
-    text: data.text,
-    _id: data.Ids[0]
-  });
-  this.updateLastMessage({
-    friendship_id: data.friendship_id,
-    lastMessage: data
-  });
-  /** let the next user know that this message is green ticked */
-  this.socket.emit(
-    "gotMessage",
-    {
-      friendship_id: data.friendship_id,
-      token: getCookie("token"),
-      Ids: data.Ids
-    },
-    () => console.log("message ticked")
-  );
-}
-
-export function socketReceivedHandler(data) {
-  data.Ids.forEach(Id => {
-    this.unreadIndex[data.friendship_id].forEach(function(msg) {
-      if (msg._id === Id) {
-        this.messages[data.friendship_id][msg.ordderedIndex].status =
-          "received";
-      }
-    });
-    let message = document.getElementById(Id);
-    if (message) {
-      message.classList.remove("pending");
-      message.classList.remove("sent");
-      message.classList.add("received");
-    }
-  });
-}
-
-export function socketSweepHandler({ range, friendship_id }) {
-  // mark all the indexes within this range as read
-  this.unreadIndex[friendship_id].forEach((message, index) => {
-    if (message.createdAt <= range[0] && message.createdAt >= range[1]) {
-      console.log(
-        `sweeping`,
-        this.messages[friendship_id][message.orderedIndex]
-      );
-      this.messages[friendship_id][message.orderedIndex].status = "received";
-      let messageNode = document.getElementById(message._id);
-      if (messageNode) {
-        messageNode.classList.remove("pending");
-        messageNode.classList.remove("sent");
-        messageNode.classList.add("received");
-      }
-    }
-    // delete the unused element but how will that affect the foreach loop
-  });
-}
-
-export function socketCheckinHandler() {
-  /**
-   * @function checkin
-   * @todo add a kind of a queue to the DB (or from another service) so that we can get messages from that queue, for disconnects or so
-   * @todo chat page specific logic for getting frienship ID should really use this to determine if to allow functionality on the page
-   * @memberof AuthChat
-   */
-  this.socket.emit(
-    "checkin",
-    { friendship_id: this.currChat, token: getCookie("token") },
-    (err, data) =>
-      !err
-        ? console.log("checkin successful")
-        : console.log("checkin unsuccessful")
-  );
-}

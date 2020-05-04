@@ -203,7 +203,7 @@ export default Vue.extend({
   data() {
     return {
       userData: {
-        username: "" //getCookie("username")
+        username: ""
       },
       feedback: "",
       uniqueFeedback: "",

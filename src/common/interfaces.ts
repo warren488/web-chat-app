@@ -1,5 +1,6 @@
 export interface getFriendsResponse {
   data: Array<Object>;
+  friendshipIds?: Array<String>;
 }
 
 export interface AuthResponse {

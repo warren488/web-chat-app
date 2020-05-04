@@ -60,7 +60,7 @@ export default Vue.extend({
     };
   },
   methods: {
-    ...mapActions(["setFriends"]),
+    ...mapActions(["setUpApp"]),
     async login(): Promise<Boolean> {
       if (
         !this.isTrueString(this.userData.username) ||
@@ -75,12 +75,12 @@ export default Vue.extend({
         authData = (await login(this.userData)).data;
         setCookie("username", authData.username, 1000000);
         setCookie("token", authData.token, 1000000);
-        await this.setFriends();
+        await this.setUpApp();
         this.$router.push("/home");
         return true;
       } catch (error) {
-        console.log(JSON.stringify(error));
-        console.log(error.response);
+        // console.log(JSON.stringify(error));
+        console.log(error);
         if (
           error.response.status === 404 &&
           error.response.data.message === "user not found"

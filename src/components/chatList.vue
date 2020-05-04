@@ -41,6 +41,7 @@
             class="last-message"
             v-if="friend.lastMessage && friend.lastMessage[0]"
           >
+            <!-- @todo changename failure -->
             <span v-if="friend.lastMessage[0].status !== 'typing'">{{
               friend.lastMessage[0].from === getCookie("username")
                 ? "me:"

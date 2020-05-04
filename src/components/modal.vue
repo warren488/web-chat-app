@@ -1,8 +1,13 @@
 <template>
   <transition name="modal">
-    <div v-if="showModal" @keydown.esc="$emit('close')" class="modal-mask">
+    <div v-if="showModal" class="modal-mask">
       <div class="modal-wrapper">
-        <div class="modal-container">
+        <div
+          ref="container"
+          @keydown.esc="$emit('close')"
+          tabindex="0"
+          class="modal-container"
+        >
           <slot name="full-replace">
             <div class="modal-header">
               <slot name="header"></slot>
@@ -15,7 +20,11 @@
 
             <div class="modal-footer">
               <slot name="footer">
-                <button class="modal-default-button" @click="$emit('close')">
+                <button
+                  ref="closeButton"
+                  class="modal-default-button"
+                  @click="$emit('close')"
+                >
                   OK
                 </button>
               </slot>
@@ -27,11 +36,30 @@
   </transition>
 </template>
 <script>
+import { FocusGrabber } from "@/common";
 export default {
   name: "modal",
   props: ["showModal", "text"],
   data() {
-    return {};
+    return {
+      focus: null
+    };
+  },
+  mounted() {},
+  watch: {
+    showModal(newVal) {
+      if (newVal) {
+        // oh how the mighty have fallen (the modal doesnt show up at the exact moment that showModal becomes true)
+        setTimeout(() => {
+          if (this.$refs.closeButton) {
+            this.$refs.closeButton.focus();
+          } else if (this.$refs.container) {
+            console.log("here");
+            this.$refs.container.focus();
+          }
+        }, 30);
+      }
+    }
   }
 };
 </script>
@@ -65,6 +93,10 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.33);
   transition: all 0.3s ease;
   font-family: Helvetica, Arial, sans-serif;
+
+  &:focus {
+    box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.33);
+  }
 }
 
 .modal-header h3 {

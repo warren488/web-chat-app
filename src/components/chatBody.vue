@@ -6,6 +6,7 @@
         v-for="message of allMessages"
         :key="message._id"
         :class="{
+          /** @todo changename failure */
           [message.status]: message.from === getCookie('username'),
           me: message.from === getCookie('username')
         }"
@@ -14,6 +15,7 @@
         <div class="message">
           <div class="message__title">
             <h4>
+              <!-- @todo changename failure -->
               {{ message.from === getCookie("username") ? "me" : message.from }}
             </h4>
             <span>{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
@@ -24,6 +26,7 @@
             <span v-if="message.quoted" class="quoted">
               <div class="message__title">
                 <h4>
+                  <!-- @todo changename failure -->
                   {{
                     message.quoted.from === getCookie("username")
                       ? "me"
