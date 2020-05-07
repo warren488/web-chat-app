@@ -6,17 +6,15 @@
         v-for="message of allMessages"
         :key="message._id"
         :class="{
-          /** @todo changename failure */
-          [message.status]: message.from === getCookie('username'),
-          me: message.from === getCookie('username')
+          [message.status]: message.fromId === user.id,
+          me: message.fromId === user.id
         }"
         :id="message._id"
       >
         <div class="message">
           <div class="message__title">
             <h4>
-              <!-- @todo changename failure -->
-              {{ message.from === getCookie("username") ? "me" : message.from }}
+              {{ message.fromId === user.id ? "me" : message.from }}
             </h4>
             <span>{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
             <p class="reply" @click="replyClick(message._id)">reply</p>
@@ -26,9 +24,8 @@
             <span v-if="message.quoted" class="quoted">
               <div class="message__title">
                 <h4>
-                  <!-- @todo changename failure -->
                   {{
-                    message.quoted.from === getCookie("username")
+                    message.quoted.fromId === user.id
                       ? "me"
                       : message.quoted.from
                   }}
@@ -53,6 +50,7 @@ interface Message {
   text: string;
 }
 import Vue from "vue";
+import { mapGetters } from "vuex";
 
 export default Vue.extend({
   props: {
@@ -77,6 +75,7 @@ export default Vue.extend({
     }
   },
   computed: {
+    ...mapGetters(["user"]),
     allMessages(): Array<Message> {
       return this.messages;
     }

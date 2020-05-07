@@ -24,7 +24,13 @@
       </div> -->
     </header>
     <main class="main-section">
-      <div class="chat__sidebar">
+      <div
+        :class="{
+          chat__sidebar: true,
+          active: view === 'chatlist',
+          hidden: view !== 'chatlist'
+        }"
+      >
         <chatList
           :title="mode"
           :filter="filter"
@@ -33,32 +39,38 @@
           :currentChat="currChat"
         />
       </div>
-      <div class="main-chat">
+      <div
+        :class="{
+          'main-chat': true,
+          active: view === 'chatbody',
+          hidden: view !== 'chatbody'
+        }"
+      >
         <div class="active-chat" v-if="currFriend">
           <header class="chat-header">
-            <img
-              @click="profileImageOpen = !profileImageOpen"
-              :class="{
-                'chat-header__profile-img': true,
-                'chat-header__profile-img--open': profileImageOpen
-              }"
-              v-if="!currFriend.imgUrl"
-              src="../assets/abstract-user-flat-1.svg"
-              alt=""
-            />
-            <img
-              @click="profileImageOpen = !profileImageOpen"
-              :class="{
-                'chat-header__profile-img': true,
-                'chat-header__profile-img--open': profileImageOpen
-              }"
-              v-if="currFriend.imgUrl"
-              :src="currFriend.imgUrl"
-              alt=""
-            />
-            <div>
+            <button class="chatBack" @click="view = 'chatlist'">back</button>
+            <div class="chat-header__info-display">
+              <img
+                @click="profileImageOpen = !profileImageOpen"
+                :class="{
+                  'chat-header__profile-img': true,
+                  'chat-header__profile-img--open': profileImageOpen
+                }"
+                v-if="!currFriend.imgUrl"
+                src="../assets/abstract-user-flat-1.svg"
+                alt=""
+              />
+              <img
+                @click="profileImageOpen = !profileImageOpen"
+                :class="{
+                  'chat-header__profile-img': true,
+                  'chat-header__profile-img--open': profileImageOpen
+                }"
+                v-if="currFriend.imgUrl"
+                :src="currFriend.imgUrl"
+                alt=""
+              />
               <h1>{{ currFriend.username }}</h1>
-              <p class="typing op">typing...</p>
             </div>
           </header>
           <chatBody
@@ -72,6 +84,12 @@
             class="chatBody"
             msg="Welcome to Your Vue.js + TypeScript App"
           />
+          <div class="lds-ellipsis typing op">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
           <chat-text
             :highlighted="highlightedMessageId"
             @newMessage="handleNewMessage"
@@ -114,6 +132,7 @@ export default Vue.extend({
   mounted() {},
   data() {
     return {
+      view: "chatlist",
       mode: "friends",
       profileImageOpen: false,
       modalData: { openProfile: false, visibleProfile: {} },
@@ -171,7 +190,8 @@ export default Vue.extend({
       /** use for the preview message in the list of chats shown in the side tab */
       this.updateLastMessage({
         friendship_id: this.currChat,
-        lastMessage: message
+        /** we let the server append the id but we need it right now in lastmessage */
+        lastMessage: { fromId: this.user.id, ...message }
       });
       // TODO: FIXME: implement sort and search algorith for messages or get data from the sub component
       // massive performance issue
@@ -183,7 +203,7 @@ export default Vue.extend({
       }
       this.appendMessageToChat({
         friendship_id: this.currChat,
-        message: { ...message, quoted }
+        message: { ...message, quoted, fromId: this.user.id }
       });
       let index = this.messages[this.currChat].length - 1;
 
@@ -224,10 +244,6 @@ export default Vue.extend({
           eventName: "sendMessage",
           data: {
             friendship_id,
-            /** @todo changename failure
-             * @NB this will require extra special treatment as many things will use the
-             */
-            from: getCookie("username"),
             type: "typing",
             status: "start"
           }
@@ -257,10 +273,6 @@ export default Vue.extend({
               eventName: "sendMessage",
               data: {
                 friendship_id,
-                /** @todo changename failure
-                 * @NB this will require extra special treatment as many things will use the
-                 */
-                from: getCookie("username"),
                 type: "typing",
                 status: "stop"
               }
@@ -304,6 +316,7 @@ export default Vue.extend({
         this.currentMessages = this.messages[friendship_id];
         this.setCurrentChat(friendship_id);
       }
+      this.view = "chatbody";
     },
     filter(filterString: string) {
       getUsers(filterString).then(({ data }) => {
@@ -328,7 +341,14 @@ export default Vue.extend({
     // this.setUpApp();
   },
   computed: {
-    ...mapGetters(["friends", "messages", "unreadIndex", "socket", "currChat"]),
+    ...mapGetters([
+      "friends",
+      "user",
+      "messages",
+      "unreadIndex",
+      "socket",
+      "currChat"
+    ]),
     currMessages() {
       return this.currentMessages;
     },
@@ -349,6 +369,66 @@ export default Vue.extend({
 });
 </script>
 <style lang="scss" scoped>
+// TYPING INDICATOR
+.lds-ellipsis {
+  display: inline-block;
+  width: 80px;
+  height: 20px;
+  position: absolute;
+  bottom: 66px;
+  left: 10px;
+}
+.lds-ellipsis div {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+  opacity: 0.9;
+  background: #646464;
+  animation-timing-function: cubic-bezier(0, 1, 1, 0);
+}
+.lds-ellipsis div:nth-child(1) {
+  left: 8px;
+  animation: lds-ellipsis1 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(2) {
+  left: 8px;
+  animation: lds-ellipsis2 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(3) {
+  left: 32px;
+  animation: lds-ellipsis2 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(4) {
+  left: 56px;
+  animation: lds-ellipsis3 0.6s infinite;
+}
+@keyframes lds-ellipsis1 {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes lds-ellipsis3 {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0);
+  }
+}
+@keyframes lds-ellipsis2 {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(24px, 0);
+  }
+}
+// END TYPING INDOCATOR
 @keyframes bigup {
   0% {
     position: fixed;
@@ -386,6 +466,7 @@ export default Vue.extend({
   height: 100%;
 }
 .home {
+  --main-header-height: 50px;
   height: 100%;
   display: flex;
   flex-wrap: wrap;
@@ -395,6 +476,7 @@ export default Vue.extend({
 }
 
 .active-chat {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -413,7 +495,7 @@ export default Vue.extend({
 .main-header {
   // width: 100%;
   flex-grow: 1;
-  height: 50px;
+  height: var(--main-header-height);
 }
 
 .main-section {
@@ -443,12 +525,58 @@ export default Vue.extend({
       animation: bigup 0.5s ease forwards;
     }
   }
+  &__info-display {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+  }
   h1 {
     text-transform: uppercase;
     font-weight: bold;
   }
 }
+
+.typing {
+  text-align: left;
+}
 .op {
   opacity: 0;
+}
+.chatBack {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .main-section {
+    flex-direction: column;
+  }
+  .hidden {
+    display: none;
+  }
+  .active {
+    width: 100vw;
+  }
+  .active-chat {
+    height: calc(100vh - var(--main-header-height));
+  }
+  .chatBack {
+    display: block;
+    color: white;
+    font-weight: bold;
+    background-color: transparent;
+    border: none;
+    padding: 0px 8px;
+    cursor: pointer;
+  }
+  .chat-header h1 {
+    font-size: 20px;
+  }
+  .chat-header__profile-img {
+    height: 40px;
+    width: 40px;
+  }
+  .chat-header__info-display {
+    justify-content: center;
+  }
 }
 </style>

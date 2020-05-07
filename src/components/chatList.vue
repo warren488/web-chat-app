@@ -41,9 +41,8 @@
             class="last-message"
             v-if="friend.lastMessage && friend.lastMessage[0]"
           >
-            <!-- @todo changename failure -->
             <span v-if="friend.lastMessage[0].status !== 'typing'">{{
-              friend.lastMessage[0].from === getCookie("username")
+              friend.lastMessage[0].fromId === user.id
                 ? "me:"
                 : `${friend.lastMessage[0].from}:`
             }}</span>
@@ -59,6 +58,7 @@
 import Vue from "vue";
 import { getCookie } from "@/common";
 import { debounce } from "debounce";
+import { mapGetters } from "vuex";
 
 export default Vue.extend({
   created() {
@@ -103,6 +103,7 @@ export default Vue.extend({
     }
   },
   computed: {
+    ...mapGetters(["user"]),
     myFriends() {
       return this.friends;
     },
