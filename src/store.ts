@@ -6,7 +6,8 @@ import {
   getCookie,
   eventBus,
   baseURI,
-  notifyMe
+  notifyMe,
+  getUserInfo
 } from "@/common";
 import io from "socket.io-client";
 
@@ -18,6 +19,8 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
   state: {
+    user: null,
+    notifSound: new Audio("/juntos.mp3"),
     friends: null,
     messages: null,
     unreadIndex: {},
@@ -28,6 +31,7 @@ export default new Vuex.Store({
     friendshipIds: []
   },
   getters: {
+    user: state => state.user,
     messages: state => state.messages,
     socket: state => state.socket,
     currChat: state => state.currChat,
@@ -85,35 +89,41 @@ export default new Vuex.Store({
        *  - allows for everything to load possible faster if loading the messages doesnt have to wait
        *  -
        */
-      context.state.friends &&
-        context.state.friends.forEach(friend => {
-          let friendship_id = friend._id;
-          promiseArr.push(
-            context
-              .dispatch("loadMessages", { friendship_id, limit: 10 })
-              .then(() => {
-                /** so these are so many listeners we are adding fot the connect event
-                 * althoughg it only fires once hmmmm....
-                 * maybe we dont need to attach these listeners after we get all messages (but i think we do)
-                 */
-                console.log(`connect ${friendship_id}`);
-                if (!context.state.socket.connected) {
-                  context.state.socket.on("connect", () => {
+
+      getUserInfo().then(({ data }) => {
+        context.state.user = data;
+        context.state.friends &&
+          context.state.friends.forEach(friend => {
+            let friendship_id = friend._id;
+            promiseArr.push(
+              context
+                .dispatch("loadMessages", { friendship_id, limit: 10 })
+                .then(() => {
+                  /** so these are so many listeners we are adding fot the connect event
+                   * althoughg it only fires once hmmmm....
+                   * maybe we dont need to attach these listeners after we get all messages (but i think we do)
+                   */
+                  console.log(`connect ${friendship_id}`);
+                  if (!context.state.socket.connected) {
+                    context.state.socket.on("connect", () => {
+                      context.state.socket.emit("checkin", {
+                        friendship_id,
+                        token: getCookie("token")
+                      });
+                    });
+                  } else {
                     context.state.socket.emit("checkin", {
                       friendship_id,
                       token: getCookie("token")
                     });
-                  });
-                } else {
-                  context.state.socket.emit("checkin", {
-                    friendship_id,
-                    token: getCookie("token")
-                  });
-                }
-              })
-          );
-        });
-      await Promise.all(promiseArr).then(() => {
+                  }
+                })
+            );
+          });
+      });
+
+      promiseArr.push();
+      await Promise.all(promiseArr).then(promises => {
         context.state.dataLoaded = true;
         eventBus.dataLoaded();
       });
@@ -144,11 +154,6 @@ export default new Vuex.Store({
       );
     },
     socketNewMessageHandler: (context, { token, data }) => {
-      /**
-       * @todo - check to see if the message has already been displayed to the screen
-       * instead of just checking if it was us and then
-       * decide if to display it, this can help with using multiple places at once
-       */
       if (token === getCookie("token")) {
         return;
       }
@@ -169,6 +174,7 @@ export default new Vuex.Store({
         }
         return;
       }
+      context.state.notifSound.play();
       notifyMe({ from: data.from, message: data.text });
       context.commit("appendMessageToChat", {
         friendship_id: data.friendship_id,
@@ -176,7 +182,9 @@ export default new Vuex.Store({
           createdAt: data.createdAt,
           from: data.from,
           text: data.text,
-          _id: data.Ids[0]
+          _id: data.Ids[0],
+          quoted: data.quoted,
+          fromId: data.fromId
         }
       });
       context.commit("updateLastMessage", {
@@ -184,19 +192,21 @@ export default new Vuex.Store({
         lastMessage: data
       });
       /** let the next user know that this message is green ticked */
-      context.state.socket.emit(
-        "gotMessage",
-        {
-          friendship_id: data.friendship_id,
-          token: getCookie("token"),
-          Ids: data.Ids
-        },
-        () => console.log("message ticked")
-      );
+      /** if we are signed in on multiple devices only tick if the message isnt coming from us */
+      if (data.fromId !== context.state.user.id) {
+        context.state.socket.emit(
+          "gotMessage",
+          {
+            friendship_id: data.friendship_id,
+            token: getCookie("token"),
+            Ids: data.Ids
+          },
+          () => console.log("message ticked")
+        );
+      }
     },
-    socketSweepHandler(context, { range, friendship_id, username }) {
-      /** @todo changename failure */
-      if (username === getCookie("username")) {
+    socketSweepHandler(context, { range, friendship_id, fromId }) {
+      if (fromId === context.state.user.id) {
         return;
       }
       // mark all the indexes within this range as read

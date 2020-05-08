@@ -1,5 +1,23 @@
 <template>
   <div class="home">
+    <div id="sound"></div>
+    <sideMenu
+      class="side-menu"
+      @close="sideMenuActive = false"
+      :active="sideMenuActive"
+    >
+      <button class="mybt" @click="mode = 'friends'">friends</button>
+      <button class="mybt" @click="mode = 'search'">search</button>
+      <button class="mybt" @click="() => $router.push('/profile')">
+        profile
+      </button>
+      <button class="mybt" @click="logout">
+        logout
+      </button>
+      <button class="mybt" @click="enableNotifs">
+        enable notifications
+      </button>
+    </sideMenu>
     <modal
       :showModal="modalData.openProfile"
       @close="modalData.openProfile = false"
@@ -9,19 +27,9 @@
       </template>
     </modal>
     <header class="main-header">
-      <span> options</span>
-      <button class="mybt" @click="mode = 'friends'">friends</button>
-      <button class="mybt" @click="mode = 'search'">search</button>
-      <button class="mybt" @click="() => $router.push('/profile')">
-        profile
+      <button class="mybt menubt" @click="sideMenuActive = !sideMenuActive">
+        Menu
       </button>
-      <button class="mybt" @click="logout">
-        logout
-      </button>
-      <!-- <div class="chat-header" v-if="currFriend">
-        <h1>{{ currFriend.username }}</h1>
-        <p class="typing op">typing...</p>
-      </div> -->
     </header>
     <main class="main-section">
       <div
@@ -110,6 +118,7 @@ import Vue from "vue";
 import chatList from "@/components/chatList.vue";
 import chatText from "@/components/chatText.vue";
 import chatBody from "@/components/chatBody.vue";
+import sideMenu from "@/components/sideMenu.vue";
 import modal from "@/components/modal.vue";
 /** using profile view as a component... hmmm */
 import profile from "@/views/Profile.vue";
@@ -134,6 +143,7 @@ export default Vue.extend({
     return {
       view: "chatlist",
       mode: "friends",
+      sideMenuActive: false,
       profileImageOpen: false,
       modalData: { openProfile: false, visibleProfile: {} },
       currentChat: "",
@@ -156,10 +166,13 @@ export default Vue.extend({
       "updateReceivedMessage",
       "setCurrentChat"
     ]),
+    enableNotifs: () => {
+      notifyMe({ from: "notifications", message: "enabled" });
+    },
     logout() {
       logout()
         .then(data => this.$router.push("/login"))
-        .catch(() => alert("error logging out, please try again!"));
+        .catch(err => console.log(err)); //alert("error logging out, please try again!"));
     },
     viewMore() {
       /** get the next 100 message from the chat history
@@ -364,7 +377,8 @@ export default Vue.extend({
     chatList,
     chatText,
     modal,
-    profile
+    profile,
+    sideMenu
   }
 });
 </script>
@@ -495,7 +509,21 @@ export default Vue.extend({
 .main-header {
   // width: 100%;
   flex-grow: 1;
+  display: flex;
+  background: linear-gradient(89.81deg, #3a6136 0.03%, #005d40 64.36%);
+  border-bottom: 1px solid white;
   height: var(--main-header-height);
+}
+
+.side-menu button,
+.menubt {
+  background-color: transparent;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  &:hover {
+    font-weight: bold;
+    background-color: transparent;
+  }
 }
 
 .main-section {

@@ -24,8 +24,8 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-export const baseURI = "http://localhost:3001";
+export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+// export const baseURI = "http://localhost:3001";
 
 export const uploadToFireBase = file => {
   // Create a root reference
@@ -77,18 +77,30 @@ export const login = async (userData: Object): Promise<AuthResponse> => {
 };
 
 export const logout = async () => {
-  await axios({
-    method: "POST",
-    headers: {
-      "x-auth": getCookie("token")
-    },
-    url: `${baseURI}/api/logout`
-  }).then(async data => {
+  try {
+    let data = await axios({
+      method: "POST",
+      headers: {
+        "x-auth": getCookie("token")
+      },
+      url: `${baseURI}/api/logout`
+    });
     await store.commit("resetState");
+    setCookie("token", "", -1000);
+    setCookie("username", "", -1000);
     return data;
-  });
-  setCookie("token", "", -1000);
-  setCookie("username", "", -1000);
+  } catch (error) {
+    console.log(error.response);
+    if (
+      error.response &&
+      error.response.data &&
+      error.response.data.message === "request authentication failed"
+    ) {
+      await store.commit("resetState");
+      return;
+    }
+    throw error;
+  }
 };
 
 export const signup = async (userData: Object): Promise<RegisterResponse> => {
@@ -232,10 +244,9 @@ export const getMessages = async (
     let unreadIndex = [];
     for (let i = messages.length - 1; i >= 0; i--) {
       let orderedIndex = orderedMessages.push(messages[i]) - 1;
-      /** @todo changename failure */
       if (
         messages[i].status !== "received" &&
-        messages[i].from === getCookie("username")
+        messages[i].fromId === store.state.user.id
       ) {
         /**
          * we can choose to loop through this index for searching or create an index for this index
@@ -305,30 +316,36 @@ export const authBeforeEnter = (to, from, next) => {
 };
 
 export const notifyMe = data => {
-  let text = data.from + ": " + data.message;
-  // Let's check if the browser supports notifications
-  if (!("Notification" in window)) {
-    alert("This browser does not support desktop notification");
-  }
+  try {
+    let text = data.from + ": " + data.message;
+    // Let's check if the browser supports notifications
+    if (!("Notification" in window)) {
+      alert("This browser does not support desktop notification");
+    }
 
-  // Let's check whether notification permissions have already been granted
-  else if (Notification.permission === "granted") {
-    // If it's okay let's create a notification
-    var notification = new Notification(text);
-  }
+    // Let's check whether notification permissions have already been granted
+    else if (Notification.permission === "granted") {
+      // If it's okay let's create a notification
+      var notification = new Notification(text);
+    }
 
-  // Otherwise, we need to ask the user for permission
-  else if (Notification.permission !== "denied") {
-    Notification.requestPermission().then(function(permission) {
-      // If the user accepts, let's create a notification
-      if (permission === "granted") {
-        var notification = new Notification(text);
-      }
-    });
-  }
+    // Otherwise, we need to ask the user for permission
+    else if (Notification.permission !== "denied") {
+      Notification.requestPermission()
+        .then(function(permission) {
+          // If the user accepts, let's create a notification
+          if (permission === "granted") {
+            var notification = new Notification(text);
+          }
+        })
+        .catch(err => {});
+    }
 
-  // At last, if the user has denied notifications, and you
-  // want to be respectful there is no need to bother them any more.
+    // At last, if the user has denied notifications, and you
+    // want to be respectful there is no need to bother them any more.
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 export class FocusGrabber {

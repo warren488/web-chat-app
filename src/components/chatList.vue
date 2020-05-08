@@ -44,7 +44,7 @@
             <span v-if="friend.lastMessage[0].status !== 'typing'">{{
               friend.lastMessage[0].fromId === user.id
                 ? "me:"
-                : `${friend.lastMessage[0].from}:`
+                : `${friend.username}:`
             }}</span>
             {{ friend.lastMessage[0].text ? friend.lastMessage[0].text : "" }}
           </p>

@@ -163,6 +163,10 @@ export default Vue.extend({
   color: #999;
 }
 
+.message__body > p.wrap {
+  overflow-wrap: break-word;
+}
+
 li.sent .message .message__body > p.wrap::after {
   content: "\2713";
   color: blue;
