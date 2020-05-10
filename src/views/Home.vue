@@ -5,6 +5,7 @@
       class="side-menu"
       @close="sideMenuActive = false"
       :active="sideMenuActive"
+      :menuData="sideMenuData"
     >
       <button class="mybt" @click="mode = 'friends'">friends</button>
       <button class="mybt" @click="mode = 'search'">search</button>
@@ -23,7 +24,11 @@
       @close="modalData.openProfile = false"
     >
       <template v-slot:full-replace>
-        <profile :readonly="true" :displayData="modalData.visibleProfile" />
+        <profile
+          @close="modalData.openProfile = false"
+          :readonly="true"
+          :displayData="modalData.visibleProfile"
+        />
       </template>
     </modal>
     <header class="main-header">
@@ -56,7 +61,15 @@
       >
         <div class="active-chat" v-if="currFriend">
           <header class="chat-header">
-            <button class="chatBack" @click="view = 'chatlist'">back</button>
+            <button
+              class="chatBack"
+              @click="
+                view = 'chatlist';
+                setCurrentChat('');
+              "
+            >
+              back
+            </button>
             <div class="chat-header__info-display">
               <img
                 @click="profileImageOpen = !profileImageOpen"
@@ -131,10 +144,16 @@ import {
   getUsers,
   baseURI,
   notifyMe,
-  logout
+  logout,
+  setCookie,
+  enableNotifs,
+  enableSound,
+  disableNotifs,
+  disableSound
 } from "@/common";
 import { mapGetters, mapActions, mapMutations } from "vuex";
 import io from "socket.io-client";
+import store from "../store";
 
 export default Vue.extend({
   name: "home",
@@ -146,7 +165,6 @@ export default Vue.extend({
       sideMenuActive: false,
       profileImageOpen: false,
       modalData: { openProfile: false, visibleProfile: {} },
-      currentChat: "",
       currentMessages: [],
       searchResults: [],
       highlightedMessageId: null,
@@ -154,7 +172,13 @@ export default Vue.extend({
     };
   },
   methods: {
-    ...mapActions(["setFriends", "setUpApp", "loadMessages", "emitEvent"]),
+    ...mapActions([
+      "setNotifAudioFile",
+      "setFriends",
+      "setUpApp",
+      "loadMessages",
+      "emitEvent"
+    ]),
     ...mapMutations([
       "updateLastMessage",
       "hideTyping",
@@ -166,8 +190,28 @@ export default Vue.extend({
       "updateReceivedMessage",
       "setCurrentChat"
     ]),
-    enableNotifs: () => {
-      notifyMe({ from: "notifications", message: "enabled" });
+    setFriends() {
+      this.mode = "friends";
+      this.sideMenuActive = false;
+    },
+    setSearch() {
+      this.mode = "search";
+      this.sideMenuActive = false;
+    },
+    goToProfile() {
+      this.$router.push("/profile");
+    },
+    setSound: enable => {
+      if (enable) {
+        return enableSound();
+      }
+      disableSound();
+    },
+    setNotif: enable => {
+      if (enable) {
+        return enableNotifs();
+      }
+      disableNotifs();
     },
     logout() {
       logout()
@@ -362,6 +406,68 @@ export default Vue.extend({
       "socket",
       "currChat"
     ]),
+    sideMenuData() {
+      return [
+        {
+          type: "click",
+          name: "friends",
+          handler: this.setFriends
+        },
+        {
+          type: "click",
+          name: "logout",
+          handler: this.logout
+        },
+        {
+          type: "click",
+          name: "profile",
+          handler: this.goToProfile
+        },
+        {
+          type: "click",
+          name: "search",
+          handler: this.setSearch
+        },
+        {
+          type: "submenu",
+          name: "notifications",
+          submenu: [
+            {
+              type: "toggle",
+              name: "popup notifications",
+              checked: store.state.enableVisualNotif,
+              change: this.setNotif
+            },
+            {
+              type: "l2menu",
+              name: "sound notifications",
+              submenu: [
+                {
+                  type: "toggle",
+                  name: "toggle sound",
+                  checked: store.state.enableSoundNotif,
+                  change: this.setSound
+                },
+                ...[
+                  "goes-without-saying.mp3",
+                  "hasty-ba-dum-tss.mp3",
+                  "juntos.mp3",
+                  "swiftly.mp3",
+                  "that-was-quick.mp3",
+                  "when.mp3"
+                ].map(file => ({
+                  type: "sound",
+                  src: `/${file}`,
+                  name: file.split(".")[0],
+                  active: store.state.notifAudioFile === file,
+                  handler: this.setNotifAudioFile
+                }))
+              ]
+            }
+          ]
+        }
+      ];
+    },
     currMessages() {
       return this.currentMessages;
     },
@@ -507,7 +613,6 @@ export default Vue.extend({
 }
 
 .main-header {
-  // width: 100%;
   flex-grow: 1;
   display: flex;
   background: linear-gradient(89.81deg, #3a6136 0.03%, #005d40 64.36%);
@@ -515,7 +620,7 @@ export default Vue.extend({
   height: var(--main-header-height);
 }
 
-.side-menu button,
+/* .side-menu button,
 .menubt {
   background-color: transparent;
   white-space: nowrap;
@@ -524,7 +629,7 @@ export default Vue.extend({
     font-weight: bold;
     background-color: transparent;
   }
-}
+} */
 
 .main-section {
   display: flex;

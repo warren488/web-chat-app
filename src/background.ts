@@ -1,6 +1,7 @@
 "use strict";
 
-import { app, protocol, BrowserWindow } from "electron";
+import { app, protocol, BrowserWindow, Tray } from "electron";
+import path from "path";
 import {
   createProtocol
   /* installVueDevtools */
@@ -61,7 +62,10 @@ app.on("activate", () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+let tray = null;
 app.on("ready", async () => {
+  tray = new Tray(path.join(__dirname, "/logo.png"));
+  tray.setToolTip("chat app");
   if (isDevelopment && !process.env.IS_TEST) {
     // Install Vue Devtools
     // Devtools extensions are broken in Electron 6.0.0 and greater

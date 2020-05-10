@@ -86,6 +86,7 @@ export default {
   max-width: 1200px;
   max-height: 90vh;
   overflow: hidden;
+  overflow-y: scroll;
   margin: 0px auto;
   padding: 40px 30px;
   background-color: #fff;
@@ -137,5 +138,11 @@ export default {
 .modal-leave-active .modal-container {
   -webkit-transform: scale(1.1);
   transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .modal-container {
+    width: 100vw;
+  }
 }
 </style>

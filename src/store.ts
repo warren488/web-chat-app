@@ -7,7 +7,8 @@ import {
   eventBus,
   baseURI,
   notifyMe,
-  getUserInfo
+  getUserInfo,
+  setCookie
 } from "@/common";
 import io from "socket.io-client";
 
@@ -19,12 +20,14 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
   state: {
+    notifAudioFile: getCookie("notifAudioFile") || "juntos.mp3",
     user: null,
-    notifSound: new Audio("/juntos.mp3"),
     friends: null,
     messages: null,
     unreadIndex: {},
     dataLoaded: false,
+    enableSoundNotif: ["true", null].includes(getCookie("soundNotifPref")),
+    enableVisualNotif: ["true", null].includes(getCookie("notifPref")),
     dataLoadStarted: false,
     socket: null,
     currChat: "",
@@ -35,12 +38,17 @@ export default new Vuex.Store({
     messages: state => state.messages,
     socket: state => state.socket,
     currChat: state => state.currChat,
+    notifAudio: state => new Audio(`/${state.notifAudioFile}`),
     friends: state => state.friends,
     unreadIndex: state => state.unreadIndex,
     initFriends: state => state.friends === null,
     initMessages: state => state.messages === null
   },
   actions: {
+    setNotifAudioFile: (context, file) => {
+      context.state.notifAudioFile = file;
+      setCookie("notifAudioFile", file, 1000000);
+    },
     setFriends: (context, data) => {
       return getFriends()
         .then(({ data, friendshipIds }) => {
@@ -174,8 +182,13 @@ export default new Vuex.Store({
         }
         return;
       }
-      context.state.notifSound.play();
-      notifyMe({ from: data.from, message: data.text });
+      if (context.state.enableSoundNotif) {
+        context.getters.notifAudio.play();
+      }
+      if (context.state.enableVisualNotif) {
+        notifyMe({ from: data.from, message: data.text });
+      }
+
       context.commit("appendMessageToChat", {
         friendship_id: data.friendship_id,
         message: {
@@ -210,12 +223,30 @@ export default new Vuex.Store({
         return;
       }
       // mark all the indexes within this range as read
-      context.state.unreadIndex[friendship_id].forEach((message, index) => {
+      // context.state.unreadIndex[friendship_id].forEach((message, index) => {
+      //   if (message.createdAt <= range[0] && message.createdAt >= range[1]) {
+      //     console.log(
+      //       `sweeping`,
+      //       context.state.messages[friendship_id][message.orderedIndex]
+      //     );
+      //     context.state.messages[friendship_id][message.orderedIndex].status =
+      //       "received";
+      //     let messageNode = document.getElementById(message._id);
+      //     if (messageNode) {
+      //       messageNode.classList.remove("pending");
+      //       messageNode.classList.remove("sent");
+      //       messageNode.classList.add("received");
+      //     }
+      //   }
+      //   // delete the unused element but how will that affect the foreach loop
+      // });
+      for (
+        let i = 0;
+        i < context.state.unreadIndex[friendship_id].length;
+        i++
+      ) {
+        const message = context.state.unreadIndex[friendship_id][i];
         if (message.createdAt <= range[0] && message.createdAt >= range[1]) {
-          console.log(
-            `sweeping`,
-            context.state.messages[friendship_id][message.orderedIndex]
-          );
           context.state.messages[friendship_id][message.orderedIndex].status =
             "received";
           let messageNode = document.getElementById(message._id);
@@ -224,9 +255,12 @@ export default new Vuex.Store({
             messageNode.classList.remove("sent");
             messageNode.classList.add("received");
           }
+          // remove the current item since its not remove and decrement the iterator
+          // since the array length changed
+          context.state.unreadIndex[friendship_id].splice(i, 1);
+          i--;
         }
-        // delete the unused element but how will that affect the foreach loop
-      });
+      }
     },
     socketReceivedHandler(context, data) {
       console.log("received");
@@ -378,8 +412,7 @@ export default new Vuex.Store({
     updateReceivedMessage(state, data) {
       state.messages[data.friendship_id][data.index].status = "received";
       if (typeof data.indexInUnread === "number") {
-        state.unreadIndex[data.friendship_id][data.indexInUnread].status =
-          "received";
+        state.unreadIndex[data.friendship_id].splice(data.indexInUnread, 1);
       }
     },
     pushToUnreadIndex(state, { friendship_id, data }) {

@@ -153,7 +153,7 @@ export const updateInfo = async (
   });
 };
 
-export function getCookie(name: String): String | null {
+export function getCookie(name: string): string | null {
   let exp = new RegExp(`(?:(?:^|.*;\\s*)${name}\\s*\\=\\s*([^;]*).*$)|^.*$`);
   let cookieValue = document.cookie.replace(exp, "$1");
   return cookieValue !== "" ? cookieValue : null;
@@ -314,6 +314,30 @@ export const authBeforeEnter = (to, from, next) => {
   }
   next();
 };
+
+export function enableNotifs() {
+  notifyMe({ from: "notifications", message: "enabled" });
+  setCookie("notifPref", "true", 1000000);
+  store.state.enableVisualNotif = true;
+}
+
+/**
+ * @todo move to state
+ */
+export function enableSound() {
+  setCookie("soundNotifPref", "true", 1000000);
+  store.state.enableSoundNotif = true;
+}
+
+export function disableNotifs() {
+  setCookie("notifPref", "false", 1000000);
+  store.state.enableVisualNotif = false;
+}
+
+export function disableSound() {
+  setCookie("soundNotifPref", "false", 1000000);
+  store.state.enableSoundNotif = false;
+}
 
 export const notifyMe = data => {
   try {

@@ -227,9 +227,10 @@ export default Vue.extend({
       this.$refs.page.style.minHeight = innerHeight + 20 + "px";
     },
     addFriend() {
-      /** data shouldnt be changing anyways */
-      console.log(this.originalData.username);
-      addFriend(this.originalData.username);
+      addFriend(this.originalData.username).then(data => {
+        alert("friend successfully added");
+        this.$emit("close");
+      });
     },
     async checkUsername() {
       if (this.userData.username === this.originalData.username) {
@@ -500,5 +501,11 @@ form.invalid {
     rgb(39, 130, 51) 0,
     rgb(110, 129, 49) 100%
   );
+}
+
+@media (max-width: 576px) {
+  .centered-form__form {
+    min-width: 200px;
+  }
 }
 </style>
