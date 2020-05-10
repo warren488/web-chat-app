@@ -3,6 +3,7 @@ import App from "./App.vue";
 import router from "./router";
 import store from "./store";
 import { getCookie } from "./common";
+import "./quasar";
 
 Vue.config.productionTip = false;
 
