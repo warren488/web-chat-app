@@ -32,7 +32,9 @@
         </div>
         <div class="form-field">
           <button class="mybt">Login</button>
-          <a href="/signup">no account? signup here</a>
+          <a href="" @click.prevent="$router.push('/signup')"
+            >no account? signup here</a
+          >
         </div>
       </form>
     </div>

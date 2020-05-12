@@ -270,28 +270,60 @@ export default Vue.extend({
       });
       let indexInUnread = this.unreadIndex[this.currChat].length - 1;
 
-      this.emitEvent({
-        eventName: "sendMessage",
-        data: {
-          friendship_id: this.currChat,
-          text: message.text,
-          hID: message.hID
-        }
-      })
-        .then(data => {
-          this.updateSentMessage({
-            friendship_id: this.currChat,
-            index,
-            id: data,
-            indexInUnread
+      if (message.type === "media") {
+        message.uploadPromise
+          .then(url => {
+            delete message.uploadPromise;
+            this.messages[this.currChat][index].url = url;
+            return this.emitEvent({
+              eventName: "sendMessage",
+              data: {
+                friendship_id: this.currChat,
+                hID: message.hID,
+                type: message.type,
+                media: message.media,
+                url
+              }
+            });
+          })
+          .then(data => {
+            this.updateSentMessage({
+              friendship_id: this.currChat,
+              index,
+              id: data,
+              indexInUnread
+            });
+            // this.unreadIndex[this.currChat][indexInUnread].status = "sent";
+          })
+          .catch(err => {
+            if (err) {
+              console.log("error sending message", err);
+            }
           });
-          // this.unreadIndex[this.currChat][indexInUnread].status = "sent";
-        })
-        .catch(err => {
-          if (err) {
-            console.log("error sending message", err);
+      } else {
+        this.emitEvent({
+          eventName: "sendMessage",
+          data: {
+            friendship_id: this.currChat,
+            text: message.text,
+            hID: message.hID
           }
-        });
+        })
+          .then(data => {
+            this.updateSentMessage({
+              friendship_id: this.currChat,
+              index,
+              id: data,
+              indexInUnread
+            });
+            // this.unreadIndex[this.currChat][indexInUnread].status = "sent";
+          })
+          .catch(err => {
+            if (err) {
+              console.log("error sending message", err);
+            }
+          });
+      }
     },
     handleTyping(e) {
       var friendship_id = this.currChat;
@@ -392,9 +424,6 @@ export default Vue.extend({
     }
   },
   created() {
-    setTimeout(() => {
-      console.log(this.socket);
-    }, 5000);
     // this.setUpApp();
   },
   computed: {

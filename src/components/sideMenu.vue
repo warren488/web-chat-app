@@ -1,6 +1,6 @@
 <template>
   <div :class="{ container: true, active: active }">
-    <div class="backdrop"></div>
+    <div @click="$emit('close')" class="backdrop"></div>
     <div class="menu-content">
       <button class="close-button" @click="$emit('close')">X</button>
       <!-- <slot></slot> -->
