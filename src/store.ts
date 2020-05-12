@@ -197,7 +197,10 @@ export default new Vuex.Store({
           text: data.text,
           _id: data.Ids[0],
           quoted: data.quoted,
-          fromId: data.fromId
+          fromId: data.fromId,
+          type: data.type,
+          media: data.media,
+          url: data.url
         }
       });
       context.commit("updateLastMessage", {

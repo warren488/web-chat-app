@@ -64,8 +64,8 @@ app.on("activate", () => {
 // Some APIs can only be used after this event occurs.
 let tray = null;
 app.on("ready", async () => {
-  tray = new Tray(path.join(__dirname, "/logo.png"));
-  tray.setToolTip("chat app");
+  // tray = new Tray(path.join(__dirname, "/logo.png"));
+  // tray.setToolTip("chat app");
   if (isDevelopment && !process.env.IS_TEST) {
     // Install Vue Devtools
     // Devtools extensions are broken in Electron 6.0.0 and greater
