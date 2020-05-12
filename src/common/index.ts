@@ -24,8 +24,8 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-// export const baseURI = "http://localhost:3001";
+// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+export const baseURI = "http://localhost:3001";
 
 export const uploadToFireBase = file => {
   // Create a root reference
@@ -34,6 +34,14 @@ export const uploadToFireBase = file => {
   // Create a reference to 'images/mountains.jpg'
   var ref = storageRef.child(`profileImages/.jpg${file.name}`);
   return ref.put(file).then(function(snapshot) {
+    return snapshot.ref.getDownloadURL();
+  });
+};
+
+export const addAudioToFirebase = blob => {
+  var storageRef = firebase.storage().ref();
+  var ref = storageRef.child(`voicenotes/${Date.now()}.${store.state.user.id}`);
+  return ref.put(blob, { contentType: "audio/webm" }).then(function(snapshot) {
     return snapshot.ref.getDownloadURL();
   });
 };
