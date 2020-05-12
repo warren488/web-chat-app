@@ -20,7 +20,15 @@
             <p class="reply" @click="replyClick(message._id)">reply</p>
           </div>
           <div class="message__body">
-            <p class="wrap">{{ message.text }}</p>
+            <p v-if="message.type !== 'media'" class="wrap">
+              {{ message.text }}
+            </p>
+            <audio
+              class="audiomessage"
+              v-if="message.type === 'media' && message.media === 'audio'"
+              :src="message.url"
+              controls
+            ></audio>
             <span v-if="message.quoted" class="quoted">
               <div class="message__title">
                 <h4>
@@ -35,6 +43,16 @@
                 </span>
               </div>
               <p class="wrap">{{ message.quoted.text }}</p>
+              <!-- make sure i add this when i quote a message -->
+              <audio
+                class="audiomessage"
+                v-if="
+                  message.quoted.type === 'media' &&
+                    message.quoted.media === 'audio'
+                "
+                :src="message.quoted.url"
+                controls
+              ></audio>
             </span>
           </div>
         </div>
@@ -64,8 +82,17 @@ export default Vue.extend({
   mounted() {
     scrollBottom.call(this, { force: true, test: false });
   },
-  created() {},
+  created() {
+    window.addEventListener("resize", this.resizeHandler.bind(this));
+  },
+  beforeDestroy() {
+    /** @todo does this resolve to the correct refernce even tho we used bind before? */
+    window.removeEventListener("resize", this.resizeHandler);
+  },
   methods: {
+    resizeHandler() {
+      scrollBottom.call(this, { force: true, test: false });
+    },
     getCookie,
     replyClick(msgId: string): void {
       this.$emit("replyClick", msgId);
@@ -113,6 +140,10 @@ export default Vue.extend({
 
 .chat__messages li.me {
   justify-content: flex-end;
+}
+
+.audiomessage {
+  max-width: 100%;
 }
 
 .reply {

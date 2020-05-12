@@ -6,6 +6,7 @@
           &#128578;
         </button>
         <input
+          v-if="!hasAudio && !isRecording"
           ref="msgText"
           type="text"
           id="msg-txt"
@@ -15,9 +16,22 @@
           autofocus
           @keydown="$emit('typing')"
         />
+        <div v-if="isRecording" style="flex-grow: 1; text-align: center">
+          recording...
+        </div>
+        <audio
+          ref="audioPlayer"
+          v-if="hasAudio"
+          :src="audioURL"
+          controls
+          id="audio"
+          style="flex-grow: 1;"
+        ></audio>
         <button id="send-button">
           <img src="../assets/send.svg" alt />
         </button>
+        <button id="start" @click="getVN">R</button>
+        <button @click="stopAndDeleteButtonHandler" id="stop">S</button>
         <button
           type="button"
           :class="{ 'no-show': highlighted === null }"
@@ -42,7 +56,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { getCookie } from "@/common";
+import { getCookie, addAudioToFirebase } from "@/common";
 
 export default Vue.extend({
   name: "",
@@ -131,7 +145,11 @@ export default Vue.extend({
         "🤮",
         "🤯",
         "🧐"
-      ]
+      ],
+      shouldStop: false,
+      isRecording: false,
+      audioBlob: null,
+      audioURL: null
     };
   },
   props: {
@@ -145,26 +163,99 @@ export default Vue.extend({
         this.$refs.msgText.focus();
       }
     },
+    stopRecording() {
+      this.shouldStop = true;
+    },
+    resetRecordingData() {
+      this.shouldStop = false;
+      this.audioBlob = null;
+      this.audioURL = null;
+    },
+    stopAndDeleteButtonHandler() {
+      if (!this.shouldStop) {
+        this.stopRecording();
+      } else {
+        this.resetRecordingData();
+      }
+    },
+    getVN() {
+      this.shouldStop = false;
+      this.isRecording = true;
+      let stopped = false;
+      const audioEl = document.getElementById("audio") as HTMLAudioElement;
+
+      const handleSuccess = stream => {
+        const options = { audioBitsPerSecond: 9000, mimeType: "audio/webm" };
+        const recordedChunks = [];
+        // @ts-ignore
+        const mediaRecorder = new MediaRecorder(stream, options);
+
+        mediaRecorder.addEventListener("dataavailable", e => {
+          if (e.data.size > 0) {
+            recordedChunks.push(e.data);
+          }
+
+          if (this.shouldStop === true && stopped === false) {
+            mediaRecorder.stop();
+            stopped = true;
+          }
+        });
+
+        mediaRecorder.addEventListener("stop", () => {
+          this.audioBlob = new Blob(recordedChunks);
+          this.audioURL = URL.createObjectURL(this.audioBlob);
+          this.isRecording = false;
+          stream.getTracks().forEach(function(track) {
+            track.stop();
+          });
+        });
+
+        mediaRecorder.start(50);
+      };
+
+      navigator.mediaDevices
+        .getUserMedia({ audio: true, video: false })
+        .then(handleSuccess)
+        .catch(console.log);
+    },
     toggleEmojis() {
       this.$refs.emojis.classList.toggle("show");
     },
     sendMessage() {
-      let msg = this.$refs.msgText.value;
-      if (!msg) {
+      let msg = this.$refs.msgText ? this.$refs.msgText.value : null;
+      if (!msg && this.audioBlob === null) {
         return;
       }
-      this.$emit("newMessage", {
-        text: msg,
-        /** @todo changename failure
-         * @NB this will require extra special treatment as many things will use the
-         */
-        from: getCookie("username"),
+
+      let messageShell = {
         // server uses it's own timestamp... hmmmm
         createdAt: Date.now(),
         status: "pending",
         hID: this.highlighted
-      });
-      this.$refs.msgText.value = "";
+      };
+
+      if (this.audioBlob) {
+        this.$emit("newMessage", {
+          type: "media",
+          media: "audio",
+          uploadPromise: addAudioToFirebase(this.audioBlob),
+          ...messageShell
+        });
+        this.audioBlob = null;
+        this.audioURL = null;
+        this.shouldStop = false;
+      } else {
+        this.$emit("newMessage", {
+          text: msg,
+          ...messageShell
+        });
+        this.$refs.msgText.value = "";
+      }
+    }
+  },
+  computed: {
+    hasAudio() {
+      return this.audioBlob !== null;
     }
   },
   watch: {
@@ -189,6 +280,7 @@ export default Vue.extend({
   }
   form {
     flex-grow: 1;
+    align-items: center;
     display: flex;
     * {
       margin-right: 10px;

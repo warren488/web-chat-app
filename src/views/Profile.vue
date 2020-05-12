@@ -37,6 +37,7 @@
         </div>
         <div class="important-info">
           <div class="img-container">
+            <loader type="ring" :display="isImgLoading" />
             <img
               v-if="details.imgUrl"
               class="profile-img"
@@ -180,6 +181,7 @@
 <script lang="ts">
 import Vue from "vue";
 import Modal from "@/components/modal.vue"; // @ is an alias to /src
+import Loader from "@/components/loader.vue"; // @ is an alias to /src
 import {
   signup,
   setCookie,
@@ -205,6 +207,7 @@ export default Vue.extend({
       userData: {
         username: ""
       },
+      imgLoading: false,
       feedback: "",
       uniqueFeedback: "",
       modal: {
@@ -214,12 +217,14 @@ export default Vue.extend({
       editMode: false
     };
   },
-  components: { Modal },
+  components: { Modal, Loader },
   methods: {
     async imgInput() {
+      this.imgLoading = true;
       let imgFile = this.$refs.imgFile.files[0];
       const imgUrl = await uploadToFireBase(imgFile);
-      this.userData.imgUrl = imgUrl;
+      this.userData = { ...this.userData, imgUrl };
+      this.imgLoading = false;
     },
     fixHeight() {
       // get height of the form and let that dictate the height of the page (+20px for spacing)
@@ -291,6 +296,9 @@ export default Vue.extend({
   computed: {
     modalData(): Object {
       return { show: this.modal.show, text: this.modal.text };
+    },
+    isImgLoading() {
+      return this.imgLoading;
     },
     feedbackText() {
       return this.feedback;
