@@ -11,7 +11,7 @@
         @input="filterFuncDebounced"
       />
     </header>
-    <ol>
+    <ol class="item-list">
       <li
         v-for="friend of myFriends"
         :key="friend._id"
@@ -120,6 +120,11 @@ export default Vue.extend({
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.item-list {
+  overflow-y: scroll;
+  height: calc(100% - 75px);
 }
 
 .chat-preview {

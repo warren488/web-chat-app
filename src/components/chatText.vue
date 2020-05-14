@@ -27,11 +27,25 @@
           id="audio"
           style="flex-grow: 1;"
         ></audio>
-        <button id="send-button">
+        <button class="transp" id="send-button">
           <img src="../assets/send.svg" alt />
         </button>
-        <button id="start" @click="getVN">R</button>
-        <button @click="stopAndDeleteButtonHandler" id="stop">S</button>
+        <button
+          class="voicemessage-control"
+          v-if="!isRecording && !hasAudio"
+          id="start"
+          @click="getVN"
+        >
+          R
+        </button>
+        <button
+          class="voicemessage-control"
+          v-if="isRecording || hasAudio"
+          @click="stopAndDeleteButtonHandler"
+          id="stop"
+        >
+          S
+        </button>
         <button
           type="button"
           :class="{ 'no-show': highlighted === null }"
@@ -268,6 +282,19 @@ export default Vue.extend({
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+.voicemessage-control {
+  padding: 4px;
+  cursor: pointer;
+  font-size: 24px;
+  background-color: #777;
+  border-radius: 50%;
+  width: 34px;
+}
+
+.transp {
+  background: transparent;
+}
+
 .chat__footer {
   background: #e6eaee;
   padding: 10px;
@@ -275,7 +302,6 @@ export default Vue.extend({
   display: flex;
   flex-shrink: 0;
   button {
-    background: transparent;
     border: none;
   }
   form {

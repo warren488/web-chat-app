@@ -149,7 +149,9 @@ import {
   enableNotifs,
   enableSound,
   disableNotifs,
-  disableSound
+  disableSound,
+  subscribeToNotif,
+  unsubscribeToNotif
 } from "@/common";
 import { mapGetters, mapActions, mapMutations } from "vuex";
 import io from "socket.io-client";
@@ -466,6 +468,16 @@ export default Vue.extend({
               name: "popup notifications",
               checked: store.state.enableVisualNotif,
               change: this.setNotif
+            },
+            {
+              type: "click",
+              name: "subscribe to push",
+              handler: subscribeToNotif
+            },
+            {
+              type: "click",
+              name: "UNsubscribe to push",
+              handler: unsubscribeToNotif
             },
             {
               type: "l2menu",

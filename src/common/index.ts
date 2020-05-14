@@ -27,6 +27,46 @@ firebase.initializeApp(firebaseConfig);
 // export const baseURI = "https://dry-savannah-78912.herokuapp.com";
 export const baseURI = "http://localhost:3001";
 
+let pubKey =
+  "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
+
+export const subscribeToNotif = async () => {
+  if ("serviceWorker" in navigator) {
+    const register = await navigator.serviceWorker.register("/worker.js", {
+      scope: "/"
+    });
+
+    const subscription = await register.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(pubKey)
+    });
+    await fetch(
+      `http://localhost:3001/api/users/${store.state.user.id}/subscribe`,
+      {
+        method: "POST",
+        body: JSON.stringify(subscription),
+        headers: {
+          "content-type": "application/json",
+          "x-auth": getCookie("token")
+        }
+      }
+    );
+  }
+};
+
+export const unsubscribeToNotif = async () => {
+  await fetch(
+    `http://localhost:3001/api/users/${store.state.user.id}/unsubscribe`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-auth": getCookie("token")
+      }
+    }
+  );
+};
+
 export const uploadToFireBase = file => {
   // Create a root reference
   var storageRef = firebase.storage().ref();
@@ -451,12 +491,15 @@ export const scrollBottom = function scrollBottom({ force, test }) {
   // console.log(clientHeight, scrollHeight, scrollTop);
 };
 
-/** =================================================================== */
-/**  ##     ##      ##     #  #     ####  #####
- *  #  #   #  #    #  #    # #      #       #
- *  #      #  #    #       ##       #       #
- *   ##    #  #    #       #        ####    #
- *     #   #  #    #       ##       #       #
- *  #  #   #  #    #  #    # #      #       #
- *   ##     ##      ##     #  #     ####    #
- */
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
