@@ -24,47 +24,53 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-export const baseURI = "http://localhost:3001";
+export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+// export const baseURI = "http://localhost:3001";
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
 
+export const clearNotifications = async () => {
+  return navigator.serviceWorker
+    .getRegistration("/worker.js")
+    .then(registration => {
+      registration.getNotifications().then(notifications => {
+        notifications.forEach(notification => {
+          notification.close();
+        });
+      });
+    });
+};
+
 export const subscribeToNotif = async () => {
   if ("serviceWorker" in navigator) {
-    const register = await navigator.serviceWorker.register("/worker.js", {
+    const registration = await navigator.serviceWorker.register("/worker.js", {
       scope: "/"
     });
-
-    const subscription = await register.pushManager.subscribe({
+    registration.update();
+    const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(pubKey)
     });
-    await fetch(
-      `http://localhost:3001/api/users/${store.state.user.id}/subscribe`,
-      {
-        method: "POST",
-        body: JSON.stringify(subscription),
-        headers: {
-          "content-type": "application/json",
-          "x-auth": getCookie("token")
-        }
-      }
-    );
-  }
-};
-
-export const unsubscribeToNotif = async () => {
-  await fetch(
-    `http://localhost:3001/api/users/${store.state.user.id}/unsubscribe`,
-    {
+    await fetch(`${baseURI}/api/users/${store.state.user.id}/subscribe`, {
       method: "POST",
+      body: JSON.stringify(subscription),
       headers: {
         "content-type": "application/json",
         "x-auth": getCookie("token")
       }
+    });
+  }
+};
+
+export const unsubscribeToNotif = async () => {
+  await fetch(`${baseURI}/api/users/${store.state.user.id}/unsubscribe`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-auth": getCookie("token")
     }
-  );
+  });
 };
 
 export const uploadToFireBase = file => {

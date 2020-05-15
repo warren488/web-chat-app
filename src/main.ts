@@ -2,7 +2,7 @@ import Vue from "vue";
 import App from "./App.vue";
 import router from "./router";
 import store from "./store";
-import { getCookie } from "./common";
+import { getCookie, clearNotifications } from "./common";
 
 Vue.config.productionTip = false;
 
@@ -11,6 +11,9 @@ let token = getCookie("token");
 if (token) {
   store.dispatch("setUpApp");
 }
+
+clearNotifications();
+window.onfocus = () => clearNotifications();
 
 new Vue({
   router,

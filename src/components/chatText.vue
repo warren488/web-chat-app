@@ -265,6 +265,7 @@ export default Vue.extend({
         });
         this.$refs.msgText.value = "";
       }
+      this.$refs.msgText.focus();
     }
   },
   computed: {
