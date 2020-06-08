@@ -16,10 +16,13 @@
         v-for="friend of myFriends"
         :key="friend._id"
         :id="friend._id"
-        :class="{ active: friend._id === currentChat, 'chat-preview': true }"
+        :class="{
+          active: friend._id === currentChat,
+          'chat-preview': true,
+          'notification-item': true
+        }"
         @click="() => emitOpen(friend)"
       >
-        <!-- <span> -->
         <img
           class="profile-img"
           v-if="!friend.imgUrl"
@@ -32,9 +35,8 @@
           :src="friend.imgUrl"
           alt=""
         />
-        <!-- </span> -->
         <div class="preview-text">
-          <h3>
+          <h3 class="">
             {{ friend.username }}
           </h3>
           <p
@@ -130,6 +132,8 @@ export default Vue.extend({
 .chat-preview {
   display: flex;
   align-items: center;
+  --notif-bottom-pos: 4px;
+  --notif-right-pos: 4px;
 }
 
 .preview-text {
@@ -181,8 +185,7 @@ ol {
       font-weight: bold;
     }
     &:hover {
-      border-bottom: thin rgb(57, 83, 60) solid;
-      color: rgb(57, 83, 60);
+      background-color: rgb(143, 143, 96);
       cursor: pointer;
     }
     &.active {

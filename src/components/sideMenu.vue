@@ -1,8 +1,8 @@
 <template>
   <div :class="{ container: true, active: active }">
-    <div @click="$emit('close')" class="backdrop"></div>
+    <div @click="close" class="backdrop"></div>
     <div class="menu-content">
-      <button class="close-button" @click="$emit('close')">X</button>
+      <button class="close-button" @click="close">X</button>
       <!-- <slot></slot> -->
       <div
         v-for="item in menuData"
@@ -86,7 +86,6 @@ export default Vue.extend({
   },
   methods: {
     getHandler(item, level) {
-      console.log("handle", item);
       if (item.type === "click" && item.handler) {
         return item.handler();
       }
@@ -105,6 +104,11 @@ export default Vue.extend({
         new Audio(item.src).play();
         item.handler(item.src.substring(1));
       }
+    },
+    close() {
+      this.$emit("close");
+      this.subMenu = null;
+      this.L2Menu = null;
     }
   }
 });

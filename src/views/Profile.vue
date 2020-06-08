@@ -29,8 +29,16 @@
               </button>
             </div>
             <div v-if="readonly" class="add-friend">
-              <button @click="addFriend" class="mybt" type="button">
+              <!-- <button @click="addFriend" class="mybt" type="button">
                 add friend
+              </button> -->
+              <button
+                :disabled="hasRequestFromMe"
+                @click="actionButtinHandler"
+                class="mybt"
+                type="button"
+              >
+                {{ responseOrRequest }}
               </button>
             </div>
           </div>
@@ -192,8 +200,11 @@ import {
   checkusername,
   updateInfo,
   getUserInfo,
-  addFriend
+  addFriend,
+  sendRequest
 } from "@/common";
+import store from "../store";
+import { mapGetters } from "vuex";
 export default Vue.extend({
   created() {
     this.getUserInfo();
@@ -222,7 +233,11 @@ export default Vue.extend({
     async imgInput() {
       this.imgLoading = true;
       let imgFile = this.$refs.imgFile.files[0];
-      const imgUrl = await uploadToFireBase(imgFile);
+      /** @todo delete the old one to save space */
+      const imgUrl = await uploadToFireBase(
+        imgFile,
+        `/profileImages/${store.state.user.id}`
+      );
       this.userData = { ...this.userData, imgUrl };
       this.imgLoading = false;
     },
@@ -231,8 +246,21 @@ export default Vue.extend({
       const innerHeight = this.$refs.formContainer.clientHeight;
       this.$refs.page.style.minHeight = innerHeight + 20 + "px";
     },
+    actionButtinHandler() {
+      if (!this.hasRequestFromMe && !this.sentRequestToMe) {
+        sendRequest(this.originalData.id).then(data => {
+          alert("request successfully sent");
+          this.$emit("close");
+        });
+      } else if (this.sentRequestToMe) {
+        this.addFriend();
+      }
+    },
     addFriend() {
-      addFriend(this.originalData.username).then(data => {
+      addFriend({
+        username: this.originalData.username,
+        id: this.originalData.id
+      }).then(data => {
         alert("friend successfully added");
         this.$emit("close");
       });
@@ -257,7 +285,6 @@ export default Vue.extend({
        * so for example we dont want to say display this data on this page and for some reason
        * give the user the imperssion they can change someone else's data
        */
-      console.log(this.readonly, this.displayData);
 
       if (this.readonly && this.displayData) {
         this.originalData = this.displayData;
@@ -294,8 +321,35 @@ export default Vue.extend({
     }
   },
   computed: {
+    ...mapGetters(["user"]),
     modalData(): Object {
       return { show: this.modal.show, text: this.modal.text };
+    },
+    sentRequestToMe() {
+      if (this.user.interactions) {
+        let result = this.user.interactions.receivedRequests.find(
+          request => this.userData.id === request.fromId
+        );
+        return !!result;
+      }
+      return false;
+    },
+    hasRequestFromMe() {
+      if (this.user.interactions) {
+        let result = this.user.interactions.sentRequests.find(
+          request => this.userData.id === request.userId
+        );
+        return !!result;
+      }
+      return false;
+    },
+    responseOrRequest() {
+      if (this.sentRequestToMe) {
+        return "accept request";
+      } else if (this.hasRequestFromMe) {
+        return "request already sent";
+      }
+      return "send request";
     },
     isImgLoading() {
       return this.imgLoading;

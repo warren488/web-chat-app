@@ -11,7 +11,7 @@
           <h3>Signup</h3>
         </div>
         <div class="form-field">
-          <label for="username">
+          <label class="form-label" for="username">
             username<span aria-hidden="true">*</span>
             <span ref="uniqueFeedbackEl" id="uniqe-feedback">
               {{ uniqueFeedback }}</span
@@ -20,6 +20,7 @@
           <input
             @blur="checkUsername"
             v-model.lazy="userData.username"
+            minlength="4"
             type="text"
             name="username"
             id="username"
@@ -28,7 +29,7 @@
           />
         </div>
         <div class="form-field">
-          <label for="email"> email</label>
+          <label class="form-label" for="email"> email</label>
           <input
             v-model.lazy="userData.email"
             type="email"
@@ -38,7 +39,7 @@
           />
         </div>
         <div class="form-field">
-          <label for="password">
+          <label class="form-label" for="password">
             password<span aria-hidden="true">*</span>
           </label>
           <input
@@ -51,7 +52,7 @@
           />
         </div>
         <div class="form-field">
-          <label for="confirm-password">
+          <label class="form-label" for="confirm-password">
             confirm password<span aria-hidden="true">*</span>
           </label>
           <input
@@ -77,6 +78,8 @@
 import Vue from "vue";
 import Modal from "@/components/modal.vue"; // @ is an alias to /src
 import { signup, setCookie, checkusername } from "@/common";
+import { errorToMessage } from "../common/network";
+import { mapActions } from "vuex";
 export default Vue.extend({
   components: { Modal },
   data() {
@@ -91,11 +94,17 @@ export default Vue.extend({
     };
   },
   methods: {
+    ...mapActions(["setUpApp"]),
     async checkUsername() {
       let unique = await checkusername(this.userData.username);
       if (!unique) {
         this.uniqueFeedback = "(taken)";
+        this.$refs.uniqueFeedbackEl.classList.remove("valid");
         this.$refs.uniqueFeedbackEl.classList.add("invalid");
+      } else {
+        this.uniqueFeedback = "(available)";
+        this.$refs.uniqueFeedbackEl.classList.add("valid");
+        this.$refs.uniqueFeedbackEl.classList.remove("invalid");
       }
     },
     closeAndGo() {
@@ -126,8 +135,9 @@ export default Vue.extend({
           password: "",
           confirmPassword: ""
         };
+        await this.setUpApp();
       } catch (error) {
-        console.log(error);
+        this.feedback = errorToMessage(error);
       }
     }
   },
@@ -142,22 +152,16 @@ export default Vue.extend({
 });
 </script>
 <style lang="scss" scoped>
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: HelveticaNeue-Light, "Helvetica Neue Light", "Helvetica Neue",
-    Helvetica, Arial, "Lucida Grande", sans-serif;
-  font-weight: 300;
-  font-size: 0.95rem;
-}
 .feedback,
 .invalid {
-  color: darkred;
+  color: red;
+}
+.valid {
+  color: green;
 }
 
 form.invalid {
-  box-shadow: 1px 1px 1px darkred;
+  box-shadow: 1px 1px 1px red;
 }
 
 .form-field h3 {
@@ -167,6 +171,10 @@ form.invalid {
 }
 .form-field {
   margin: 20px 0;
+}
+.form-label {
+  font-weight: bold;
+  color: rgb(0, 51, 0);
 }
 .centered-form__form {
   background: rgba(250, 250, 250, 0.9);

@@ -7,17 +7,6 @@
       :active="sideMenuActive"
       :menuData="sideMenuData"
     >
-      <button class="mybt" @click="mode = 'friends'">friends</button>
-      <button class="mybt" @click="mode = 'search'">search</button>
-      <button class="mybt" @click="() => $router.push('/profile')">
-        profile
-      </button>
-      <button class="mybt" @click="logout">
-        logout
-      </button>
-      <button class="mybt" @click="enableNotifs">
-        enable notifications
-      </button>
     </sideMenu>
     <modal
       :showModal="modalData.openProfile"
@@ -31,11 +20,6 @@
         />
       </template>
     </modal>
-    <header class="main-header">
-      <button class="mybt menubt" @click="sideMenuActive = !sideMenuActive">
-        Menu
-      </button>
-    </header>
     <main class="main-section">
       <div
         :class="{
@@ -44,10 +28,18 @@
           hidden: view !== 'chatlist'
         }"
       >
+        <header class="main-header">
+          <button
+            class="mybt menubt notification-item"
+            @click="sideMenuActive = !sideMenuActive"
+          >
+            Menu
+          </button>
+        </header>
         <chatList
-          :title="mode"
+          :title="sideListDisplayName"
           :filter="filter"
-          :friends="mode === 'friends' ? friends : searchResults"
+          :friends="sideListDisplayItems"
           @open="openChat"
           :currentChat="currChat"
         />
@@ -68,7 +60,24 @@
                 setCurrentChat('');
               "
             >
-              back
+              <svg
+                fill="white"
+                version="1.1"
+                id="Layer_1"
+                xmlns="http://www.w3.org/2000/svg"
+                xmlns:xlink="http://www.w3.org/1999/xlink"
+                x="0px"
+                y="0px"
+                viewBox="0 0 64 64"
+                style="enable-background:new 0 0 64 64;"
+                xml:space="preserve"
+              >
+                <path
+                  d="M61.3,29.4h-54l5.3-6.4c1.1-1.1,0.8-2.9-0.3-3.7c-1.1-1.1-2.9-0.8-3.7,0.3l-7.5,8.8c-1.6,2.1-1.6,5.1,0,7.2l7.5,8.8
+	c0.3,0.8,1.1,1.1,1.9,1.1c0.5,0,1.3-0.3,1.6-0.5c1.1-1.1,1.3-2.7,0.3-3.7l-5.3-6.4h54.2c1.6,0,2.7-1.1,2.7-2.7
+	C64,30.5,62.9,29.4,61.3,29.4z"
+                />
+              </svg>
             </button>
             <div class="chat-header__info-display">
               <img
@@ -103,7 +112,6 @@
             @replyClick="replyHandler"
             @viewMore="viewMore"
             class="chatBody"
-            msg="Welcome to Your Vue.js + TypeScript App"
           />
           <div class="lds-ellipsis typing op">
             <div></div>
@@ -151,11 +159,16 @@ import {
   disableNotifs,
   disableSound,
   subscribeToNotif,
-  unsubscribeToNotif
+  unsubscribeToNotif,
+  uploadToFireBase,
+  signOutOfFirebase,
+  CONSTANTS
 } from "@/common";
+
 import { mapGetters, mapActions, mapMutations } from "vuex";
 import io from "socket.io-client";
 import store from "../store";
+import "notyf/notyf.min.css";
 
 export default Vue.extend({
   name: "home",
@@ -163,7 +176,7 @@ export default Vue.extend({
   data() {
     return {
       view: "chatlist",
-      mode: "friends",
+      mode: CONSTANTS.sideList.MODES.FRIENDS,
       sideMenuActive: false,
       profileImageOpen: false,
       modalData: { openProfile: false, visibleProfile: {} },
@@ -193,11 +206,15 @@ export default Vue.extend({
       "setCurrentChat"
     ]),
     setFriends() {
-      this.mode = "friends";
+      this.mode = CONSTANTS.sideList.MODES.FRIENDS;
       this.sideMenuActive = false;
     },
     setSearch() {
-      this.mode = "search";
+      this.mode = CONSTANTS.sideList.MODES.SEARCH;
+      this.sideMenuActive = false;
+    },
+    setFriendrequests() {
+      this.mode = CONSTANTS.sideList.MODES.FRIEND_REQUESTS;
       this.sideMenuActive = false;
     },
     goToProfile() {
@@ -217,6 +234,7 @@ export default Vue.extend({
     },
     logout() {
       logout()
+        .then(data => signOutOfFirebase())
         .then(data => this.$router.push("/login"))
         .catch(err => console.log(err)); //alert("error logging out, please try again!"));
     },
@@ -262,15 +280,14 @@ export default Vue.extend({
       }
       this.appendMessageToChat({
         friendship_id: this.currChat,
-        message: { ...message, quoted, fromId: this.user.id }
+        message: {
+          ...message,
+          quoted,
+          fromId: this.user.id,
+          createdAt: Date.now()
+        }
       });
       let index = this.messages[this.currChat].length - 1;
-
-      this.pushToUnreadIndex({
-        friendship_id: this.currChat,
-        data: { ...message, orderedIndex: index }
-      });
-      let indexInUnread = this.unreadIndex[this.currChat].length - 1;
 
       if (message.type === "media") {
         message.uploadPromise
@@ -283,6 +300,8 @@ export default Vue.extend({
                 friendship_id: this.currChat,
                 hID: message.hID,
                 type: message.type,
+                text: message.text,
+                meta: message.meta,
                 media: message.media,
                 url
               }
@@ -292,10 +311,9 @@ export default Vue.extend({
             this.updateSentMessage({
               friendship_id: this.currChat,
               index,
-              id: data,
-              indexInUnread
+              id: data.msgId,
+              createdAt: data.createdAt
             });
-            // this.unreadIndex[this.currChat][indexInUnread].status = "sent";
           })
           .catch(err => {
             if (err) {
@@ -315,10 +333,9 @@ export default Vue.extend({
             this.updateSentMessage({
               friendship_id: this.currChat,
               index,
-              id: data,
-              indexInUnread
+              id: data.msgId,
+              createdAt: data.createdAt
             });
-            // this.unreadIndex[this.currChat][indexInUnread].status = "sent";
           })
           .catch(err => {
             if (err) {
@@ -338,9 +355,7 @@ export default Vue.extend({
             type: "typing",
             status: "start"
           }
-        })
-          .then(() => console.log("typing sent"))
-          .catch(() => console.log("error sending typing"));
+        }).catch(() => console.log("error sending typing"));
         this.typing.status = true;
       }
       /** set a timeout of 1 second every time we press a key */
@@ -367,16 +382,17 @@ export default Vue.extend({
                 type: "typing",
                 status: "stop"
               }
-            })
-              .then(() => console.log("typing stopped"))
-              .catch(() => console.log("error stopping typing"));
+            }).catch(() => console.log("error stopping typing"));
           }
         }, 100);
       }
     },
     openChat(friend) {
       let friendship_id = friend._id;
-      if (this.mode === "search") {
+      if (
+        this.mode === CONSTANTS.sideList.MODES.SEARCH ||
+        this.mode === CONSTANTS.sideList.MODES.FRIEND_REQUESTS
+      ) {
         this.modalData.visibleProfile = friend;
         this.modalData.openProfile = true;
         return;
@@ -425,18 +441,33 @@ export default Vue.extend({
       this.highlightedMessageId = null;
     }
   },
-  created() {
-    // this.setUpApp();
-  },
   computed: {
-    ...mapGetters([
-      "friends",
-      "user",
-      "messages",
-      "unreadIndex",
-      "socket",
-      "currChat"
-    ]),
+    ...mapGetters(["friends", "user", "messages", "socket", "currChat"]),
+    sideListDisplayItems() {
+      switch (this.mode) {
+        case CONSTANTS.sideList.MODES.FRIEND_REQUESTS:
+          return this.user.interactions.receivedRequests;
+        case CONSTANTS.sideList.MODES.FRIENDS:
+          return this.friends;
+        case CONSTANTS.sideList.MODES.SEARCH:
+          return this.searchResults;
+        default:
+          return [];
+      }
+    },
+    sideListDisplayName() {
+      switch (this.mode) {
+        case CONSTANTS.sideList.MODES.FRIEND_REQUESTS:
+          return "Friend Requests";
+        case CONSTANTS.sideList.MODES.FRIENDS:
+          return "Friends";
+        case CONSTANTS.sideList.MODES.SEARCH:
+          return "Search";
+        default:
+          return [];
+      }
+    },
+
     sideMenuData() {
       return [
         {
@@ -458,6 +489,11 @@ export default Vue.extend({
           type: "click",
           name: "search",
           handler: this.setSearch
+        },
+        {
+          type: "click",
+          name: "freind requests",
+          handler: this.setFriendrequests
         },
         {
           type: "submenu",
@@ -593,12 +629,14 @@ export default Vue.extend({
 @keyframes bigup {
   0% {
     position: fixed;
-    left: 50%;
-    top: 50%;
+    left: initial;
+    top: initial;
     transform: translateX(-50%) translateY(-50%);
     z-index: 99999;
   }
   50% {
+    left: 50%;
+    top: 50%;
     width: unset;
     height: 90%;
   }
@@ -624,7 +662,7 @@ export default Vue.extend({
 }
 
 .chatList {
-  height: 100%;
+  height: calc(100vh - var(--main-header-height));
 }
 .home {
   --main-header-height: 50px;
@@ -661,8 +699,9 @@ export default Vue.extend({
   height: var(--main-header-height);
 }
 
-/* .side-menu button,
 .menubt {
+  --display: none;
+  --notification-content: "";
   background-color: transparent;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -670,11 +709,11 @@ export default Vue.extend({
     font-weight: bold;
     background-color: transparent;
   }
-} */
+}
 
 .main-section {
   display: flex;
-  height: calc(100vh - 50px);
+  height: 100vh;
 }
 
 .chat-header {
@@ -692,6 +731,8 @@ export default Vue.extend({
     cursor: pointer;
     width: 80px;
     height: 80px;
+    top: initial;
+    left: initial;
     border-radius: 50%;
     margin-right: 16px;
 
@@ -731,12 +772,13 @@ export default Vue.extend({
     width: 100vw;
   }
   .active-chat {
-    height: calc(100vh - var(--main-header-height));
+    height: 100vh;
   }
   .chatBack {
     display: block;
     color: white;
     font-weight: bold;
+    width: 40px;
     background-color: transparent;
     border: none;
     padding: 0px 8px;

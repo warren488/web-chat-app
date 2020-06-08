@@ -1,5 +1,5 @@
 <template>
-  <div class="centered-form">
+  <div class="form-container">
     <modal
       @close="modal.show = false"
       :showModal="modalData.show"
@@ -8,7 +8,7 @@
     <div class="centered-form__form">
       <form @submit.prevent="login" id="login">
         <div class="form-field">
-          <h3>Login</h3>
+          <h3 class="">Login</h3>
         </div>
         <div class="form-field">
           <label for="username">username</label>
@@ -27,7 +27,7 @@
             name="password"
           />
         </div>
-        <div class="feedback" ref="feedback">
+        <div v-if="feedbackText" class="feedback" ref="feedback">
           {{ feedbackText }}
         </div>
         <div class="form-field">
@@ -42,10 +42,18 @@
 </template>
 <script lang="ts">
 import Modal from "@/components/modal.vue"; // @ is an alias to /src
-import { login, setCookie, getFriends } from "@/common/index.ts";
+import {
+  login,
+  setCookie,
+  getFriends,
+  signInToFirebase,
+  getFirebaseSigninToken
+} from "@/common/index.ts";
+import { errorToMessage } from "@/common/network";
 import Vue from "vue";
 import axios, { AxiosPromise } from "axios";
 import { mapActions } from "vuex";
+
 export default Vue.extend({
   components: { Modal },
   data() {
@@ -58,38 +66,34 @@ export default Vue.extend({
         show: false,
         text: ""
       },
-      feedback: "feedback"
+      feedback: ""
     };
   },
   methods: {
     ...mapActions(["setUpApp"]),
     async login(): Promise<Boolean> {
+      this.feedback = "";
       if (
         !this.isTrueString(this.userData.username) ||
         !this.isTrueString(this.userData.password)
       ) {
-        this.modal.text = "username and passowrd are required";
-        this.modal.show = true;
+        this.feedback = "username and passowrd are required";
         return false;
       }
       let authData;
       try {
         authData = (await login(this.userData)).data;
+        /** i dont think we necessarily need to wait on or keep track of this
+         * it should complete before the user tries to send any images or audio,
+         * remember this is required for only writes and not reads */
+        getFirebaseSigninToken().then(token => signInToFirebase(token));
         setCookie("username", authData.username, 1000000);
         setCookie("token", authData.token, 1000000);
         await this.setUpApp();
         this.$router.push("/home");
         return true;
       } catch (error) {
-        // console.log(JSON.stringify(error));
-        console.log(error);
-        if (
-          error.response.status === 404 &&
-          error.response.data.message === "user not found"
-        ) {
-          this.feedback = "User not found";
-        }
-        return false;
+        this.feedback = errorToMessage(error);
       }
     },
     isTrueString(string: String): Boolean {
@@ -107,15 +111,20 @@ export default Vue.extend({
 });
 </script>
 <style lang="scss" scoped>
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: HelveticaNeue-Light, "Helvetica Neue Light", "Helvetica Neue",
-    Helvetica, Arial, "Lucida Grande", sans-serif;
-  font-weight: 300;
-  font-size: 0.95rem;
+.newerror {
+  --error-color: rgb(200, 0, 0);
 }
+.olderror {
+  --error-color: darkred;
+}
+
+.feedback {
+  background-color: red;
+  font-weight: bold;
+  color: white;
+  box-shadow: 0px 0px 3px 5px red;
+}
+
 .form-field h3 {
   font-weight: 600;
   text-align: center;
@@ -146,39 +155,12 @@ export default Vue.extend({
   border: 1px solid #e1e1e1;
   padding: 10px;
 }
-.centered-form {
+.form-container {
   display: flex;
   align-items: center;
+  justify-content: center;
   height: 100vh;
   width: 100vw;
-  justify-content: center;
-  background: -moz-linear-gradient(
-    125deg,
-    rgb(39, 130, 51) 0,
-    rgb(110, 129, 49) 100%
-  );
-  background: -webkit-gradient(
-    linear,
-    left top,
-    right bottom,
-    color-stop(0, rgb(39, 130, 51)),
-    color-stop(100%, rgb(110, 129, 49))
-  );
-  background: -webkit-linear-gradient(
-    125deg,
-    rgb(39, 130, 51) 0,
-    rgb(110, 129, 49) 100%
-  );
-  background: -o-linear-gradient(
-    125deg,
-    rgb(39, 130, 51) 0,
-    rgb(110, 129, 49) 100%
-  );
-  background: -ms-linear-gradient(
-    125deg,
-    rgb(39, 130, 51) 0,
-    rgb(110, 129, 49) 100%
-  );
   background: linear-gradient(
     325deg,
     rgb(39, 130, 51) 0,

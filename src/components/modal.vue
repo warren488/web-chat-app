@@ -22,7 +22,7 @@
               <slot name="footer">
                 <button
                   ref="closeButton"
-                  class="modal-default-button"
+                  class="modal-default-button mybt"
                   @click="$emit('close')"
                 >
                   OK
@@ -54,7 +54,6 @@ export default {
           if (this.$refs.closeButton) {
             this.$refs.closeButton.focus();
           } else if (this.$refs.container) {
-            console.log("here");
             this.$refs.container.focus();
           }
         }, 30);
@@ -111,10 +110,6 @@ export default {
 
 .modal-default-button {
   float: right;
-  cursor: pointer;
-  background-color: lightgray;
-  border-radius: 2px;
-  padding: 4px;
 }
 
 /*

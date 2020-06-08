@@ -4,12 +4,16 @@ import {
   getFriends,
   getMessages,
   getCookie,
-  eventBus,
   baseURI,
   notifyMe,
   getUserInfo,
-  setCookie
+  setCookie,
+  binaryCustomSearch,
+  markDOMElementAsRead,
+  sortMessageArray
 } from "@/common";
+
+import { eventBus } from "@/common/eventBus";
 import io from "socket.io-client";
 
 /**
@@ -24,7 +28,6 @@ export default new Vuex.Store({
     user: null,
     friends: null,
     messages: null,
-    unreadIndex: {},
     dataLoaded: false,
     enableSoundNotif: ["true", null].includes(getCookie("soundNotifPref")),
     enableVisualNotif: ["true", null].includes(getCookie("notifPref")),
@@ -40,7 +43,6 @@ export default new Vuex.Store({
     currChat: state => state.currChat,
     notifAudio: state => new Audio(`/${state.notifAudioFile}`),
     friends: state => state.friends,
-    unreadIndex: state => state.unreadIndex,
     initFriends: state => state.friends === null,
     initMessages: state => state.messages === null
   },
@@ -62,8 +64,7 @@ export default new Vuex.Store({
     },
     loadMessages: async (context, { friendship_id, limit = 50 }) => {
       return getMessages(friendship_id, limit)
-        .then(({ data, unreadIndex }) => {
-          context.state.unreadIndex[friendship_id] = unreadIndex;
+        .then(({ data }) => {
           context.commit("setChat", { friendship_id, data });
         })
         .catch(console.log);
@@ -77,7 +78,7 @@ export default new Vuex.Store({
       if (context.state.messages === null) {
         context.state.messages = {};
       }
-      context.state.socket = io(baseURI);
+      context.state.socket = io(baseURI, { forceNew: true });
       await context.dispatch("attachListeners");
 
       let promiseArr = [];
@@ -100,6 +101,23 @@ export default new Vuex.Store({
 
       getUserInfo().then(({ data }) => {
         context.state.user = data;
+        console.log(data);
+        // basically im trying to run this event as soon as it is safe to call socket.emit
+        if (!context.state.socket.connected) {
+          context.state.socket.on("connect", () => {
+            context.state.socket.emit("checkin", {
+              // @ts-ignore
+              friendship_id: data.id,
+              token: getCookie("token")
+            });
+          });
+        } else {
+          context.state.socket.emit("checkin", {
+            // @ts-ignore
+            friendship_id: data.id,
+            token: getCookie("token")
+          });
+        }
         context.state.friends &&
           context.state.friends.forEach(friend => {
             let friendship_id = friend._id;
@@ -111,7 +129,6 @@ export default new Vuex.Store({
                    * althoughg it only fires once hmmmm....
                    * maybe we dont need to attach these listeners after we get all messages (but i think we do)
                    */
-                  console.log(`connect ${friendship_id}`);
                   if (!context.state.socket.connected) {
                     context.state.socket.on("connect", () => {
                       context.state.socket.emit("checkin", {
@@ -149,17 +166,40 @@ export default new Vuex.Store({
       });
 
       context.state.socket.on("newMessage", async data => {
-        console.log("newmessage");
         await context.dispatch("socketNewMessageHandler", data);
       });
       context.state.socket.on(
         "received",
-        async data => await context.dispatch("socketReceivedHandler", data)
+        async data => await context.dispatch("socketReceivedHandler2", data)
       );
       context.state.socket.on(
         "sweep",
-        async data => await context.dispatch("socketSweepHandler", data)
+        async data => await context.dispatch("socketSweepHandler2", data)
       );
+      context.state.socket.on(
+        "newFriend",
+        async data => await context.dispatch("socketNewFriendHandler", data)
+      );
+      context.state.socket.on(
+        "newFriendRequest",
+        async data =>
+          await context.dispatch("socketNewFriendRequestHandler", data)
+      );
+    },
+    socketNewFriendHandler: (context, data) => {
+      console.log("new friend", data);
+      context.state.friends.push({ ...data.friendshipData, lastMessage: [] });
+      context.state.messages[data.friendshipData._id] = [];
+      context.state.socket.emit("checkin", {
+        friendship_id: data.friendshipData._id,
+        token: getCookie("token")
+      });
+      eventBus.$emit("newFriend", data);
+    },
+    socketNewFriendRequestHandler: (context, data) => {
+      console.log("new freq", data);
+      eventBus.$emit("newFriendRequest", data);
+      context.state.user.interactions.receivedRequests.push(data);
     },
     socketNewMessageHandler: (context, { token, data }) => {
       if (token === getCookie("token")) {
@@ -200,6 +240,7 @@ export default new Vuex.Store({
           fromId: data.fromId,
           type: data.type,
           media: data.media,
+          meta: data.meta,
           url: data.url
         }
       });
@@ -207,95 +248,106 @@ export default new Vuex.Store({
         friendship_id: data.friendship_id,
         lastMessage: data
       });
+      // context.commit("incrementNotificationCount", {
+      //   friendship_id: data.friendship_id
+      // });
       /** let the next user know that this message is green ticked */
       /** if we are signed in on multiple devices only tick if the message isnt coming from us */
       if (data.fromId !== context.state.user.id) {
-        context.state.socket.emit(
-          "gotMessage",
-          {
-            friendship_id: data.friendship_id,
-            token: getCookie("token"),
-            Ids: data.Ids
-          },
-          () => console.log("message ticked")
-        );
+        context.state.socket.emit("gotMessage", {
+          friendship_id: data.friendship_id,
+          token: getCookie("token"),
+          Ids: data.Ids,
+          createdAt: data.createdAt
+        });
       }
     },
-    socketSweepHandler(context, { range, friendship_id, fromId }) {
+    socketSweepHandler2(context, { range, friendship_id, fromId }) {
       if (fromId === context.state.user.id) {
         return;
       }
-      // mark all the indexes within this range as read
-      // context.state.unreadIndex[friendship_id].forEach((message, index) => {
-      //   if (message.createdAt <= range[0] && message.createdAt >= range[1]) {
-      //     console.log(
-      //       `sweeping`,
-      //       context.state.messages[friendship_id][message.orderedIndex]
-      //     );
-      //     context.state.messages[friendship_id][message.orderedIndex].status =
-      //       "received";
-      //     let messageNode = document.getElementById(message._id);
-      //     if (messageNode) {
-      //       messageNode.classList.remove("pending");
-      //       messageNode.classList.remove("sent");
-      //       messageNode.classList.add("received");
-      //     }
-      //   }
-      //   // delete the unused element but how will that affect the foreach loop
-      // });
+      let startIndex;
+      let result = binaryCustomSearch(context.state.messages[friendship_id], {
+        createdAt: range[0]
+      });
+      if (typeof result === "number") {
+        startIndex = result;
+      } else if (result.gt !== -1) {
+        startIndex = result.gt + 1;
+      } else {
+        startIndex = result.lt;
+      }
       for (
-        let i = 0;
-        i < context.state.unreadIndex[friendship_id].length;
+        let i = startIndex;
+        i < context.state.messages[friendship_id].length;
         i++
       ) {
-        const message = context.state.unreadIndex[friendship_id][i];
-        if (message.createdAt <= range[0] && message.createdAt >= range[1]) {
-          context.state.messages[friendship_id][message.orderedIndex].status =
-            "received";
-          let messageNode = document.getElementById(message._id);
-          if (messageNode) {
-            messageNode.classList.remove("pending");
-            messageNode.classList.remove("sent");
-            messageNode.classList.add("received");
-          }
-          // remove the current item since its not remove and decrement the iterator
-          // since the array length changed
-          context.state.unreadIndex[friendship_id].splice(i, 1);
-          i--;
+        const message = context.state.messages[friendship_id][i];
+        /** if we reach the end of the range then break out of the loop */
+        if (message.createdAt > range[1]) {
+          break;
+        }
+        message.status = "received";
+        let messageNode = document.getElementById(message._id);
+        if (messageNode) {
+          messageNode.classList.remove("pending");
+          messageNode.classList.remove("sent");
+          messageNode.classList.add("received");
         }
       }
     },
-    socketReceivedHandler(context, data) {
-      console.log("received");
-      data.Ids.forEach(Id => {
-        context.state.unreadIndex[data.friendship_id].forEach(function(
-          unreadMsg,
-          indexInUnread
-        ) {
-          console.log(`${unreadMsg._id} === ${Id}`);
-          if (unreadMsg._id === Id) {
-            context.commit("updateReceivedMessage", {
-              friendship_id: data.friendship_id,
-              index: unreadMsg.orderedIndex,
-              indexInUnread
-            });
-          }
-        });
-        /** @todo this is a pretty bad thing to do i need to check back and see if vue picks up these changes */
-        let message = document.getElementById(Id);
-        if (message) {
-          message.classList.remove("pending");
-          message.classList.remove("sent");
-          message.classList.add("received");
-        }
+    socketReceivedHandler2(context, { friendship_id, Id, createdAt }) {
+      let index = binaryCustomSearch(context.state.messages[friendship_id], {
+        createdAt
       });
+      if (typeof index === "number") {
+        const message = context.state.messages[friendship_id][index];
+        if (message._id === Id) {
+          message.status = "received";
+          markDOMElementAsRead(Id);
+        } else {
+          // this case means we must have multiple messages with the same timestamp
+          const messages = context.state.messages[friendship_id];
+          let found = false;
+          // loop up while messages still have identical timestamps
+          for (let i = index; i < messages.length; i++) {
+            if (messages[i].createdAt === createdAt) {
+              if (messages[i]._id === Id) {
+                messages[i].status = "received";
+                markDOMElementAsRead(Id);
+                found = true;
+                // break if we find the message to mark
+                break;
+              }
+            } else {
+              // break if we are no longer looping through messages with the same createdAt
+              break;
+            }
+          }
+          if (!found) {
+            // loop down while messages still have identical timestamps
+            for (let i = index; i >= 0; i--) {
+              if (messages[i].createdAt === createdAt) {
+                if (messages[i]._id === Id) {
+                  messages[i].status = "received";
+                  markDOMElementAsRead(Id);
+                  found = true;
+                  // break if we find the message to mark
+                  break;
+                }
+              } else {
+                // break if we are no longer looping through messages with the same createdAt
+                break;
+              }
+            }
+          }
+        }
+      }
     },
     /** @todo this needs error handling */
     /** @todo this works with polling events before initial connect but what about reconnect */
     emitEvent(context, { eventName, data }) {
       return new Promise((resolve, reject) => {
-        console.log("emit", { eventName, data });
-
         if (!context.state.socket.connected) {
           context.state.socket.on("connect", () => {
             context.state.socket.emit(
@@ -331,12 +383,25 @@ export default new Vuex.Store({
     resetState: (state, data) => {
       state.friends = null;
       state.messages = null;
-      state.unreadIndex = {};
       state.dataLoaded = false;
       state.dataLoadStarted = false;
       state.socket = null;
       state.currChat = "";
       state.friendshipIds = [];
+    },
+    incrementNotificationCount(state, { friendId, friendship_id }) {
+      let targetFriend;
+      state.friends.forEach(friend => {
+        if (friend.id === friendId || friend._id === friendship_id) {
+          targetFriend = friend;
+        }
+      });
+      if ("notificationCount" in targetFriend) {
+        targetFriend.notificationCount++;
+      } else {
+        // assume there were no notifications before so just set it to 1
+        targetFriend.notificationCount = 1;
+      }
     },
     setFriends(state, friends) {
       state.friends = friends;
@@ -364,7 +429,10 @@ export default new Vuex.Store({
       let index = state.friends.findIndex(friend => {
         return friend._id === friendship_id;
       });
-      if (state.friends[index].lastMessage[0].status !== "typing") {
+      if (
+        !state.friends[index].lastMessage[0] ||
+        state.friends[index].lastMessage[0].status !== "typing"
+      ) {
         state.friends[index].lastMessage.unshift({
           text: "typing...",
           status: "typing"
@@ -379,7 +447,12 @@ export default new Vuex.Store({
       let index = state.friends.findIndex(friend => {
         return friend._id === friendship_id;
       });
-      if (!(state.friends[index].lastMessage[0].status === "typing")) {
+      if (
+        !(
+          state.friends[index].lastMessage[0] &&
+          state.friends[index].lastMessage[0].status === "typing"
+        )
+      ) {
         return;
       }
       state.friends[index].lastMessage.shift();
@@ -405,21 +478,11 @@ export default new Vuex.Store({
     updateSentMessage(state, data) {
       state.messages[data.friendship_id][data.index]._id = data.id;
       state.messages[data.friendship_id][data.index].status = "sent";
-      console.log(`update sent ${data.indexInUnread}`);
-      if (typeof data.indexInUnread === "number") {
-        state.unreadIndex[data.friendship_id][data.indexInUnread]._id = data.id;
-        state.unreadIndex[data.friendship_id][data.indexInUnread].status =
-          "sent";
-      }
+      state.messages[data.friendship_id][data.index].createdAt = data.createdAt;
+      state.messages[data.friendship_id].sort(sortMessageArray);
     },
     updateReceivedMessage(state, data) {
       state.messages[data.friendship_id][data.index].status = "received";
-      if (typeof data.indexInUnread === "number") {
-        state.unreadIndex[data.friendship_id].splice(data.indexInUnread, 1);
-      }
-    },
-    pushToUnreadIndex(state, { friendship_id, data }) {
-      state.unreadIndex[friendship_id].push(data);
     }
   }
 });

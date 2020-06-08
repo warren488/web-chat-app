@@ -8,7 +8,8 @@ import {
 } from "./interfaces";
 import * as firebase from "firebase/app";
 import "firebase/storage";
-import Vue from "vue";
+import "firebase/auth";
+import { Notyf } from "notyf";
 import store from "@/store";
 
 // Your web app's Firebase configuration
@@ -24,37 +25,86 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-// export const baseURI = "http://localhost:3001";
+// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+export const baseURI = "http://localhost:3002";
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
 
+export const CONSTANTS = Object.freeze({
+  sideList: {
+    MODES: {
+      FRIENDS: 1,
+      SEARCH: 2,
+      FRIEND_REQUESTS: 3
+    }
+  }
+});
 export const clearNotifications = async () => {
-  return navigator.serviceWorker
-    .getRegistration("/worker.js")
-    .then(registration => {
-      registration.getNotifications().then(notifications => {
-        notifications.forEach(notification => {
-          notification.close();
-        });
+  if ("serviceWorker" in navigator) {
+    return navigator.serviceWorker
+      .getRegistration("/worker.js")
+      .then(registration => {
+        if (registration) {
+          registration.getNotifications().then(notifications => {
+            notifications.forEach(notification => {
+              notification.close();
+            });
+          });
+        }
       });
-    });
+  }
 };
 
 export const subscribeToNotif = async () => {
-  if ("serviceWorker" in navigator) {
-    const registration = await navigator.serviceWorker.register("/worker.js", {
-      scope: "/"
+  try {
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.register(
+        "/worker.js",
+        {
+          scope: "/"
+        }
+      );
+      registration.update();
+      await requestPermission();
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(pubKey)
+      });
+      await fetch(`${baseURI}/api/users/${store.state.user.id}/subscribe`, {
+        method: "POST",
+        body: JSON.stringify(subscription),
+        headers: {
+          "content-type": "application/json",
+          "x-auth": getCookie("token")
+        }
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    let parsedError = error;
+    if (error instanceof Error) {
+      parsedError = {
+        errString: error.toString(),
+        stack: error.stack,
+        message: error.message
+      };
+    }
+    let notification = new Notyf({
+      duration: 7000,
+      dismissible: true,
+      position: { x: "center", y: "top" }
     });
-    registration.update();
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(pubKey)
-    });
-    await fetch(`${baseURI}/api/users/${store.state.user.id}/subscribe`, {
+    notification.error(
+      `there was an error subscribing to the push notifications `
+    );
+    fetch(`${baseURI}/api/crashreport`, {
       method: "POST",
-      body: JSON.stringify(subscription),
+      body: JSON.stringify({
+        error: parsedError,
+        userId: store.state.user.id,
+        userAgent: navigator.userAgent
+      }),
       headers: {
         "content-type": "application/json",
         "x-auth": getCookie("token")
@@ -73,38 +123,78 @@ export const unsubscribeToNotif = async () => {
   });
 };
 
-export const uploadToFireBase = file => {
-  // Create a root reference
-  var storageRef = firebase.storage().ref();
+export const markDOMElementAsRead = Id => {
+  let messageElement = document.getElementById(Id);
+  if (messageElement) {
+    messageElement.classList.remove("pending");
+    messageElement.classList.remove("sent");
+    messageElement.classList.add("received");
+  }
+};
 
-  // Create a reference to 'images/mountains.jpg'
-  var ref = storageRef.child(`profileImages/.jpg${file.name}`);
+export const uploadToFireBase = (file, location?: string) => {
+  // Create a root reference
+  let storageRef = firebase.storage().ref();
+  let extension = file.name.split(".").pop();
+  let ref = storageRef.child(
+    /** @nb the off chance a users uploads 2 things at the same time? */
+    `${location || ""}/${Date.now()}.${extension}`
+  );
   return ref.put(file).then(function(snapshot) {
     return snapshot.ref.getDownloadURL();
   });
 };
 
-export const addAudioToFirebase = blob => {
+export const addAudioToFirebase = (blob, friendship_id) => {
   var storageRef = firebase.storage().ref();
-  var ref = storageRef.child(`voicenotes/${Date.now()}.${store.state.user.id}`);
+  var ref = storageRef.child(
+    `voicenotes/${store.state.user.id}/${friendship_id}/${Date.now()}`
+  );
   return ref.put(blob, { contentType: "audio/webm" }).then(function(snapshot) {
     return snapshot.ref.getDownloadURL();
   });
 };
 
-export const eventBus = new Vue({
-  methods: {
-    dataLoaded() {
-      this.$emit("loaded");
+export const signInToFirebase = token => {
+  return firebase
+    .auth()
+    .signInWithCustomToken(token)
+    .catch(function(error) {
+      // Handle Errors here.
+      let errorCode = error.code;
+      let errorMessage = error.message;
+      console.log(errorCode, errorMessage);
+      // ...
+    });
+};
+
+export const getFirebaseSigninToken = () => {
+  return fetch(`${baseURI}/api/users/me/generatefbtoken`, {
+    method: "POST",
+    headers: {
+      "x-auth": getCookie("token")
     }
-  }
-});
+  }).then(res => res.json());
+};
+
+export const signOutOfFirebase = () => {
+  return firebase
+    .auth()
+    .signOut()
+    .catch(function(error) {
+      // Handle Errors here.
+      let errorCode = error.code;
+      let errorMessage = error.message;
+      console.log(errorCode, errorMessage);
+      // ...
+    });
+};
 
 export function encodeBase64(file) {
   return new Promise((resolve, reject) => {
     var imgReader = new FileReader();
     imgReader.onloadend = function() {
-      console.log("Base64 Format", resolve(imgReader.result));
+      resolve(imgReader.result);
     };
     imgReader.onerror = reject;
     imgReader.readAsDataURL(file);
@@ -163,6 +253,16 @@ export const signup = async (userData: Object): Promise<RegisterResponse> => {
     url: `${baseURI}/api/signup`,
     data: userData
   });
+};
+
+export const sortMessageArray = (a, b) => {
+  if (a.createdAt > b.createdAt) {
+    return 1;
+  } else if (a.createdAt < b.createdAt) {
+    return -1;
+  } else {
+    return 0;
+  }
 };
 
 export const checkusername = async (username): Promise<Boolean> => {
@@ -229,16 +329,30 @@ export const getFriends = async (): Promise<getFriendsResponse> => {
   });
 };
 
-export const addFriend = async (
-  username: string
+export const addFriend = async ({
+  username,
+  id
+}): Promise<getFriendsResponse> => {
+  return await axios({
+    method: "POST",
+    headers: {
+      "x-auth": getCookie("token")
+    },
+    // endpoint will prioritize id
+    data: { username, id },
+    url: `${baseURI}/api/users/me/friends`
+  });
+};
+export const sendRequest = async (
+  friendId: string
 ): Promise<getFriendsResponse> => {
   return await axios({
     method: "POST",
     headers: {
       "x-auth": getCookie("token")
     },
-    data: { username },
-    url: `${baseURI}/api/users/me/friends`
+    data: { friendId },
+    url: `${baseURI}/api/users/me/friendRequests`
   });
 };
 
@@ -285,7 +399,7 @@ export const getMessages = async (
       "x-auth": getCookie("token")
     }
   }).then(({ data: messages }) => {
-    /** remember in messages the last message is the first item in the array */
+    /** lower limit is earliest message */
     if (messages.length > 0) {
       let recPromise = markAsReceived(friendship_id, [
         messages[0].createdAt,
@@ -294,22 +408,7 @@ export const getMessages = async (
         console.log("failed to mark as received");
       });
     }
-    let orderedMessages = [];
-    let unreadIndex = [];
-    for (let i = messages.length - 1; i >= 0; i--) {
-      let orderedIndex = orderedMessages.push(messages[i]) - 1;
-      if (
-        messages[i].status !== "received" &&
-        messages[i].fromId === store.state.user.id
-      ) {
-        /**
-         * we can choose to loop through this index for searching or create an index for this index
-         * on the createdAt date
-         */
-        unreadIndex.push({ ...messages[i], orderedIndex });
-      }
-    }
-    return { data: orderedMessages, unreadIndex };
+    return { data: messages };
   });
 };
 
@@ -333,20 +432,41 @@ export const getMessagePage = async (
     ]).catch(() => {
       console.log("failed to mark as received");
     });
-    let orderedMessages = [];
-    let unreadIndex = [];
-    for (let i = messages.length - 1; i >= 0; i--) {
-      let orderedIndex = orderedMessages.push(messages[i]);
-      if (messages[i].status !== "received") {
-        /**
-         * we can choose to loop through this index for searching or create an index for this index
-         * on the createdAt date
-         */
-        unreadIndex.push({ ...messages[i], orderedIndex });
-      }
-    }
-    return { data: orderedMessages, unreadIndex };
+    return { data: messages };
   });
+};
+
+export const binaryCustomSearch = function(arr, x) {
+  if (arr.length === 0) {
+    return 0;
+  }
+
+  let start = 0,
+    end = arr.length - 1,
+    gt = -1,
+    lt = -1;
+
+  // Iterate while start not meets end
+  while (start <= end) {
+    // Find the mid index
+    let mid = Math.floor((start + end) / 2);
+
+    // If element is present at mid, return True
+    if (arr[mid].createdAt === x.createdAt) {
+      return mid;
+    }
+
+    // Else look in left or right half accordingly
+    else if (arr[mid].createdAt < x.createdAt) {
+      start = mid + 1;
+      gt = mid;
+    } else {
+      end = mid - 1;
+      lt = mid;
+    }
+  }
+
+  return { lt, gt };
 };
 
 export const getLastMessage = async (friendship_id: string) => {
@@ -425,6 +545,25 @@ export const notifyMe = data => {
     console.log(error);
   }
 };
+
+async function requestPermission() {
+  if (Notification.permission === "granted") {
+    return true;
+  }
+
+  // Otherwise, we need to ask the user for permission
+  else if (Notification.permission !== "denied") {
+    return Notification.requestPermission().then(function(permission) {
+      // If the user accepts, let's create a notification
+      if (permission === "granted") {
+        return true;
+      }
+      return false;
+    });
+  } else {
+    return false;
+  }
+}
 
 export class FocusGrabber {
   isLive: Boolean;

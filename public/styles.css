@@ -1,5 +1,6 @@
 body {
     margin: 0;
+    color: rgb(0, 51, 0);
 }
 
 body,
@@ -11,7 +12,7 @@ html {
     box-sizing: border-box;
     margin: 0;
     margin-bottom: 0px;
-    padding: 0;
+    /* padding: 0; */
     font-family: HelveticaNeue-Light, "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
 }
 
@@ -26,7 +27,7 @@ html {
 }
 
 .mybt:disabled {
-    cursor: default;
+    cursor: not-allowed;
     background: rgb(150, 180, 155);
 }
 
@@ -43,4 +44,27 @@ html {
 
 .mybt::-moz-focus-inner {
     border: none;
+}
+
+.notification-item {
+    --notification-content: "";
+    --display: none;
+    position: relative;
+}
+
+.notification-item::after {
+    display: var(--display);
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    width: 16px;
+    font-weight: bold;
+    height: 16px;
+    font-size: 16px;
+    border-radius: 50%;
+    color: white;
+    background-color: red;
+    content: var(--notification-content);
+    bottom: var(--notif-bottom-pos, -4px);
+    right: var(--notif-right-pos, -4px);
 }

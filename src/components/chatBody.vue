@@ -20,15 +20,21 @@
             <p class="reply" @click="replyClick(message._id)">reply</p>
           </div>
           <div class="message__body">
-            <p v-if="message.type !== 'media'" class="wrap">
-              {{ message.text }}
-            </p>
             <audio
               class="audiomessage"
               v-if="message.type === 'media' && message.media === 'audio'"
               :src="message.url"
               controls
             ></audio>
+            <imagepreview
+              :fitToBox="true"
+              :componentLength="300"
+              v-if="message.type === 'media' && message.media === 'image'"
+              :message="message"
+            />
+            <p v-if="message.media !== 'audio'" class="wrap">
+              {{ message.text }}
+            </p>
             <span v-if="message.quoted" class="quoted">
               <div class="message__title">
                 <h4>
@@ -69,6 +75,10 @@ interface Message {
 }
 import Vue from "vue";
 import { mapGetters } from "vuex";
+// @ts-ignore
+import messageImage from "./messageImage";
+// @ts-ignore
+import imagepreview from "./imagepreview";
 
 export default Vue.extend({
   props: {
@@ -76,6 +86,7 @@ export default Vue.extend({
     messages: Array,
     highlighted: String
   },
+  components: { imagepreview },
   data() {
     return {};
   },
@@ -145,6 +156,10 @@ export default Vue.extend({
 .audiomessage {
   max-width: 100%;
 }
+/* .imagemessage {
+  width: 100%;
+  max-width: 500px;
+} */
 
 .reply {
   color: #999;

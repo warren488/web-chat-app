@@ -6,28 +6,27 @@ self.addEventListener("push", async function(e) {
   let searchOptions = { tag: data.from };
   let newBody = data.text;
   let dataCount = 1;
-  self.registration
-    .getNotifications(searchOptions)
-    .then(function(notifications) {
-      console.log(notifications);
-      // in reality this apps use cases for tags should mean there will never
-      // be more than one notification with the same tag.... for now
-      notifications.forEach(notification => {
-        newBody += `\n${notification.body}`;
-        dataCount += notification.data;
-        notification.close();
-      });
-      return self.registration.showNotification(
-        `${data.title}${dataCount > 1 ? ` (${dataCount})` : ""}`,
-        {
-          body: newBody,
-          tag: data.from,
-          badge: "/test-72x72.png",
-          data: dataCount,
-          vibrate: [400]
-        }
-      );
-    });
+  // self.registration
+  //   .getNotifications(searchOptions)
+  //   .then(function(notifications) {
+  //     // in reality this apps use cases for tags should mean there will never
+  //     // be more than one notification with the same tag.... for now
+  //     notifications.forEach(notification => {
+  //       newBody += `\n${notification.body}`;
+  //       dataCount += notification.data;
+  //       notification.close();
+  //     });
+  return self.registration.showNotification(
+    `${data.title}${dataCount > 1 ? ` (${dataCount})` : ""}`,
+    {
+      body: newBody,
+      tag: data.from,
+      badge: "/test-72x72.png",
+      data: dataCount,
+      vibrate: [400]
+    }
+  );
+  // });
 });
 
 // Notification click event listener
