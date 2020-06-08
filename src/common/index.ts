@@ -25,8 +25,8 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-export const baseURI = "http://localhost:3002";
+export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+// export const baseURI = "http://localhost:3002";
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
@@ -633,6 +633,34 @@ export const scrollBottom = function scrollBottom({ force, test }) {
   }
 
   // this.$refs.messageScroll.scrollTop = scrollHeight;
+  // console.log(clientHeight, scrollHeight, scrollTop);
+};
+
+/** @todo eventually refactor and let this replace the old one */
+export const scrollBottom2 = function scrollBottom({ element, force, test }) {
+  let newMessage: HTMLElement = element.querySelector("ol li:last-child");
+  let doScroll = !!force;
+  if (newMessage) {
+    let clientHeight = element.clientHeight;
+    let scrollTop = element.scrollTop;
+    let scrollHeight = element.scrollHeight;
+
+    let newMessageHeight = newMessage.clientHeight;
+    let lastMessage = element.querySelector("ol li:nth-last-child(2)");
+
+    let lastMessageHeight = lastMessage ? lastMessage.clientHeight : 0;
+    doScroll = !doScroll
+      ? clientHeight + scrollTop + newMessageHeight + lastMessageHeight >=
+        scrollHeight
+      : doScroll;
+    if (doScroll && !test) {
+      element.scrollTop = scrollHeight + newMessageHeight + newMessageHeight;
+    } else if (test) {
+      return doScroll;
+    }
+  }
+
+  // element.scrollTop = scrollHeight;
   // console.log(clientHeight, scrollHeight, scrollTop);
 };
 

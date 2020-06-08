@@ -93,6 +93,7 @@ export default Vue.extend({
         this.$router.push("/home");
         return true;
       } catch (error) {
+        console.log(error);
         this.feedback = errorToMessage(error);
       }
     },

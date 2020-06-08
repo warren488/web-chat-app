@@ -10,7 +10,9 @@ import {
   setCookie,
   binaryCustomSearch,
   markDOMElementAsRead,
-  sortMessageArray
+  sortMessageArray,
+  markAsReceived,
+  scrollBottom2
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
@@ -155,10 +157,60 @@ export default new Vuex.Store({
     },
     attachListeners: context => {
       context.state.socket.on("reconnect", (...args) => {
-        context.dispatch("emitEvent", {
-          eventName: "masCheckin",
-          data: context.state.friendshipIds
+        let checkinData = {};
+        context.state.friendshipIds.forEach(id => {
+          if (context.state.messages[id]) {
+            checkinData[id] =
+              context.state.messages[id][context.state.messages[id].length - 1];
+          } else {
+            checkinData[id] = null;
+          }
         });
+        context
+          .dispatch("emitEvent", {
+            eventName: "masCheckin",
+            data: checkinData
+          })
+          .then(newMessages => {
+            /** @todo scrolling behaviour doesnt feel like it should be here */
+            let shouldScroll;
+            let chatBody = document.querySelector(`.chat__main`);
+            /** figure out if we should scroll to force it later since our function wont work well with multiple new messages */
+            if (chatBody) {
+              shouldScroll = scrollBottom2({
+                element: chatBody,
+                force: false,
+                test: true
+              });
+            }
+            for (let friendship_id in newMessages) {
+              newMessages[friendship_id].sort(sortMessageArray);
+              context.commit("addBulkPreSortedMessages", {
+                friendship_id,
+                messages: newMessages[friendship_id]
+              });
+              markAsReceived(friendship_id, [
+                newMessages[friendship_id][0].createdAt,
+                newMessages[friendship_id][
+                  newMessages[friendship_id].length - 1
+                ].createdAt
+              ]);
+              context.commit("updateLastMessage", {
+                friendship_id,
+                lastMessage:
+                  newMessages[friendship_id][
+                    newMessages[friendship_id].length - 1
+                  ]
+              });
+            }
+            if (shouldScroll)
+              scrollBottom2({
+                element: chatBody,
+                force: true,
+                test: false
+              });
+          })
+          .catch(console.log);
         console.log("reconnect", args);
       });
       context.state.socket.on("disconnect", (...args) => {
@@ -287,12 +339,14 @@ export default new Vuex.Store({
         if (message.createdAt > range[1]) {
           break;
         }
-        message.status = "received";
-        let messageNode = document.getElementById(message._id);
-        if (messageNode) {
-          messageNode.classList.remove("pending");
-          messageNode.classList.remove("sent");
-          messageNode.classList.add("received");
+        if (fromId !== context.state.user.id) {
+          message.status = "received";
+          let messageNode = document.getElementById(message._id);
+          if (messageNode) {
+            messageNode.classList.remove("pending");
+            messageNode.classList.remove("sent");
+            messageNode.classList.add("received");
+          }
         }
       }
     },
@@ -474,6 +528,13 @@ export default new Vuex.Store({
       if (state.messages !== null) {
         state.messages[data.friendship_id].push(data.message);
       }
+    },
+    addBulkPreSortedMessages(state, { friendship_id, messages }) {
+      state.messages[friendship_id].splice(
+        state.messages[friendship_id].length,
+        0,
+        ...messages
+      );
     },
     updateSentMessage(state, data) {
       state.messages[data.friendship_id][data.index]._id = data.id;

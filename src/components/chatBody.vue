@@ -209,7 +209,7 @@ export default Vue.extend({
   color: #999;
 }
 
-.message__body > p.wrap {
+.message__body .wrap {
   overflow-wrap: break-word;
 }
 
