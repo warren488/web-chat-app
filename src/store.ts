@@ -29,6 +29,7 @@ export default new Vuex.Store({
     notifAudioFile: getCookie("notifAudioFile") || "juntos.mp3",
     user: null,
     friends: null,
+    network: window.navigator.onLine,
     messages: null,
     dataLoaded: false,
     enableSoundNotif: ["true", null].includes(getCookie("soundNotifPref")),
@@ -41,6 +42,8 @@ export default new Vuex.Store({
   getters: {
     user: state => state.user,
     messages: state => state.messages,
+    network: state => state.network,
+    socketConnected: state => (state.socket ? state.socket.connected : false),
     socket: state => state.socket,
     currChat: state => state.currChat,
     notifAudio: state => new Audio(`/${state.notifAudioFile}`),
@@ -314,8 +317,11 @@ export default new Vuex.Store({
         });
       }
     },
-    socketSweepHandler2(context, { range, friendship_id, fromId }) {
-      if (fromId === context.state.user.id) {
+    socketSweepHandler2(
+      context,
+      { range, friendship_id, fromId: sweepEventFromId }
+    ) {
+      if (sweepEventFromId === context.state.user.id) {
         return;
       }
       let startIndex;
@@ -339,7 +345,7 @@ export default new Vuex.Store({
         if (message.createdAt > range[1]) {
           break;
         }
-        if (fromId !== context.state.user.id) {
+        if (message.fromId === context.state.user.id) {
           message.status = "received";
           let messageNode = document.getElementById(message._id);
           if (messageNode) {

@@ -28,13 +28,23 @@
           hidden: view !== 'chatlist'
         }"
       >
-        <header class="main-header">
+        <header
+          :class="{
+            'main-header': true,
+            offline: !network,
+            reconnecting: !socketConnected
+          }"
+        >
           <button
             class="mybt menubt notification-item"
             @click="sideMenuActive = !sideMenuActive"
           >
             Menu
           </button>
+          <span v-if="!network">you are currently offline</span>
+          <span v-if="!socketConnected && network"
+            >connecting to server...</span
+          >
         </header>
         <chatList
           :title="sideListDisplayName"
@@ -442,7 +452,15 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapGetters(["friends", "user", "messages", "socket", "currChat"]),
+    ...mapGetters([
+      "friends",
+      "network",
+      "user",
+      "messages",
+      "socket",
+      "currChat",
+      "socketConnected"
+    ]),
     sideListDisplayItems() {
       switch (this.mode) {
         case CONSTANTS.sideList.MODES.FRIEND_REQUESTS:
@@ -692,10 +710,13 @@ export default Vue.extend({
 }
 
 .main-header {
+  color: white;
   flex-grow: 1;
+  align-items: center;
   display: flex;
   background: linear-gradient(89.81deg, #3a6136 0.03%, #005d40 64.36%);
   border-bottom: 1px solid white;
+  font-weight: bold;
   height: var(--main-header-height);
 }
 
@@ -759,6 +780,14 @@ export default Vue.extend({
 }
 .chatBack {
   display: none;
+}
+
+.reconnecting {
+  background: orange;
+}
+
+.offline {
+  background: rgb(225, 0, 0);
 }
 
 @media (max-width: 768px) {

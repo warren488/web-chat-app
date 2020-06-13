@@ -25,8 +25,8 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-// export const baseURI = "http://localhost:3002";
+// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+export const baseURI = "http://localhost:3002";
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
@@ -435,6 +435,32 @@ export const getMessagePage = async (
     return { data: messages };
   });
 };
+
+export async function getPreviewData(url) {
+  let id = uuid();
+  return fetch(`${baseURI}/api/getpreview`, {
+    method: "POST",
+    body: JSON.stringify({ url, id }),
+    headers: {
+      "content-type": "application/json",
+      "x-auth": getCookie("token")
+    }
+  }).then(res => res.json());
+}
+
+export function uuid() {
+  let date = new Date().getTime();
+  const randomStrings = c => {
+    const r = (date + Math.random() * 16) % 16 | 0;
+    date = Math.floor(date / 16);
+    return (c == "x" ? r : (r & 0x3) | 0x8).toString(16);
+  };
+  const id = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+    /[xy]/g,
+    randomStrings
+  );
+  return id;
+}
 
 export const binaryCustomSearch = function(arr, x) {
   if (arr.length === 0) {

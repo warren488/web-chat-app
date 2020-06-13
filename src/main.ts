@@ -58,6 +58,14 @@ let unsubInitialAuthCheck = firebase.auth().onAuthStateChanged(async user => {
 
 clearNotifications();
 window.onfocus = () => clearNotifications();
+window.onoffline = () => {
+  eventBus.$emit("offline");
+  store.state.network = false;
+};
+window.ononline = () => {
+  eventBus.$emit("online");
+  store.state.network = true;
+};
 
 new Vue({
   router,

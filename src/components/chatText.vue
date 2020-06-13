@@ -17,6 +17,15 @@
           <img src="../assets/close.svg" alt />
         </button>
       </div>
+      <div v-if="previewData" class="linkpreview">
+        <img class="linkpreview__img" :src="previewData.image" alt="" />
+        <div>
+          <header class="linkpreview__title">{{ previewData.title }}</header>
+          <span class="linkpreview__description">{{
+            previewData.description
+          }}</span>
+        </div>
+      </div>
 
       <form class="form-row" @submit.prevent="sendMessage" id="message-form">
         <button
@@ -33,6 +42,7 @@
           type="text"
           class="msg-txt no-scrollbar"
           @keydown="keydownHandler"
+          @input="scanForLink"
           id="msg-txt"
           v-model="messageText"
           name="message"
@@ -172,7 +182,12 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { getCookie, addAudioToFirebase, uploadToFireBase } from "@/common";
+import {
+  getCookie,
+  addAudioToFirebase,
+  uploadToFireBase,
+  getPreviewData
+} from "@/common";
 import { mapGetters, mapActions, mapMutations } from "vuex";
 
 export default Vue.extend({
@@ -266,6 +281,7 @@ export default Vue.extend({
       shouldStop: false,
       isRecording: false,
       audioBlob: null,
+      previewData: null,
       audioURL: null,
       file: null,
       messageText: ""
@@ -305,6 +321,23 @@ export default Vue.extend({
     },
     keydownHandler(e: KeyboardEvent) {
       this.$emit("typing");
+    },
+    scanForLink() {
+      let urlMatches = this.$refs.msgText.value.match(
+        // eslint-disable-next-line no-useless-escape
+        /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
+      );
+      if (urlMatches) {
+        if (!this.previewData || urlMatches[0] !== this.previewData.url) {
+          getPreviewData(urlMatches[0]).then(data => {
+            if ("title" in data || "image" in data || "description" in data) {
+              this.previewData = data;
+            }
+          });
+        }
+      } else {
+        this.previewData = null;
+      }
     },
     addFileHandler() {
       this.$refs.fileInput.click();
@@ -520,6 +553,21 @@ export default Vue.extend({
   }
 }
 
+.linkpreview {
+  display: flex;
+  border-radius: 4px;
+  background: rgb(215, 219, 223);
+  overflow: hidden;
+  margin-bottom: 16px;
+
+  &__img {
+    width: 100px;
+  }
+  &__title {
+    font-weight: bold;
+  }
+}
+
 .transp {
   background: transparent;
 }
@@ -543,7 +591,6 @@ export default Vue.extend({
   }
   .msg-txt {
     background-color: white;
-    border-radius: 20px;
     min-width: 80px;
     border: none;
     font-size: 1.25rem;
