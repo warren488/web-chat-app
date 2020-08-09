@@ -17,16 +17,7 @@
           <img src="../assets/close.svg" alt />
         </button>
       </div>
-      <div v-if="previewData" class="linkpreview">
-        <img class="linkpreview__img" :src="previewData.image" alt="" />
-        <div>
-          <header class="linkpreview__title">{{ previewData.title }}</header>
-          <span class="linkpreview__description">{{
-            previewData.description
-          }}</span>
-        </div>
-      </div>
-
+      <linkPreview :previewData="previewData"></linkPreview>
       <form class="form-row" @submit.prevent="sendMessage" id="message-form">
         <button
           v-if="!hasAudio && !isRecording"
@@ -189,6 +180,8 @@ import {
   getPreviewData
 } from "@/common";
 import { mapGetters, mapActions, mapMutations } from "vuex";
+// @ts-ignore
+import linkPreview from "./linkPreview";
 
 export default Vue.extend({
   name: "",
@@ -291,6 +284,7 @@ export default Vue.extend({
     highlighted: String,
     typing: {}
   },
+  components: { linkPreview },
   methods: {
     addEmoji(e) {
       if (e.target.dataset.value) {
@@ -404,12 +398,16 @@ export default Vue.extend({
         return;
       }
 
-      let messageShell = {
+      let messageShell: any = {
         // server uses it's own timestamp... hmmmm
         createdAt: Date.now(),
         status: "pending",
         hID: this.highlighted
       };
+
+      if (this.previewData) {
+        messageShell.linkPreview = this.previewData;
+      }
 
       if (this.audioBlob) {
         this.$emit("newMessage", {
@@ -434,15 +432,15 @@ export default Vue.extend({
           ...messageShell
         });
         this.cancelFileSend();
-        this.messageText = "";
       } else {
         this.$emit("newMessage", {
           text: msg,
           ...messageShell
         });
-        this.messageText = "";
       }
+      this.messageText = "";
       this.$refs.msgText.focus();
+      this.previewData = null;
     }
   },
   computed: {
@@ -457,6 +455,9 @@ export default Vue.extend({
       return this.file !== null;
     },
     replyText() {
+      /** @todo completely revamp this implementation now that we have better searching algo, for finding our messages then we simply
+       * need to use the ID to search for the message in the application state
+       */
       let element = document.getElementById(this.highlighted);
       if (!element) {
         return "";
@@ -480,13 +481,15 @@ export default Vue.extend({
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 .add-photo {
+  display: flex;
+  align-items: flex-end;
+  min-width: 20px;
+  width: 20px;
+  height: 24px;
   font-size: 2rem;
   cursor: pointer;
   font-weight: bold;
   color: #e6eaee;
-  min-width: 20px;
-  width: 20px;
-  align-self: flex-end;
   background-color: transparent;
 }
 .imgpreview {
@@ -528,7 +531,7 @@ export default Vue.extend({
   align-self: stretch;
   background-color: white;
   border-radius: 21px;
-  padding: 0px 8px;
+  padding: 8px 8px;
 }
 
 .voicemessage {
@@ -550,21 +553,6 @@ export default Vue.extend({
   background-color: transparent;
   svg {
     width: 24px;
-  }
-}
-
-.linkpreview {
-  display: flex;
-  border-radius: 4px;
-  background: rgb(215, 219, 223);
-  overflow: hidden;
-  margin-bottom: 16px;
-
-  &__img {
-    width: 100px;
-  }
-  &__title {
-    font-weight: bold;
   }
 }
 
@@ -593,7 +581,7 @@ export default Vue.extend({
     background-color: white;
     min-width: 80px;
     border: none;
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     flex-grow: 1;
     &:focus {
       outline: none;
@@ -662,11 +650,13 @@ export default Vue.extend({
   font-size: 2rem;
 }
 
+/** @todo eventually replace this with an image so the alignment is easier to manage */
 #emoji-button {
   background-color: transparent;
   cursor: pointer;
   padding: 0px;
   font-size: 1.75rem;
+  height: 1.75rem;
 }
 
 .emojis.show {

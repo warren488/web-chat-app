@@ -32,6 +32,10 @@
               v-if="message.type === 'media' && message.media === 'image'"
               :message="message"
             />
+            <linkPreview
+              v-if="message.linkPreview"
+              :previewData="message.linkPreview"
+            ></linkPreview>
             <p v-if="message.media !== 'audio'" class="wrap">
               {{ message.text }}
             </p>
@@ -79,6 +83,8 @@ import { mapGetters } from "vuex";
 import messageImage from "./messageImage";
 // @ts-ignore
 import imagepreview from "./imagepreview";
+// @ts-ignore
+import linkPreview from "./linkPreview";
 
 export default Vue.extend({
   props: {
@@ -86,7 +92,7 @@ export default Vue.extend({
     messages: Array,
     highlighted: String
   },
-  components: { imagepreview },
+  components: { imagepreview, linkPreview },
   data() {
     return {};
   },
