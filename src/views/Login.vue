@@ -45,7 +45,7 @@ import Modal from "@/components/modal.vue"; // @ is an alias to /src
 import {
   login,
   setCookie,
-  getFriends,
+  getFriendShips,
   signInToFirebase,
   getFirebaseSigninToken
 } from "@/common/index.ts";

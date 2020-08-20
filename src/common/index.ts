@@ -313,7 +313,7 @@ export function getCookie(name: string): string | null {
   return cookieValue !== "" ? cookieValue : null;
 }
 
-export const getFriends = async (): Promise<getFriendsResponse> => {
+export const getFriendShips = async (): Promise<getFriendsResponse> => {
   return await axios({
     method: "GET",
     headers: {

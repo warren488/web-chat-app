@@ -54,7 +54,7 @@
           :filter="filter"
           :friends="sideListDisplayItems"
           @open="openChat"
-          :currentChat="currChat"
+          :currentChat="currChatFriendshipId"
         />
       </div>
       <div
@@ -118,8 +118,8 @@
           </header>
           <chatBody
             ref="chatBody"
-            :key="currChat"
-            :friendship_id="currChat"
+            :key="currChatFriendshipId"
+            :friendship_id="currChatFriendshipId"
             :messages="currMessages"
             :highlighted="highlightedMessageId"
             @replyClick="replyHandler"
@@ -157,7 +157,7 @@ import modal from "@/components/modal.vue";
 /** using profile view as a component... hmmm */
 import profile from "@/views/Profile.vue";
 import {
-  getFriends,
+  getFriendShips,
   getCookie,
   getMessages,
   getMessagePage,
@@ -257,16 +257,16 @@ export default Vue.extend({
        * (which will be the first in the messages array)and going backward
        */
       getMessagePage(
-        this.currChat,
+        this.currChatFriendshipId,
         100,
-        this.messages[this.currChat][0].createdAt
+        this.messages[this.currChatFriendshipId][0].createdAt
       ).then(({ data }) => {
         /**
          * @todo - I need to account for instances where we will get the messages that have the same timestamp
          * as the timestamp used to create this page 3rd param of getMessagePage call
          */
         this.addGroupToChatSart({
-          friendship_id: this.currChat,
+          friendship_id: this.currChatFriendshipId,
           messages: data
         });
       });
@@ -279,20 +279,20 @@ export default Vue.extend({
       let quoted;
       /** use for the preview message in the list of chats shown in the side tab */
       this.updateLastMessage({
-        friendship_id: this.currChat,
+        friendship_id: this.currChatFriendshipId,
         /** we let the server append the id but we need it right now in lastmessage */
         lastMessage: { fromId: this.user.id, ...message }
       });
       // TODO: FIXME: implement sort and search algorith for messages or get data from the sub component
       // massive performance issue
-      for (const chatMessage of this.messages[this.currChat]) {
+      for (const chatMessage of this.messages[this.currChatFriendshipId]) {
         if (chatMessage._id === message.hID) {
           quoted = chatMessage;
           break;
         }
       }
       this.appendMessageToChat({
-        friendship_id: this.currChat,
+        friendship_id: this.currChatFriendshipId,
         message: {
           ...message,
           quoted,
@@ -300,17 +300,17 @@ export default Vue.extend({
           createdAt: Date.now()
         }
       });
-      let index = this.messages[this.currChat].length - 1;
+      let index = this.messages[this.currChatFriendshipId].length - 1;
 
       if (message.type === "media") {
         message.uploadPromise
           .then(url => {
             delete message.uploadPromise;
-            this.messages[this.currChat][index].url = url;
+            this.messages[this.currChatFriendshipId][index].url = url;
             return this.emitEvent({
               eventName: "sendMessage",
               data: {
-                friendship_id: this.currChat,
+                friendship_id: this.currChatFriendshipId,
                 ...message,
                 url
               }
@@ -318,7 +318,7 @@ export default Vue.extend({
           })
           .then(data => {
             this.updateSentMessage({
-              friendship_id: this.currChat,
+              friendship_id: this.currChatFriendshipId,
               index,
               id: data.msgId,
               createdAt: data.createdAt
@@ -333,13 +333,13 @@ export default Vue.extend({
         this.emitEvent({
           eventName: "sendMessage",
           data: {
-            friendship_id: this.currChat,
+            friendship_id: this.currChatFriendshipId,
             ...message
           }
         })
           .then(data => {
             this.updateSentMessage({
-              friendship_id: this.currChat,
+              friendship_id: this.currChatFriendshipId,
               index,
               id: data.msgId,
               createdAt: data.createdAt
@@ -353,7 +353,7 @@ export default Vue.extend({
       }
     },
     handleTyping(e) {
-      var friendship_id = this.currChat;
+      var friendship_id = this.currChatFriendshipId;
       /** if we're not already recorded as "typing" */
       if (!this.typing.status) {
         this.emitEvent({
@@ -395,13 +395,13 @@ export default Vue.extend({
         }, 100);
       }
     },
-    openChat(friend) {
-      let friendship_id = friend._id;
+    openChat(friendShip) {
+      let friendship_id = friendShip._id;
       if (
         this.mode === CONSTANTS.sideList.MODES.SEARCH ||
         this.mode === CONSTANTS.sideList.MODES.FRIEND_REQUESTS
       ) {
-        this.modalData.visibleProfile = friend;
+        this.modalData.visibleProfile = friendShip;
         this.modalData.openProfile = true;
         return;
       }
@@ -420,7 +420,10 @@ export default Vue.extend({
           this.socket.emit(
             "checkin",
             // FIXME: THIS SHOULD BE THE FRIENDSHIP ID OF THE FRIEND WE ARE CURRENTLY CHATTING WITH
-            { friendship_id: this.currChat, token: getCookie("token") },
+            {
+              friendship_id: this.currChatFriendshipId,
+              token: getCookie("token")
+            },
             (err, data) =>
               !err
                 ? console.log("checking successful")
@@ -451,12 +454,12 @@ export default Vue.extend({
   },
   computed: {
     ...mapGetters([
-      "friends",
+      "friendShips",
       "network",
       "user",
       "messages",
       "socket",
-      "currChat",
+      "currChatFriendshipId",
       "socketConnected"
     ]),
     sideListDisplayItems() {
@@ -464,7 +467,7 @@ export default Vue.extend({
         case CONSTANTS.sideList.MODES.FRIEND_REQUESTS:
           return this.user.interactions.receivedRequests;
         case CONSTANTS.sideList.MODES.FRIENDS:
-          return this.friends;
+          return this.friendShips;
         case CONSTANTS.sideList.MODES.SEARCH:
           return this.searchResults;
         default:
@@ -565,8 +568,10 @@ export default Vue.extend({
       return this.currentMessages;
     },
     currFriend() {
-      if (this.friends) {
-        return this.friends.find(friend => friend._id === this.currChat);
+      if (this.friendShips) {
+        return this.friendShips.find(
+          friendShip => friendShip._id === this.currChatFriendshipId
+        );
       }
       return false;
     }

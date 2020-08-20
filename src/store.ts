@@ -1,7 +1,7 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import {
-  getFriends,
+  getFriendShips,
   getMessages,
   getCookie,
   baseURI,
@@ -28,7 +28,7 @@ export default new Vuex.Store({
   state: {
     notifAudioFile: getCookie("notifAudioFile") || "juntos.mp3",
     user: null,
-    friends: null,
+    friendShips: null,
     network: window.navigator.onLine,
     messages: null,
     dataLoaded: false,
@@ -36,7 +36,7 @@ export default new Vuex.Store({
     enableVisualNotif: ["true", null].includes(getCookie("notifPref")),
     dataLoadStarted: false,
     socket: null,
-    currChat: "",
+    currChatFriendshipId: "",
     friendshipIds: []
   },
   getters: {
@@ -45,10 +45,10 @@ export default new Vuex.Store({
     network: state => state.network,
     socketConnected: state => (state.socket ? state.socket.connected : false),
     socket: state => state.socket,
-    currChat: state => state.currChat,
+    currChatFriendshipId: state => state.currChatFriendshipId,
     notifAudio: state => new Audio(`/${state.notifAudioFile}`),
-    friends: state => state.friends,
-    initFriends: state => state.friends === null,
+    friendShips: state => state.friendShips,
+    initFriends: state => state.friendShips === null,
     initMessages: state => state.messages === null
   },
   actions: {
@@ -56,10 +56,10 @@ export default new Vuex.Store({
       context.state.notifAudioFile = file;
       setCookie("notifAudioFile", file, 1000000);
     },
-    setFriends: (context, data) => {
-      return getFriends()
+    setFriendShips: (context, data) => {
+      return getFriendShips()
         .then(({ data, friendshipIds }) => {
-          context.commit("setFriends", data);
+          context.commit("setFriendShips", data);
           context.commit("setfriendshipIds", friendshipIds);
           return true;
         })
@@ -77,8 +77,8 @@ export default new Vuex.Store({
     setUpApp: async context => {
       context.commit("resetState");
       context.state.dataLoadStarted = true;
-      if (context.state.friends === null) {
-        await context.dispatch("setFriends");
+      if (context.state.friendShips === null) {
+        await context.dispatch("setFriendShips");
       }
       if (context.state.messages === null) {
         context.state.messages = {};
@@ -97,8 +97,8 @@ export default new Vuex.Store({
        *    soon as we get the messages our socket will be configured immediately reducing the risk of missed messages.
        *
        * 2. let socket connection and message loading happen independently?
-       *  - we will attach multiple "connected" listeners for each of the friends, which could be a lot.
-       *  - have the option of just waiting for the messages to load and loop through the friends again
+       *  - we will attach multiple "connected" listeners for each of the friendShips, which could be a lot.
+       *  - have the option of just waiting for the messages to load and loop through the friendShips again
        *    to emit the checking
        *  - allows for everything to load possible faster if loading the messages doesnt have to wait
        *  -
@@ -112,20 +112,20 @@ export default new Vuex.Store({
           context.state.socket.on("connect", () => {
             context.state.socket.emit("checkin", {
               // @ts-ignore
-              friendship_id: data.id,
+              userId: data.id,
               token: getCookie("token")
             });
           });
         } else {
           context.state.socket.emit("checkin", {
             // @ts-ignore
-            friendship_id: data.id,
+            userId: data.id,
             token: getCookie("token")
           });
         }
-        context.state.friends &&
-          context.state.friends.forEach(friend => {
-            let friendship_id = friend._id;
+        context.state.friendShips &&
+          context.state.friendShips.forEach(friendShip => {
+            let friendship_id = friendShip._id;
             promiseArr.push(
               context
                 .dispatch("loadMessages", { friendship_id, limit: 10 })
@@ -243,7 +243,10 @@ export default new Vuex.Store({
     },
     socketNewFriendHandler: (context, data) => {
       console.log("new friend", data);
-      context.state.friends.push({ ...data.friendshipData, lastMessage: [] });
+      context.state.friendShips.push({
+        ...data.friendshipData,
+        lastMessage: []
+      });
       context.state.messages[data.friendshipData._id] = [];
       context.state.socket.emit("checkin", {
         friendship_id: data.friendshipData._id,
@@ -264,13 +267,13 @@ export default new Vuex.Store({
         // if its saying the person has started typing
         if (data.status === "start") {
           context.commit("showTyping", data.friendship_id);
-          if (data.friendship_id === context.state.currChat) {
+          if (data.friendship_id === context.state.currChatFriendshipId) {
             document.querySelector(".typing").classList.remove("op");
           }
           // if its saying the person has stopped typing
         } else if (data.status === "stop") {
           context.commit("hideTyping", data.friendship_id);
-          if (data.friendship_id === context.state.currChat) {
+          if (data.friendship_id === context.state.currChatFriendshipId) {
             document.querySelector(".typing").classList.add("op");
           }
         }
@@ -441,17 +444,17 @@ export default new Vuex.Store({
   // todo: check if this is returns a promise or is synchronous
   mutations: {
     resetState: (state, data) => {
-      state.friends = null;
+      state.friendShips = null;
       state.messages = null;
       state.dataLoaded = false;
       state.dataLoadStarted = false;
       state.socket = null;
-      state.currChat = "";
+      state.currChatFriendshipId = "";
       state.friendshipIds = [];
     },
     incrementNotificationCount(state, { friendId, friendship_id }) {
       let targetFriend;
-      state.friends.forEach(friend => {
+      state.friendShips.forEach(friend => {
         if (friend.id === friendId || friend._id === friendship_id) {
           targetFriend = friend;
         }
@@ -463,37 +466,37 @@ export default new Vuex.Store({
         targetFriend.notificationCount = 1;
       }
     },
-    setFriends(state, friends) {
-      state.friends = friends;
+    setFriendShips(state, friendShips) {
+      state.friendShips = friendShips;
     },
     setfriendshipIds(state, friendshipIds) {
       state.friendshipIds = friendshipIds;
     },
     setCurrentChat(state, friendship_id) {
-      state.currChat = friendship_id;
+      state.currChatFriendshipId = friendship_id;
     },
     setChat(state, { friendship_id, data }) {
       state.messages[friendship_id] = data;
     },
     updateLastMessage(state, { friendship_id, lastMessage }) {
-      let index = state.friends.findIndex(friend => {
+      let index = state.friendShips.findIndex(friend => {
         return friend._id === friendship_id;
       });
-      state.friends[index].lastMessage[0] = lastMessage;
+      state.friendShips[index].lastMessage[0] = lastMessage;
       /**
        * @fixme this is a terrible way of getting vue to recognize that something has changed ideally I need to find the proper vue way to do this
        * */
-      state.friends.splice(index, 1, state.friends[index]);
+      state.friendShips.splice(index, 1, state.friendShips[index]);
     },
     showTyping(state, friendship_id) {
-      let index = state.friends.findIndex(friend => {
+      let index = state.friendShips.findIndex(friend => {
         return friend._id === friendship_id;
       });
       if (
-        !state.friends[index].lastMessage[0] ||
-        state.friends[index].lastMessage[0].status !== "typing"
+        !state.friendShips[index].lastMessage[0] ||
+        state.friendShips[index].lastMessage[0].status !== "typing"
       ) {
-        state.friends[index].lastMessage.unshift({
+        state.friendShips[index].lastMessage.unshift({
           text: "typing...",
           status: "typing"
         });
@@ -501,25 +504,25 @@ export default new Vuex.Store({
       /**
        * @fixme this is a terrible way of getting vue to recognize that something has changed ideally I need to find the proper vue way to do this
        * */
-      state.friends.splice(index, 1, state.friends[index]);
+      state.friendShips.splice(index, 1, state.friendShips[index]);
     },
     hideTyping(state, friendship_id) {
-      let index = state.friends.findIndex(friend => {
+      let index = state.friendShips.findIndex(friend => {
         return friend._id === friendship_id;
       });
       if (
         !(
-          state.friends[index].lastMessage[0] &&
-          state.friends[index].lastMessage[0].status === "typing"
+          state.friendShips[index].lastMessage[0] &&
+          state.friendShips[index].lastMessage[0].status === "typing"
         )
       ) {
         return;
       }
-      state.friends[index].lastMessage.shift();
+      state.friendShips[index].lastMessage.shift();
       /**
        * @fixme this is a terrible way of getting vue to recognize that something has changed ideally I need to find the proper vue way to do this
        * */
-      state.friends.splice(index, 1, state.friends[index]);
+      state.friendShips.splice(index, 1, state.friendShips[index]);
     },
     setMessages(state, messages) {
       state.messages = messages;

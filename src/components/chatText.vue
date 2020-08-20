@@ -308,8 +308,8 @@ export default Vue.extend({
       }
     },
     async fileInput(file) {
-      let { id: friendId } = this.friends.find(
-        ({ _id }) => _id === this.currChat
+      let { id: friendId } = this.friendShips.find(
+        ({ _id }) => _id === this.currChatFriendshipId
       );
       return uploadToFireBase(file, `/images/${this.user.id}/${friendId}`);
     },
@@ -413,7 +413,10 @@ export default Vue.extend({
         this.$emit("newMessage", {
           type: "media",
           media: "audio",
-          uploadPromise: addAudioToFirebase(this.audioBlob, this.currChat),
+          uploadPromise: addAudioToFirebase(
+            this.audioBlob,
+            this.currChatFriendshipId
+          ),
           ...messageShell
         });
         this.resetRecordingData();
@@ -444,7 +447,7 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapGetters(["currChat", "friends", "user"]),
+    ...mapGetters(["currChatFriendshipId", "friendShips", "user"]),
     hasAudio() {
       return this.audioBlob !== null;
     },
