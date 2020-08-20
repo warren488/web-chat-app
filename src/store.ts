@@ -252,7 +252,6 @@ export default new Vuex.Store({
       eventBus.$emit("newFriend", data);
     },
     socketNewFriendRequestHandler: (context, data) => {
-      console.log("new freq", data);
       eventBus.$emit("newFriendRequest", data);
       context.state.user.interactions.receivedRequests.push(data);
     },
@@ -296,6 +295,7 @@ export default new Vuex.Store({
           type: data.type,
           media: data.media,
           meta: data.meta,
+          linkPreview: data.linkPreview,
           url: data.url
         }
       });

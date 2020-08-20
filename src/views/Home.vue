@@ -39,7 +39,10 @@
             class="mybt menubt notification-item"
             @click="sideMenuActive = !sideMenuActive"
           >
-            Menu
+            <img src="../assets/menu.svg" alt="notification icon" />
+          </button>
+          <button class="mybt menubt notification-item">
+            <img src="../assets/alarm.svg" alt="notification icon" />
           </button>
           <span v-if="!network">you are currently offline</span>
           <span v-if="!socketConnected && network"
@@ -308,11 +311,7 @@ export default Vue.extend({
               eventName: "sendMessage",
               data: {
                 friendship_id: this.currChat,
-                hID: message.hID,
-                type: message.type,
-                text: message.text,
-                meta: message.meta,
-                media: message.media,
+                ...message,
                 url
               }
             });
@@ -335,8 +334,7 @@ export default Vue.extend({
           eventName: "sendMessage",
           data: {
             friendship_id: this.currChat,
-            text: message.text,
-            hID: message.hID
+            ...message
           }
         })
           .then(data => {
@@ -726,9 +724,15 @@ export default Vue.extend({
   background-color: transparent;
   white-space: nowrap;
   text-overflow: ellipsis;
+  &:not(:last-child) {
+    margin-right: 8px;
+  }
   &:hover {
     font-weight: bold;
     background-color: transparent;
+  }
+  img {
+    width: 18px;
   }
 }
 
