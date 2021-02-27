@@ -308,7 +308,7 @@ export default Vue.extend({
       }
     },
     async fileInput(file) {
-      let { id: friendId } = this.friendShips.find(
+      let { friendId } = this.friendShips.find(
         ({ _id }) => _id === this.currChatFriendshipId
       );
       return uploadToFireBase(file, `/images/${this.user.id}/${friendId}`);

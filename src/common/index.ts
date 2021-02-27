@@ -25,8 +25,8 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-export const baseURI = "http://localhost:3001";
+export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+// export const baseURI = "http://localhost:3002";
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
@@ -504,6 +504,15 @@ export const getLastMessage = async (friendship_id: string) => {
       "x-auth": getCookie("token")
     }
   });
+};
+
+export const eventWrapper = handler => {
+  return data => {
+    if (data.eventData) {
+      store.commit("addEvent", data.eventData);
+    }
+    return handler(data);
+  };
 };
 
 export const authBeforeEnter = (to, from, next) => {

@@ -12,7 +12,8 @@ import {
   markDOMElementAsRead,
   sortMessageArray,
   markAsReceived,
-  scrollBottom2
+  scrollBottom2,
+  eventWrapper
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
@@ -37,11 +38,13 @@ export default new Vuex.Store({
     dataLoadStarted: false,
     socket: null,
     currChatFriendshipId: "",
+    events: [],
     friendshipIds: []
   },
   getters: {
     user: state => state.user,
     messages: state => state.messages,
+    events: state => state.events,
     network: state => state.network,
     socketConnected: state => (state.socket ? state.socket.connected : false),
     socket: state => state.socket,
@@ -109,13 +112,16 @@ export default new Vuex.Store({
         console.log(data);
         // basically im trying to run this event as soon as it is safe to call socket.emit
         if (!context.state.socket.connected) {
-          context.state.socket.on("connect", () => {
-            context.state.socket.emit("checkin", {
-              // @ts-ignore
-              userId: data.id,
-              token: getCookie("token")
-            });
-          });
+          context.state.socket.on(
+            "connect",
+            eventWrapper(() => {
+              context.state.socket.emit("checkin", {
+                // @ts-ignore
+                userId: data.id,
+                token: getCookie("token")
+              });
+            })
+          );
         } else {
           context.state.socket.emit("checkin", {
             // @ts-ignore
@@ -135,12 +141,15 @@ export default new Vuex.Store({
                    * maybe we dont need to attach these listeners after we get all messages (but i think we do)
                    */
                   if (!context.state.socket.connected) {
-                    context.state.socket.on("connect", () => {
-                      context.state.socket.emit("checkin", {
-                        friendship_id,
-                        token: getCookie("token")
-                      });
-                    });
+                    context.state.socket.on(
+                      "connect",
+                      eventWrapper(() => {
+                        context.state.socket.emit("checkin", {
+                          friendship_id,
+                          token: getCookie("token")
+                        });
+                      })
+                    );
                   } else {
                     context.state.socket.emit("checkin", {
                       friendship_id,
@@ -159,90 +168,108 @@ export default new Vuex.Store({
       });
     },
     attachListeners: context => {
-      context.state.socket.on("reconnect", (...args) => {
-        let checkinData = {};
-        context.state.friendshipIds.forEach(id => {
-          if (context.state.messages[id]) {
-            checkinData[id] =
-              context.state.messages[id][context.state.messages[id].length - 1];
-          } else {
-            checkinData[id] = null;
-          }
-        });
-        context
-          .dispatch("emitEvent", {
-            eventName: "masCheckin",
-            data: checkinData
-          })
-          .then(newMessages => {
-            /** @todo scrolling behaviour doesnt feel like it should be here */
-            let shouldScroll;
-            let chatBody = document.querySelector(`.chat__main`);
-            /** figure out if we should scroll to force it later since our function wont work well with multiple new messages */
-            if (chatBody) {
-              shouldScroll = scrollBottom2({
-                element: chatBody,
-                force: false,
-                test: true
-              });
+      context.state.socket.on(
+        "reconnect",
+        eventWrapper((...args) => {
+          let checkinData = {};
+          context.state.friendshipIds.forEach(id => {
+            if (context.state.messages[id]) {
+              checkinData[id] =
+                context.state.messages[id][
+                  context.state.messages[id].length - 1
+                ];
+            } else {
+              checkinData[id] = null;
             }
-            for (let friendship_id in newMessages) {
-              newMessages[friendship_id].sort(sortMessageArray);
-              context.commit("addBulkPreSortedMessages", {
-                friendship_id,
-                messages: newMessages[friendship_id]
-              });
-              markAsReceived(friendship_id, [
-                newMessages[friendship_id][0].createdAt,
-                newMessages[friendship_id][
-                  newMessages[friendship_id].length - 1
-                ].createdAt
-              ]);
-              context.commit("updateLastMessage", {
-                friendship_id,
-                lastMessage:
+          });
+          context
+            .dispatch("emitEvent", {
+              eventName: "masCheckin",
+              data: checkinData
+            })
+            .then(newMessages => {
+              /** @todo scrolling behaviour doesnt feel like it should be here */
+              let shouldScroll;
+              let chatBody = document.querySelector(`.chat__main`);
+              /** figure out if we should scroll to force it later since our function wont work well with multiple new messages */
+              if (chatBody) {
+                shouldScroll = scrollBottom2({
+                  element: chatBody,
+                  force: false,
+                  test: true
+                });
+              }
+              for (let friendship_id in newMessages) {
+                newMessages[friendship_id].sort(sortMessageArray);
+                context.commit("addBulkPreSortedMessages", {
+                  friendship_id,
+                  messages: newMessages[friendship_id]
+                });
+                markAsReceived(friendship_id, [
+                  newMessages[friendship_id][0].createdAt,
                   newMessages[friendship_id][
                     newMessages[friendship_id].length - 1
-                  ]
-              });
-            }
-            if (shouldScroll)
-              scrollBottom2({
-                element: chatBody,
-                force: true,
-                test: false
-              });
-          })
-          .catch(console.log);
-        console.log("reconnect", args);
-      });
-      context.state.socket.on("disconnect", (...args) => {
-        console.log("disconnect", args);
-      });
+                  ].createdAt
+                ]);
+                context.commit("updateLastMessage", {
+                  friendship_id,
+                  lastMessage:
+                    newMessages[friendship_id][
+                      newMessages[friendship_id].length - 1
+                    ]
+                });
+              }
+              if (shouldScroll)
+                scrollBottom2({
+                  element: chatBody,
+                  force: true,
+                  test: false
+                });
+            })
+            .catch(console.log);
+          console.log("reconnect", args);
+        })
+      );
+      context.state.socket.on(
+        "disconnect",
+        eventWrapper((...args) => {
+          console.log("disconnect", args);
+        })
+      );
 
-      context.state.socket.on("newMessage", async data => {
-        await context.dispatch("socketNewMessageHandler", data);
-      });
+      context.state.socket.on(
+        "newMessage",
+        eventWrapper(async data => {
+          await context.dispatch("socketNewMessageHandler", data);
+        })
+      );
       context.state.socket.on(
         "received",
-        async data => await context.dispatch("socketReceivedHandler2", data)
+        eventWrapper(
+          async data => await context.dispatch("socketReceivedHandler2", data)
+        )
       );
       context.state.socket.on(
         "sweep",
-        async data => await context.dispatch("socketSweepHandler2", data)
+        eventWrapper(
+          async data => await context.dispatch("socketSweepHandler2", data)
+        )
       );
       context.state.socket.on(
         "newFriend",
-        async data => await context.dispatch("socketNewFriendHandler", data)
+        eventWrapper(
+          async data => await context.dispatch("socketNewFriendHandler", data)
+        )
       );
       context.state.socket.on(
         "newFriendRequest",
-        async data =>
-          await context.dispatch("socketNewFriendRequestHandler", data)
+        eventWrapper(
+          async data =>
+            await context.dispatch("socketNewFriendRequestHandler", data)
+        )
       );
     },
     socketNewFriendHandler: (context, data) => {
-      console.log("new friend", data);
       context.state.friendShips.push({
         ...data.friendshipData,
         lastMessage: []
@@ -412,19 +439,22 @@ export default new Vuex.Store({
     emitEvent(context, { eventName, data }) {
       return new Promise((resolve, reject) => {
         if (!context.state.socket.connected) {
-          context.state.socket.on("connect", () => {
-            context.state.socket.emit(
-              eventName,
-              {
-                token: getCookie("token"),
-                data
-              },
-              (err, data) => {
-                if (err) reject(err);
-                else resolve(data);
-              }
-            );
-          });
+          context.state.socket.on(
+            "connect",
+            eventWrapper(() => {
+              context.state.socket.emit(
+                eventName,
+                {
+                  token: getCookie("token"),
+                  data
+                },
+                (err, data) => {
+                  if (err) reject(err);
+                  else resolve(data);
+                }
+              );
+            })
+          );
         } else {
           context.state.socket.emit(
             eventName,
@@ -487,6 +517,9 @@ export default new Vuex.Store({
        * @fixme this is a terrible way of getting vue to recognize that something has changed ideally I need to find the proper vue way to do this
        * */
       state.friendShips.splice(index, 1, state.friendShips[index]);
+    },
+    addEvent(state, event) {
+      state.events.push(event);
     },
     showTyping(state, friendship_id) {
       let index = state.friendShips.findIndex(friend => {
