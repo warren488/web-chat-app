@@ -1,97 +1,142 @@
 <template>
-  <div class="chat__main">
+  <div ref="messageScroll" class="chat__main">
+    <button class="chat__view-more" @click="viewMore">View more</button>
     <ol class="chat__messages" id="messages">
       <li
-        v-for="(message, i) of allMessages"
-        :key="i"
+        v-for="message of allMessages"
+        :key="message._id"
         :class="{
-          [message.status]: message.from === getCookie('username'),
-          me: message.from === getCookie('username')
+          [message.status]: message.fromId === user.id,
+          me: message.fromId === user.id
         }"
         :id="message._id"
       >
         <div class="message">
           <div class="message__title">
             <h4>
-              {{ message.from === getCookie("username") ? "me" : message.from }}
+              {{ message.fromId === user.id ? "me" : message.from }}
             </h4>
             <span>{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
-            <p class="reply" @click="replyClick(this)">reply</p>
+            <p class="reply" @click="replyClick(message._id)">reply</p>
           </div>
           <div class="message__body">
-            <p class="wrap">{{ message.text }}</p>
+            <audio
+              class="audiomessage"
+              v-if="message.type === 'media' && message.media === 'audio'"
+              :src="message.url"
+              controls
+            ></audio>
+            <imagepreview
+              :fitToBox="true"
+              :componentLength="300"
+              v-if="message.type === 'media' && message.media === 'image'"
+              :message="message"
+            />
+            <linkPreview
+              v-if="message.linkPreview"
+              :previewData="message.linkPreview"
+            ></linkPreview>
+            <p v-if="message.media !== 'audio'" class="wrap">
+              {{ message.text }}
+            </p>
             <span v-if="message.quoted" class="quoted">
               <div class="message__title">
                 <h4>
                   {{
-                    message.quoted.from === getCookie("username")
+                    message.quoted.fromId === user.id
                       ? "me"
                       : message.quoted.from
                   }}
                 </h4>
-                <span>{{
-                  new Date(message.createdAt).toLocaleTimeString()
-                }}</span>
+                <span>
+                  {{ new Date(message.quoted.createdAt).toLocaleTimeString() }}
+                </span>
               </div>
               <p class="wrap">{{ message.quoted.text }}</p>
+              <!-- make sure i add this when i quote a message -->
+              <audio
+                class="audiomessage"
+                v-if="
+                  message.quoted.type === 'media' &&
+                    message.quoted.media === 'audio'
+                "
+                :src="message.quoted.url"
+                controls
+              ></audio>
             </span>
           </div>
         </div>
       </li>
     </ol>
   </div>
-  <!-- <li class="{{#equal ../username from 'is' }}{{status}} {{/equal}} {{#equal ../username from 'is' }}me{{/equal}}"
-                id='{{_id}}'>
-                <div class="message">
-                    <div class='message__title'>
-                        <h4>{{#equal ../username from 'is' }}me{{/equal}}{{#equal ../username from 'not' }}{{from}}{{/equal}}
-                        </h4>
-                        <span>{{createdAt}}</span>
-                        <p class='reply' onclick="replyClick(this)">reply</p>
-                    </div>
-                    <div class="message__body">
-                        <p class="wrap">{{text}}</p>
-                        {{#if quoted}}
-                        {{#quoted}}
-                        <span class="quoted">
-                            <div class='message__title'>
-                                <h4>{{#equal ../../username from 'is' }}me{{/equal}}{{#equal ../../username from 'not' }}{{from}}{{/equal}}
-                                </h4>
-                                <span>{{createdAt}}</span>
-                            </div>
-                            <p class="wrap">{{text}}</p>
-                        </span>
-                        {{/quoted}}
-                        {{/if}}
-                    </div>
-
-                </div>
-  </li>-->
 </template>
 
 <script lang="ts">
-import { getCookie, getMessages } from "@/common";
+import { getCookie, getMessages, getMessagePage, scrollBottom } from "@/common";
 interface Message {
-  name: String;
-  text: String;
+  name: string;
+  text: string;
 }
 import Vue from "vue";
+import { mapGetters } from "vuex";
+// @ts-ignore
+import messageImage from "./messageImage";
+// @ts-ignore
+import imagepreview from "./imagepreview";
+// @ts-ignore
+import linkPreview from "./linkPreview";
 
 export default Vue.extend({
   props: {
     frienship_id: String,
-    messages: Array
+    messages: Array,
+    highlighted: String
   },
+  components: { imagepreview, linkPreview },
   data() {
     return {};
   },
-  created() {},
+  mounted() {
+    scrollBottom.call(this, { force: true, test: false });
+  },
+  created() {
+    window.addEventListener("resize", this.resizeHandler.bind(this));
+  },
+  beforeDestroy() {
+    /** @todo does this resolve to the correct refernce even tho we used bind before? */
+    window.removeEventListener("resize", this.resizeHandler);
+  },
   methods: {
-    getCookie
+    resizeHandler() {
+      scrollBottom.call(this, { force: true, test: false });
+    },
+    getCookie,
+    replyClick(msgId: string): void {
+      this.$emit("replyClick", msgId);
+    },
+    viewMore() {
+      this.$emit("viewMore");
+    }
   },
   computed: {
+    ...mapGetters(["user"]),
     allMessages(): Array<Message> {
       return this.messages;
+    }
+  },
+  updated() {
+    scrollBottom.call(this, { force: false, test: false });
+  },
+  watch: {
+    highlighted(newVal: string, oldVal: string): void {
+      let previouslyHighlightedElem = document.getElementById(oldVal);
+      let newlyHighlightedElem = document.getElementById(newVal);
+      if (previouslyHighlightedElem) {
+        previouslyHighlightedElem.classList.remove("highlighted");
+      }
+      if (newlyHighlightedElem) {
+        newlyHighlightedElem.classList.add("highlighted");
+      }
     }
   }
 });
@@ -99,6 +144,7 @@ export default Vue.extend({
 
 <style>
 .chat__main {
+  max-height: 100vh;
   overflow-y: scroll;
 }
 .chat__messages li {
@@ -112,6 +158,14 @@ export default Vue.extend({
 .chat__messages li.me {
   justify-content: flex-end;
 }
+
+.audiomessage {
+  max-width: 100%;
+}
+/* .imagemessage {
+  width: 100%;
+  max-width: 500px;
+} */
 
 .reply {
   color: #999;
@@ -130,7 +184,6 @@ export default Vue.extend({
   box-shadow: 1px 1px 3px gray;
 }
 .chat__messages {
-  overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   padding: 10px;
 }
@@ -162,6 +215,10 @@ export default Vue.extend({
   color: #999;
 }
 
+.message__body .wrap {
+  overflow-wrap: break-word;
+}
+
 li.sent .message .message__body > p.wrap::after {
   content: "\2713";
   color: blue;
@@ -176,12 +233,18 @@ li.received .message .message__body > p.wrap::after {
   margin: 0px 0px 0px 5px;
 }
 
-li[id=""].pending .message .message__body > p.wrap::after {
+li.pending .message .message__body > p.wrap::after {
   content: "\2755";
   color: #900;
   background: red;
   border-radius: 3px;
   float: right;
   margin: 0px 0px 0px 5px;
+}
+.highlighted,
+.highlighted:hover,
+li.highlighted {
+  background-color: #337ba867;
+  border-radius: 10px;
 }
 </style>

@@ -1,0 +1,21 @@
+{
+  "name": "Web chat app",
+  "short_name": "Web chat",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#80b080",
+  "theme_color": "#80b080",
+  "icons": [
+    {
+      "src": "/test-72x72.png",
+      "sizes": "72x72 48x48 96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/test-144x144.png",
+      "sizes": "144x144 256x256 512x512",
+      "type": "image/png"
+    }
+  ]
+}

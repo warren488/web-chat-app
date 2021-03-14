@@ -1,5 +1,6 @@
 body {
     margin: 0;
+    color: rgb(0, 51, 0);
 }
 
 body,
@@ -11,24 +12,22 @@ html {
     box-sizing: border-box;
     margin: 0;
     margin-bottom: 0px;
-    padding: 0;
+    /* padding: 0; */
     font-family: HelveticaNeue-Light, "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
-    font-weight: 300;
-    font-size: .95rem;
 }
 
-button.mybt {
+.mybt {
     background: rgb(39, 130, 51);
     cursor: pointer;
-    transition: background .3s ease
+    transition: background-color, width .3s ease;
 }
 
-button.mybt:hover {
+.mybt:hover {
     background: rgb(18, 77, 26)
 }
 
-button.mybt:disabled {
-    cursor: default;
+.mybt:disabled {
+    cursor: not-allowed;
     background: rgb(150, 180, 155);
 }
 
@@ -36,9 +35,36 @@ button.mybt:disabled {
     color: rgb(4, 46, 4);
 }
 
-button.mybt,
-button.mybt:hover {
+.mybt,
+.mybt:hover {
     border: none;
     color: #fff;
     padding: 10px
+}
+
+.mybt::-moz-focus-inner {
+    border: none;
+}
+
+.notification-item {
+    --notification-content: "";
+    --display: none;
+    position: relative;
+}
+
+.notification-item::after {
+    display: var(--display);
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    width: 16px;
+    font-weight: bold;
+    height: 16px;
+    font-size: 16px;
+    border-radius: 50%;
+    color: white;
+    background-color: red;
+    content: var(--notification-content);
+    bottom: var(--notif-bottom-pos, -4px);
+    right: var(--notif-right-pos, -4px);
 }

@@ -2,34 +2,63 @@
   <transition name="modal">
     <div v-if="showModal" class="modal-mask">
       <div class="modal-wrapper">
-        <div class="modal-container">
-          <div class="modal-header">
-            <slot name="header"></slot>
-          </div>
+        <div
+          ref="container"
+          @keydown.esc="$emit('close')"
+          tabindex="0"
+          class="modal-container"
+        >
+          <slot name="full-replace">
+            <div class="modal-header">
+              <slot name="header"></slot>
+            </div>
 
-          <div class="modal-body">
-            {{ text }}
-            <slot name="body"></slot>
-          </div>
+            <div class="modal-body">
+              {{ text }}
+              <slot name="body"></slot>
+            </div>
 
-          <div class="modal-footer">
-            <slot name="footer">
-              <button class="modal-default-button" @click="$emit('close')">
-                OK
-              </button>
-            </slot>
-          </div>
+            <div class="modal-footer">
+              <slot name="footer">
+                <button
+                  ref="closeButton"
+                  class="modal-default-button mybt"
+                  @click="$emit('close')"
+                >
+                  OK
+                </button>
+              </slot>
+            </div>
+          </slot>
         </div>
       </div>
     </div>
   </transition>
 </template>
 <script>
+import { FocusGrabber } from "@/common";
 export default {
   name: "modal",
   props: ["showModal", "text"],
   data() {
-    return {};
+    return {
+      focus: null
+    };
+  },
+  mounted() {},
+  watch: {
+    showModal(newVal) {
+      if (newVal) {
+        // oh how the mighty have fallen (the modal doesnt show up at the exact moment that showModal becomes true)
+        setTimeout(() => {
+          if (this.$refs.closeButton) {
+            this.$refs.closeButton.focus();
+          } else if (this.$refs.container) {
+            this.$refs.container.focus();
+          }
+        }, 30);
+      }
+    }
   }
 };
 </script>
@@ -52,7 +81,11 @@ export default {
 }
 
 .modal-container {
-  width: 300px;
+  min-width: 300px;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow: hidden;
+  overflow-y: scroll;
   margin: 0px auto;
   padding: 40px 30px;
   background-color: #fff;
@@ -60,6 +93,10 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.33);
   transition: all 0.3s ease;
   font-family: Helvetica, Arial, sans-serif;
+
+  &:focus {
+    box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.33);
+  }
 }
 
 .modal-header h3 {
@@ -73,10 +110,6 @@ export default {
 
 .modal-default-button {
   float: right;
-  cursor: pointer;
-  background-color: lightgray;
-  border-radius: 2px;
-  padding: 4px;
 }
 
 /*
@@ -100,5 +133,11 @@ export default {
 .modal-leave-active .modal-container {
   -webkit-transform: scale(1.1);
   transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .modal-container {
+    width: 100vw;
+  }
 }
 </style>
