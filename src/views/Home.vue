@@ -41,21 +41,59 @@
           >
             <img src="../assets/menu.svg" alt="notification icon" />
           </button>
-          <button class="mybt menubt notification-item">
-            <img src="../assets/alarm.svg" alt="notification icon" />
-          </button>
+          <md-button class="md-icon-button">
+            <md-icon class="">notifications</md-icon>
+          </md-button>
+          <md-button v-if="events.length === 0" class="md-icon-button">
+            <md-icon class="">notifications</md-icon>
+          </md-button>
           <span v-if="!network">you are currently offline</span>
           <span v-if="!socketConnected && network"
             >connecting to server...</span
           >
         </header>
-        <chatList
-          :title="sideListDisplayName"
-          :filter="filter"
-          :friends="sideListDisplayItems"
-          @open="openChat"
-          :currentChat="currChatFriendshipId"
-        />
+        <md-tabs class="md-primary" @md-changed="tabChanged">
+          <template slot="md-tab" slot-scope="{ tab }">
+            {{ tab.label }}
+            <i class="badge" v-if="tab.data.badge">{{ tab.data.badge }}</i>
+          </template>
+          <md-tab id="tab-chat" md-label="Chat">
+            <chatList
+              title="Chat"
+              :filter="filter"
+              :friends="friendShips"
+              @open="openChat"
+              :currentChat="currChatFriendshipId"
+            />
+          </md-tab>
+
+          <md-tab id="tab-search" md-label="Search">
+            <chatList
+              title="Search"
+              :filter="filter"
+              :friends="searchResults"
+              @open="viewFriendship"
+              :currentChat="currChatFriendshipId"
+            />
+          </md-tab>
+          <md-tab
+            id="tab-requests"
+            md-label="Friend Requests"
+            :md-template-data="{
+              badge:
+                events && events.friendRequest && events.friendRequest.length
+            }"
+          >
+            <chatList
+              v-if="user"
+              title="Friend Requests"
+              :filter="filter"
+              :friends="user.interactions.receivedRequests"
+              @open="viewFriendship"
+              :currentChat="currChatFriendshipId"
+            />
+          </md-tab>
+        </md-tabs>
       </div>
       <div
         :class="{
@@ -189,7 +227,6 @@ export default Vue.extend({
   data() {
     return {
       view: "chatlist",
-      mode: CONSTANTS.sideList.MODES.FRIENDS,
       sideMenuActive: false,
       profileImageOpen: false,
       modalData: { openProfile: false, visibleProfile: {} },
@@ -214,21 +251,14 @@ export default Vue.extend({
       "addGroupToChatSart",
       "appendMessageToChat",
       "updateSentMessage",
-      "pushToUnreadIndex",
       "updateReceivedMessage",
       "setCurrentChat"
     ]),
-    setFriends() {
-      this.mode = CONSTANTS.sideList.MODES.FRIENDS;
-      this.sideMenuActive = false;
-    },
-    setSearch() {
-      this.mode = CONSTANTS.sideList.MODES.SEARCH;
-      this.sideMenuActive = false;
-    },
-    setFriendrequests() {
-      this.mode = CONSTANTS.sideList.MODES.FRIEND_REQUESTS;
-      this.sideMenuActive = false;
+    tabChanged(tabId) {
+      if (tabId === "tab-requests") {
+        // clear unread requests
+      }
+      console.log(tabId);
     },
     goToProfile() {
       this.$router.push("/profile");
@@ -286,6 +316,7 @@ export default Vue.extend({
       // TODO: FIXME: implement sort and search algorith for messages or get data from the sub component
       // massive performance issue
       for (const chatMessage of this.messages[this.currChatFriendshipId]) {
+        console.log(chatMessage);
         if (chatMessage._id === message.hID) {
           quoted = chatMessage;
           break;
@@ -395,16 +426,12 @@ export default Vue.extend({
         }, 100);
       }
     },
+    viewFriendship(friendShip) {
+      this.modalData.visibleProfile = friendShip;
+      this.modalData.openProfile = true;
+    },
     openChat(friendShip) {
       let friendship_id = friendShip._id;
-      if (
-        this.mode === CONSTANTS.sideList.MODES.SEARCH ||
-        this.mode === CONSTANTS.sideList.MODES.FRIEND_REQUESTS
-      ) {
-        this.modalData.visibleProfile = friendShip;
-        this.modalData.openProfile = true;
-        return;
-      }
 
       /** if we get this far and dont have any messages, will we ever?
        * maybe just use the socket here directly to make absolutely surethat we dont have any
@@ -452,6 +479,7 @@ export default Vue.extend({
       this.highlightedMessageId = null;
     }
   },
+  watch: {},
   computed: {
     ...mapGetters([
       "friendShips",
@@ -460,40 +488,11 @@ export default Vue.extend({
       "messages",
       "socket",
       "currChatFriendshipId",
-      "socketConnected"
+      "socketConnected",
+      "events"
     ]),
-    sideListDisplayItems() {
-      switch (this.mode) {
-        case CONSTANTS.sideList.MODES.FRIEND_REQUESTS:
-          return this.user.interactions.receivedRequests;
-        case CONSTANTS.sideList.MODES.FRIENDS:
-          return this.friendShips;
-        case CONSTANTS.sideList.MODES.SEARCH:
-          return this.searchResults;
-        default:
-          return [];
-      }
-    },
-    sideListDisplayName() {
-      switch (this.mode) {
-        case CONSTANTS.sideList.MODES.FRIEND_REQUESTS:
-          return "Friend Requests";
-        case CONSTANTS.sideList.MODES.FRIENDS:
-          return "Friends";
-        case CONSTANTS.sideList.MODES.SEARCH:
-          return "Search";
-        default:
-          return [];
-      }
-    },
-
     sideMenuData() {
       return [
-        {
-          type: "click",
-          name: "friends",
-          handler: this.setFriends
-        },
         {
           type: "click",
           name: "logout",
@@ -503,16 +502,6 @@ export default Vue.extend({
           type: "click",
           name: "profile",
           handler: this.goToProfile
-        },
-        {
-          type: "click",
-          name: "search",
-          handler: this.setSearch
-        },
-        {
-          type: "click",
-          name: "freind requests",
-          handler: this.setFriendrequests
         },
         {
           type: "submenu",
@@ -676,14 +665,21 @@ export default Vue.extend({
   }
 }
 
-.chat__sidebar {
-  width: 350px;
-  min-width: 350px;
-  height: 100%;
+.md-tabs,
+.md-tabs.md-theme-default .md-tabs-navigation {
+  background-color: rgb(0, 93, 64);
 }
 
-.chatList {
-  height: calc(100vh - var(--main-header-height));
+.md-tab {
+  padding: 0px;
+}
+
+.chat__sidebar {
+  background-color: var(--md-theme-default-primary);
+  width: 350px;
+  min-width: 350px;
+  height: 100vh;
+  overflow: scroll;
 }
 .home {
   --main-header-height: 50px;
@@ -700,6 +696,25 @@ export default Vue.extend({
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.badge {
+  width: 19px;
+  height: 19px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: red;
+  border-radius: 100%;
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  font-family: "Roboto Mono", monospace;
 }
 
 .empty-chat {

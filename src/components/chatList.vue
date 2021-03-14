@@ -1,7 +1,6 @@
 <template>
   <div class="chatList">
     <header>
-      <h1>{{ header || "Friends" }}</h1>
       <input
         type="text"
         id="search"
@@ -23,34 +22,41 @@
         }"
         @click="() => emitOpen(friend)"
       >
-        <img
-          class="profile-img"
-          v-if="!friend.imgUrl"
-          src="../assets/abstract-user-flat-1.svg"
-          alt=""
-        />
-        <img
-          class="profile-img"
-          v-if="friend.imgUrl"
-          :src="friend.imgUrl"
-          alt=""
-        />
-        <div class="preview-text">
-          <h3 class="">
-            {{ friend.username }}
-          </h3>
-          <p
-            class="last-message"
-            v-if="friend.lastMessage && friend.lastMessage[0]"
-          >
-            <span v-if="friend.lastMessage[0].status !== 'typing'">{{
-              friend.lastMessage[0].fromId === user.id
-                ? "me:"
-                : `${friend.username}:`
-            }}</span>
-            {{ friend.lastMessage[0].text ? friend.lastMessage[0].text : "" }}
-          </p>
+        <div style="display: flex">
+          <img
+            class="profile-img"
+            v-if="!friend.imgUrl"
+            src="../assets/abstract-user-flat-1.svg"
+            alt=""
+          />
+          <img
+            class="profile-img"
+            v-if="friend.imgUrl"
+            :src="friend.imgUrl"
+            alt=""
+          />
+          <div class="preview-text">
+            <h3 class="">
+              {{ friend.username }}
+            </h3>
+            <p
+              class="last-message"
+              v-if="friend.lastMessage && friend.lastMessage[0]"
+            >
+              <span v-if="friend.lastMessage[0].status !== 'typing'">{{
+                friend.lastMessage[0].fromId === user.id
+                  ? "me:"
+                  : `${friend.username}:`
+              }}</span>
+              {{ friend.lastMessage[0].text ? friend.lastMessage[0].text : "" }}
+            </p>
+          </div>
         </div>
+        <span
+          v-if="unreads && unreads[friend._id] > 0"
+          class="badge bg-secondary"
+          >{{ unreads[friend._id] }}</span
+        >
       </li>
     </ol>
   </div>
@@ -64,6 +70,8 @@ import { mapGetters } from "vuex";
 
 export default Vue.extend({
   created() {
+    console.log("unreads", this.unreads);
+
     let self = this;
     this.filterFuncDebounced = debounce(function() {
       if (self.filter) {
@@ -105,7 +113,7 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapGetters(["user"]),
+    ...mapGetters(["user", "unreads"]),
     myFriends() {
       return this.friends;
     },
@@ -124,13 +132,22 @@ export default Vue.extend({
   text-overflow: ellipsis;
 }
 
-.item-list {
-  overflow-y: scroll;
-  height: calc(100% - 75px);
+.badge {
+  background-color: beige;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--md-theme-default-primary);
 }
 
 .chat-preview {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   --notif-bottom-pos: 4px;
   --notif-right-pos: 4px;

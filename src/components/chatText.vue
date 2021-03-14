@@ -19,15 +19,17 @@
       </div>
       <linkPreview :previewData="previewData"></linkPreview>
       <form class="form-row" @submit.prevent="sendMessage" id="message-form">
-        <button
+        <md-button
+          class="md-icon-button"
+          :md-ripple="false"
           v-if="!hasAudio && !isRecording"
           @click="toggleEmojis"
           id="emoji-button"
-          type="button"
         >
-          &#128578;
-        </button>
-        <input
+          <md-icon>insert_emoticon</md-icon>
+        </md-button>
+
+        <!-- <input
           v-if="!hasAudio && !isRecording"
           ref="msgText"
           type="text"
@@ -40,46 +42,20 @@
           placeholder="send message..."
           autocomplete="off"
           autofocus
-        />
-        <span
-          v-if="!showImage && !hasAudio"
-          @click="addFileHandler"
-          class="add-photo"
-          id="add-photo"
-        >
-          <svg
-            version="1.1"
-            id="Layer_2_1_"
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            x="0px"
-            y="0px"
-            viewBox="0 0 64 64"
-            style="enable-background:new 0 0 64 64;"
-            xml:space="preserve"
-          >
-            <g>
-              <path
-                d="M61.3,42.7c-1.6,0-2.7,1.1-2.7,2.7v13.3H5.3V45.3c0-1.6-1.1-2.7-2.7-2.7S0,43.7,0,45.3v15.2C0,62.4,1.9,64,4,64h56
-		c2.1,0,4-1.6,4-3.5V45.3C64,43.7,62.9,42.7,61.3,42.7z"
-              />
-              <path
-                d="M24,13.6l5.3-5.3v37.1c0,1.6,1.1,2.7,2.7,2.7c1.6,0,2.7-1.1,2.7-2.7V8.3l5.3,5.3c0.5,0.5,1.3,0.8,1.9,0.8
-		c0.8,0,1.3-0.3,1.9-0.8c1.1-1.1,1.1-2.7,0-3.7l-8-8C34.9,0.8,33.3,0,32,0l0,0c-1.3,0-2.7,0.5-3.7,1.6l-8,8.3
-		c-1.1,1.1-1.1,2.7,0,3.7C21.3,14.7,22.9,14.7,24,13.6z"
-              />
-            </g>
-          </svg>
-
-          <input
-            type="file"
-            @input="fileInputHandler"
-            style="display: none"
-            enctype="multipart/form-data"
-            accept="image/*"
-            ref="fileInput"
-          />
-        </span>
+        /> -->
+        <md-field class="no-space" ref="field">
+          <md-textarea
+            ref="msgText"
+            v-if="!hasAudio && !isRecording"
+            @keydown="keydownHandler"
+            @input="scanForLink"
+            id="msg-txt"
+            v-model="messageText"
+            name="message"
+            placeholder="send message..."
+            md-autogrow
+          ></md-textarea>
+        </md-field>
 
         <div v-if="isRecording" style="flex-grow: 1; text-align: center">
           recording...
@@ -93,46 +69,49 @@
           id="audio"
           style="flex-grow: 1;"
         ></audio>
-        <button
+        <!-- <button
           v-if="hasText || hasAudio || showImage"
           ref="sendButton"
           class="transp textmessage"
           id="send-button"
         >
           <img src="../assets/send.svg" alt />
-        </button>
+        </button> -->
+        <md-button
+          v-if="!showImage && !hasAudio"
+          @click="addFileHandler"
+          class="add-photo"
+          id="add-photo"
+        >
+          <md-icon>share</md-icon>
+        </md-button>
+        <md-button
+          type="submit"
+          class="md-icon-button"
+          v-if="hasText || hasAudio || showImage"
+          ref="sendButton"
+          id="send-button"
+        >
+          <md-icon>send</md-icon>
+        </md-button>
         <div v-if="!hasText && !showImage" class="voicemessage">
-          <button
-            class="voicemessage__control"
+          <md-button
+            type="submit"
+            class="md-icon-button"
             v-if="!isRecording && !hasAudio"
             id="start"
             @click="getVN"
           >
-            <svg
-              version="1.1"
-              id="Layer_2_1_"
-              xmlns="http://www.w3.org/2000/svg"
-              xmlns:xlink="http://www.w3.org/1999/xlink"
-              x="0px"
-              y="0px"
-              viewBox="0 0 64 64"
-              style="enable-background:new 0 0 64 64;"
-              xml:space="preserve"
-            >
-              <g>
-                <path
-                  d="M32,45.6c3.7,0,7.2-1.3,9.6-4c2.4-2.4,3.7-5.6,3.7-9.1V13.1C45.3,5.9,39.5,0,32,0S18.7,5.9,18.7,13.1v19.7
-		C18.7,39.7,24.5,45.6,32,45.6z M24,13.1c0-4.3,3.5-7.7,8-7.7s8,3.5,8,7.7v19.7c0,1.9-0.8,3.7-2.1,5.1c-1.6,1.6-3.7,2.4-5.9,2.4
-		c-4.5,0-8-3.5-8-7.7V13.1z"
-                />
-                <path
-                  d="M53.3,30.7c0-1.6-1.1-2.7-2.7-2.7c-1.6,0-2.7,1.1-2.7,2.7c0,9.1-7.2,16.5-16,16.5s-16-7.5-16-16.5c0-1.6-1.1-2.7-2.7-2.7
-		s-2.7,1.1-2.7,2.7c0,11.2,8.3,20.3,18.7,21.6v6.4H24c-1.6,0-2.7,1.1-2.7,2.7c0,1.6,1.1,2.7,2.7,2.7h16c1.6,0,2.7-1.1,2.7-2.7
-		c0-1.6-1.1-2.7-2.7-2.7h-5.3v-6.1C45.1,51.2,53.3,41.9,53.3,30.7z"
-                />
-              </g>
-            </svg>
-          </button>
+            <md-icon>mic</md-icon>
+          </md-button>
+          <md-button
+            class="md-icon-button"
+            v-if="isRecording || hasAudio"
+            @click="stopAndDeleteButtonHandler"
+            id="stop"
+          >
+            <md-icon>stop</md-icon>
+          </md-button>
           <button
             class="voicemessage__control"
             v-if="isRecording || hasAudio"
@@ -289,7 +268,7 @@ export default Vue.extend({
     addEmoji(e) {
       if (e.target.dataset.value) {
         this.messageText += e.target.dataset.value;
-        this.$refs.msgText.focus();
+        this.$refs.msgText.$el.focus();
       }
     },
     stopRecording() {
@@ -314,6 +293,10 @@ export default Vue.extend({
       return uploadToFireBase(file, `/images/${this.user.id}/${friendId}`);
     },
     keydownHandler(e: KeyboardEvent) {
+      if (e.code === "Enter") {
+        e.preventDefault();
+        this.sendMessage();
+      }
       this.$emit("typing");
     },
     scanForLink() {
@@ -436,13 +419,16 @@ export default Vue.extend({
         });
         this.cancelFileSend();
       } else {
+        console.log("sdsd");
+
         this.$emit("newMessage", {
           text: msg,
           ...messageShell
         });
       }
       this.messageText = "";
-      this.$refs.msgText.focus();
+      console.log(this.$refs.msgText.$el);
+      this.$refs.msgText.$el.focus();
       this.previewData = null;
     }
   },
@@ -475,7 +461,7 @@ export default Vue.extend({
   },
   watch: {
     highlighted() {
-      this.$refs.msgText.focus();
+      this.$refs.msgText.$el.focus();
     }
   }
 });
@@ -483,6 +469,18 @@ export default Vue.extend({
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+@import url("https://fonts.googleapis.com/css?family=Material+Icons");
+
+.no-space {
+  padding: 0px;
+  margin: 0px;
+  min-height: unset;
+  &::before,
+  &::after {
+    display: none;
+  }
+}
+
 .add-photo {
   display: flex;
   align-items: flex-end;
@@ -642,6 +640,8 @@ export default Vue.extend({
   // margin: 0px;
 }
 .emojis {
+  display: flex;
+  flex-wrap: wrap;
   overflow-y: scroll;
   cursor: pointer;
   height: 0px;
@@ -649,21 +649,14 @@ export default Vue.extend({
 }
 
 .emojis span {
+  display: inline-block;
   font-family: "Font Awesome 5 Free";
   font-size: 2rem;
-}
-
-/** @todo eventually replace this with an image so the alignment is easier to manage */
-#emoji-button {
-  background-color: transparent;
-  cursor: pointer;
-  padding: 0px;
-  font-size: 1.75rem;
-  height: 1.75rem;
+  padding: 0.25rem;
 }
 
 .emojis.show {
-  /* display: block; */
+  padding: 0.75rem;
   min-height: 150px;
 }
 

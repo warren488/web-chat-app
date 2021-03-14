@@ -13,7 +13,11 @@ import {
   sortMessageArray,
   markAsReceived,
   scrollBottom2,
-  eventWrapper
+  eventWrapper,
+  getNotifications,
+  countUnreads,
+  isInChat,
+  markChatMessagesAsRead
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
@@ -31,6 +35,7 @@ export default new Vuex.Store({
     user: null,
     friendShips: null,
     network: window.navigator.onLine,
+    focused: document.visibilityState === "visible",
     messages: null,
     dataLoaded: false,
     enableSoundNotif: ["true", null].includes(getCookie("soundNotifPref")),
@@ -39,10 +44,12 @@ export default new Vuex.Store({
     socket: null,
     currChatFriendshipId: "",
     events: [],
-    friendshipIds: []
+    friendshipIds: [],
+    unreads: {}
   },
   getters: {
     user: state => state.user,
+    unreads: state => state.unreads,
     messages: state => state.messages,
     events: state => state.events,
     network: state => state.network,
@@ -74,12 +81,26 @@ export default new Vuex.Store({
       return getMessages(friendship_id, limit)
         .then(({ data }) => {
           context.commit("setChat", { friendship_id, data });
+          const unreads = countUnreads({
+            chat: data,
+            user_id: context.state.user.id
+          });
+          context.commit("addUnreads", { friendship_id, unreads });
+        })
+        .catch(console.log);
+    },
+    loadNotifications: async context => {
+      return getNotifications()
+        .then(({ data }) => {
+          console.log(data);
+          context.commit("storeEvents", data);
         })
         .catch(console.log);
     },
     setUpApp: async context => {
       context.commit("resetState");
       context.state.dataLoadStarted = true;
+      await context.dispatch("loadNotifications");
       if (context.state.friendShips === null) {
         await context.dispatch("setFriendShips");
       }
@@ -201,6 +222,21 @@ export default new Vuex.Store({
               }
               for (let friendship_id in newMessages) {
                 newMessages[friendship_id].sort(sortMessageArray);
+                newMessages[friendship_id] = newMessages[friendship_id].map(
+                  message => {
+                    if (message.fromId !== context.state.user.id) {
+                      if (
+                        context.state.focused &&
+                        friendship_id === context.state.currChatFriendshipId
+                      ) {
+                        message.status = "read";
+                      } else {
+                        context.commit("incUnread", { friendship_id });
+                      }
+                    }
+                    return message;
+                  }
+                );
                 context.commit("addBulkPreSortedMessages", {
                   friendship_id,
                   messages: newMessages[friendship_id]
@@ -312,6 +348,9 @@ export default new Vuex.Store({
       if (context.state.enableVisualNotif) {
         notifyMe({ from: data.from, message: data.text });
       }
+      const read =
+        context.state.focused &&
+        data.friendship_id === context.state.currChatFriendshipId;
 
       context.commit("appendMessageToChat", {
         friendship_id: data.friendship_id,
@@ -326,16 +365,15 @@ export default new Vuex.Store({
           media: data.media,
           meta: data.meta,
           linkPreview: data.linkPreview,
-          url: data.url
+          url: data.url,
+          /** @todo this does not go with the typical schema values for status */
+          status: read ? "read" : "unread"
         }
       });
       context.commit("updateLastMessage", {
         friendship_id: data.friendship_id,
         lastMessage: data
       });
-      // context.commit("incrementNotificationCount", {
-      //   friendship_id: data.friendship_id
-      // });
       /** let the next user know that this message is green ticked */
       /** if we are signed in on multiple devices only tick if the message isnt coming from us */
       if (data.fromId !== context.state.user.id) {
@@ -343,7 +381,8 @@ export default new Vuex.Store({
           friendship_id: data.friendship_id,
           token: getCookie("token"),
           Ids: data.Ids,
-          createdAt: data.createdAt
+          createdAt: data.createdAt,
+          read
         });
       }
     },
@@ -377,6 +416,7 @@ export default new Vuex.Store({
         }
         if (message.fromId === context.state.user.id) {
           message.status = "received";
+          // this is needed because the computed property does a check for the messages as a group and doesnt detect these changes
           let messageNode = document.getElementById(message._id);
           if (messageNode) {
             messageNode.classList.remove("pending");
@@ -482,6 +522,18 @@ export default new Vuex.Store({
       state.currChatFriendshipId = "";
       state.friendshipIds = [];
     },
+    incUnread(state, { friendship_id }) {
+      state.unreads = {
+        ...state.unreads,
+        [friendship_id]: state.unreads[friendship_id]++
+      };
+    },
+    addUnreads(state, { friendship_id, unreads }) {
+      state.unreads = {
+        ...state.unreads,
+        [friendship_id]: unreads
+      };
+    },
     incrementNotificationCount(state, { friendId, friendship_id }) {
       let targetFriend;
       state.friendShips.forEach(friend => {
@@ -502,8 +554,28 @@ export default new Vuex.Store({
     setfriendshipIds(state, friendshipIds) {
       state.friendshipIds = friendshipIds;
     },
+    markChatMessagesAsRead(state, { friendship_id }) {
+      console.log(friendship_id, state.messages, state.messages[friendship_id]);
+      state.messages[friendship_id] = markChatMessagesAsRead(
+        state.messages[friendship_id]
+      );
+      state.unreads[friendship_id] = 0;
+    },
     setCurrentChat(state, friendship_id) {
       state.currChatFriendshipId = friendship_id;
+      if (isInChat(friendship_id)) {
+        /** @todo tell the server to mark all these as read  */
+        state.messages[friendship_id] = markChatMessagesAsRead(
+          state.messages[friendship_id]
+        );
+        state.unreads[friendship_id] = 0;
+        markAsReceived(friendship_id, [
+          state.messages[friendship_id][0].createdAt,
+          state.messages[friendship_id][
+            state.messages[friendship_id].length - 1
+          ].createdAt
+        ]);
+      }
     },
     setChat(state, { friendship_id, data }) {
       state.messages[friendship_id] = data;
@@ -519,7 +591,12 @@ export default new Vuex.Store({
       state.friendShips.splice(index, 1, state.friendShips[index]);
     },
     addEvent(state, event) {
-      state.events.push(event);
+      state.events[event.type].push(event);
+      console.log("events", state.events);
+    },
+    storeEvents(state, events) {
+      state.events = { ...events };
+      console.log("events", state.events);
     },
     showTyping(state, friendship_id) {
       let index = state.friendShips.findIndex(friend => {
@@ -559,16 +636,46 @@ export default new Vuex.Store({
     },
     setMessages(state, messages) {
       state.messages = messages;
+      for (const friendship_id in messages) {
+        let chatUnreads = countUnreads({
+          chat: messages[friendship_id],
+          user_id: state.user.id
+        });
+        state.unreads = {
+          ...state.unreads,
+          [friendship_id]: chatUnreads
+        };
+      }
     },
     addGroupToChatSart(state, data) {
       state.messages[data.friendship_id].unshift(...data.messages);
+      let chatUnreads = countUnreads({
+        chat: state.messages[data.friendship_id],
+        user_id: state.user.id
+      });
+      state.unreads = {
+        ...state.unreads,
+        [data.friendship_id]: chatUnreads
+      };
     },
-    appendMessageToChat(state, data) {
-      return state.messages[data.friendship_id].push(data.message);
+    appendMessageToChat(state, { friendship_id, message }) {
+      if (!isInChat(friendship_id)) {
+        state.unreads = {
+          ...state.unreads,
+          [friendship_id]: state.unreads[friendship_id] + 1
+        };
+      }
+      return state.messages[friendship_id].push(message);
     },
-    addMessage(state, data) {
+    addMessage(state, { friendship_id, message }) {
+      if (!isInChat(friendship_id)) {
+        state.unreads = {
+          ...state.unreads,
+          [friendship_id]: state.unreads[friendship_id] + 1
+        };
+      }
       if (state.messages !== null) {
-        state.messages[data.friendship_id].push(data.message);
+        state.messages[friendship_id].push(message);
       }
     },
     addBulkPreSortedMessages(state, { friendship_id, messages }) {
@@ -577,6 +684,16 @@ export default new Vuex.Store({
         0,
         ...messages
       );
+      if (!isInChat) {
+        let chatUnreads = countUnreads({
+          chat: state.messages[friendship_id],
+          user_id: state.user.id
+        });
+        state.unreads = {
+          ...state.unreads,
+          [friendship_id]: chatUnreads
+        };
+      }
     },
     updateSentMessage(state, data) {
       state.messages[data.friendship_id][data.index]._id = data.id;

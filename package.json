@@ -22,6 +22,7 @@
     "notyf": "^3.7.0",
     "socket.io-client": "^2.2.0",
     "vue": "^2.6.10",
+    "vue-material": "^1.0.0-beta-15",
     "vue-router": "^3.0.3",
     "vuex": "^3.0.1"
   },

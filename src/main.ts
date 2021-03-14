@@ -6,7 +6,8 @@ import {
   getCookie,
   clearNotifications,
   getFirebaseSigninToken,
-  signInToFirebase
+  signInToFirebase,
+  markAsReceived
 } from "./common";
 import * as firebase from "firebase/app";
 import "firebase/auth";
@@ -57,7 +58,25 @@ let unsubInitialAuthCheck = firebase.auth().onAuthStateChanged(async user => {
 });
 
 clearNotifications();
-window.onfocus = () => clearNotifications();
+window.onfocus = () => {
+  store.state.focused = true;
+  if (store.state.currChatFriendshipId) {
+    console.log(store.state.currChatFriendshipId);
+
+    store.commit("markChatMessagesAsRead", {
+      friendship_id: store.state.currChatFriendshipId
+    });
+    const messages = store.state.messages[store.state.currChatFriendshipId];
+    markAsReceived(store.state.currChatFriendshipId, [
+      messages[0].createdAt,
+      messages[messages.length - 1].createdAt
+    ]);
+  }
+  clearNotifications();
+};
+window.onblur = () => {
+  store.state.focused = false;
+};
 window.onoffline = () => {
   eventBus.$emit("offline");
   store.state.network = false;
@@ -66,6 +85,10 @@ window.ononline = () => {
   eventBus.$emit("online");
   store.state.network = true;
 };
+
+import VueMaterial from "vue-material";
+
+Vue.use(VueMaterial);
 
 new Vue({
   router,

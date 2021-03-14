@@ -25,8 +25,8 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-// export const baseURI = "http://localhost:3002";
+// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+export const baseURI = "http://localhost:3002";
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
@@ -382,7 +382,53 @@ export const markAsReceived = async (friendship_id, range) => {
     },
     data: {
       range,
-      friendship_id
+      friendship_id,
+      read:
+        store.state.focused &&
+        friendship_id === store.state.currChatFriendshipId
+    }
+  });
+};
+
+export const countUnreads = ({ chat, user_id }) => {
+  const unreadLimit = 50;
+  let unreads = 0;
+  if (chat) {
+    const arrLength = chat.length;
+    const messages = chat.slice(arrLength - (unreadLimit + 1));
+    for (const message of messages) {
+      if (message.status !== "read" && message.fromId !== user_id) {
+        unreads++;
+      }
+    }
+  }
+  console.log(unreads);
+
+  return unreads;
+};
+
+export const isInChat = friendship_id => {
+  return (
+    store.state.focused && friendship_id === store.state.currChatFriendshipId
+  );
+};
+
+export function markChatMessagesAsRead(messages) {
+  const unreadLimit = 50;
+  const start = Math.max(messages.length - unreadLimit, 0);
+  for (let i = start; i < messages.length; i++) {
+    messages[i].status = "read";
+  }
+  return messages;
+}
+
+export const getNotifications = async () => {
+  return await axios({
+    method: "GET",
+    url: `${baseURI}/api/users/me/notifications`,
+    headers: {
+      "Content-type": "application/json",
+      "x-auth": getCookie("token")
     }
   });
 };
@@ -508,7 +554,8 @@ export const getLastMessage = async (friendship_id: string) => {
 
 export const eventWrapper = handler => {
   return data => {
-    if (data.eventData) {
+    if (data && data.eventData) {
+      console.log("addEvent");
       store.commit("addEvent", data.eventData);
     }
     return handler(data);
