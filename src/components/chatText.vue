@@ -45,8 +45,8 @@
         /> -->
         <md-field class="no-space" ref="field">
           <md-textarea
-            ref="msgText"
             v-if="!hasAudio && !isRecording"
+            ref="msgText"
             @keydown="keydownHandler"
             @input="scanForLink"
             id="msg-txt"
@@ -77,6 +77,14 @@
         >
           <img src="../assets/send.svg" alt />
         </button> -->
+        <input
+          type="file"
+          @input="fileInputHandler"
+          style="display: none"
+          enctype="multipart/form-data"
+          accept="image/*"
+          ref="fileInput"
+        />
         <md-button
           v-if="!showImage && !hasAudio"
           @click="addFileHandler"
