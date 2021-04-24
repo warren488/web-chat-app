@@ -2,7 +2,6 @@
   <div class="home">
     <div id="sound"></div>
     <sideMenu
-      class="side-menu"
       @close="sideMenuActive = false"
       :active="sideMenuActive"
       :menuData="sideMenuData"
@@ -39,25 +38,65 @@
             class="mybt menubt notification-item"
             @click="sideMenuActive = !sideMenuActive"
           >
-            <img src="../assets/menu.svg" alt="notification icon" />
+            <img src="/assets/img/menu.svg" alt="notification icon" />
           </button>
-          <md-button class="md-icon-button">
-            <md-icon class="">notifications</md-icon>
-          </md-button>
-          <md-button v-if="events.length === 0" class="md-icon-button">
-            <md-icon class="">notifications</md-icon>
-          </md-button>
           <span v-if="!network">you are currently offline</span>
           <span v-if="!socketConnected && network"
             >connecting to server...</span
           >
         </header>
-        <md-tabs class="md-primary" @md-changed="tabChanged">
-          <template slot="md-tab" slot-scope="{ tab }">
-            {{ tab.label }}
-            <i class="badge" v-if="tab.data.badge">{{ tab.data.badge }}</i>
-          </template>
-          <md-tab id="tab-chat" md-label="Chat">
+
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+          <li class="nav-item " role="presentation">
+            <button
+              class="nav-link active fw-bold"
+              id="chat-tab"
+              data-bs-toggle="tab"
+              data-bs-target="#chat"
+              type="button"
+              role="tab"
+              aria-controls="chat"
+              aria-selected="true"
+            >
+              Chat
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link fw-bold"
+              id="search-tab"
+              data-bs-toggle="tab"
+              data-bs-target="#search-content"
+              type="button"
+              role="tab"
+              aria-controls="search-content"
+              aria-selected="false"
+            >
+              Search
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link fw-bold"
+              id="requests-tab"
+              data-bs-toggle="tab"
+              data-bs-target="#requests"
+              type="button"
+              role="tab"
+              aria-controls="requests"
+              aria-selected="false"
+            >
+              requests
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content" id="myTabContent">
+          <div
+            class="tab-pane fade show active"
+            id="chat"
+            role="tabpanel"
+            aria-labelledby="chat-tab"
+          >
             <chatList
               title="Chat"
               :filter="filter"
@@ -65,9 +104,13 @@
               @open="openChat"
               :currentChat="currChatFriendshipId"
             />
-          </md-tab>
-
-          <md-tab id="tab-search" md-label="Search">
+          </div>
+          <div
+            class="tab-pane fade"
+            id="search-content"
+            role="tabpanel"
+            aria-labelledby="search-tab"
+          >
             <chatList
               title="Search"
               :filter="filter"
@@ -75,14 +118,12 @@
               @open="viewFriendship"
               :currentChat="currChatFriendshipId"
             />
-          </md-tab>
-          <md-tab
-            id="tab-requests"
-            md-label="Friend Requests"
-            :md-template-data="{
-              badge:
-                events && events.friendRequest && events.friendRequest.length
-            }"
+          </div>
+          <div
+            class="tab-pane fade"
+            id="requests"
+            role="tabpanel"
+            aria-labelledby="requests-tab"
           >
             <chatList
               v-if="user"
@@ -92,8 +133,8 @@
               @open="viewFriendship"
               :currentChat="currChatFriendshipId"
             />
-          </md-tab>
-        </md-tabs>
+          </div>
+        </div>
       </div>
       <div
         :class="{
@@ -138,7 +179,7 @@
                   'chat-header__profile-img--open': profileImageOpen
                 }"
                 v-if="!currFriend.imgUrl"
-                src="../assets/abstract-user-flat-1.svg"
+                src="/assets/img/abstract-user-flat-1.svg"
                 alt=""
               />
               <img
@@ -665,17 +706,8 @@ export default Vue.extend({
   }
 }
 
-.md-tabs,
-.md-tabs.md-theme-default .md-tabs-navigation {
-  background-color: rgb(0, 93, 64);
-}
-
-.md-tab {
-  padding: 0px;
-}
-
 .chat__sidebar {
-  background-color: var(--md-theme-default-primary);
+  background-color: var(--bs-green);
   width: 350px;
   min-width: 350px;
   height: 100vh;
@@ -732,7 +764,7 @@ export default Vue.extend({
   flex-grow: 1;
   align-items: center;
   display: flex;
-  background: linear-gradient(89.81deg, #3a6136 0.03%, #005d40 64.36%);
+  background: var(--bs-green);
   border-bottom: 1px solid white;
   font-weight: bold;
   height: var(--main-header-height);
@@ -763,11 +795,7 @@ export default Vue.extend({
 
 .chat-header {
   display: flex;
-  background: linear-gradient(
-    89.81deg,
-    rgb(0, 93, 64) 0.03%,
-    rgb(58, 97, 54) 64.36%
-  );
+  background: var(--bs-green);
   color: white;
   text-align: center;
   padding: 15px;
