@@ -14,36 +14,26 @@
           @click="$emit('cancelReply')"
           class="cancel-reply"
         >
-          <img src="../assets/close.svg" alt />
+          <img src="/assets/img/close.svg" alt />
         </button>
       </div>
       <linkPreview :previewData="previewData"></linkPreview>
       <form class="form-row" @submit.prevent="sendMessage" id="message-form">
-        <md-button
-          class="md-icon-button"
-          :md-ripple="false"
+        <button
+          class="chat-control-button"
           v-if="!hasAudio && !isRecording"
           @click="toggleEmojis"
           id="emoji-button"
+          type="button"
         >
-          <md-icon>insert_emoticon</md-icon>
-        </md-button>
-
-        <!-- <input
-          v-if="!hasAudio && !isRecording"
-          ref="msgText"
-          type="text"
-          class="msg-txt no-scrollbar"
-          @keydown="keydownHandler"
-          @input="scanForLink"
-          id="msg-txt"
-          v-model="messageText"
-          name="message"
-          placeholder="send message..."
-          autocomplete="off"
-          autofocus
-        /> -->
-        <md-field class="no-space" ref="field">
+          <img
+            src="/assets/img/emoji-smile.svg"
+            alt="Bootstrap"
+            width="32"
+            height="32"
+          />
+        </button>
+        <md-field style="width: 100%">
           <md-textarea
             v-if="!hasAudio && !isRecording"
             ref="msgText"
@@ -69,14 +59,6 @@
           id="audio"
           style="flex-grow: 1;"
         ></audio>
-        <!-- <button
-          v-if="hasText || hasAudio || showImage"
-          ref="sendButton"
-          class="transp textmessage"
-          id="send-button"
-        >
-          <img src="../assets/send.svg" alt />
-        </button> -->
         <input
           type="file"
           @input="fileInputHandler"
@@ -85,63 +67,64 @@
           accept="image/*"
           ref="fileInput"
         />
-        <md-button
+        <button
+          class="chat-control-button"
           v-if="!showImage && !hasAudio"
           @click="addFileHandler"
-          class="add-photo"
           id="add-photo"
+          type="button"
         >
-          <md-icon>share</md-icon>
-        </md-button>
-        <md-button
+          <img
+            src="/assets/img/upload.svg"
+            alt="Bootstrap"
+            width="32"
+            height="32"
+          />
+        </button>
+        <button
+          class="chat-control-button"
           type="submit"
-          class="md-icon-button"
           v-if="hasText || hasAudio || showImage"
           ref="sendButton"
           id="send-button"
         >
-          <md-icon>send</md-icon>
-        </md-button>
+          <img
+            src="/assets/img/chat-left-text.svg"
+            alt="Bootstrap"
+            width="32"
+            height="32"
+          />
+        </button>
         <div v-if="!hasText && !showImage" class="voicemessage">
-          <md-button
-            type="submit"
-            class="md-icon-button"
+          <button
+            class="chat-control-button"
+            type="button"
             v-if="!isRecording && !hasAudio"
             id="start"
             @click="getVN"
           >
-            <md-icon>mic</md-icon>
-          </md-button>
-          <md-button
-            class="md-icon-button"
-            v-if="isRecording || hasAudio"
-            @click="stopAndDeleteButtonHandler"
-            id="stop"
-          >
-            <md-icon>stop</md-icon>
-          </md-button>
+            <img
+              src="/assets/img/mic.svg"
+              alt="Bootstrap"
+              width="32"
+              height="32"
+            />
+          </button>
           <button
-            class="voicemessage__control"
+            class="chat-control-button"
             v-if="isRecording || hasAudio"
             @click="stopAndDeleteButtonHandler"
             id="stop"
+            type="button"
           >
-            <svg
-              version="1.1"
-              id="Layer_1"
-              xmlns="http://www.w3.org/2000/svg"
-              xmlns:xlink="http://www.w3.org/1999/xlink"
-              x="0px"
-              y="0px"
-              viewBox="0 0 64 64"
-              style="enable-background:new 0 0 64 64;"
-              xml:space="preserve"
-            >
-              <path
-                d="M61.3,0H2.7C1.1,0,0,1.1,0,2.7v58.7C0,62.9,1.1,64,2.7,64h58.7c1.6,0,2.7-1.1,2.7-2.7V2.7C64,1.1,62.9,0,61.3,0z M58.7,58.7
-	H5.3V5.3h53.3V58.7z"
-              />
-            </svg>
+            <img
+              :src="
+                !shouldStop ? '/assets/img/stop.svg' : '/assets/img/trash.svg'
+              "
+              alt="Bootstrap"
+              width="32"
+              height="32"
+            />
           </button>
         </div>
       </form>
@@ -479,6 +462,26 @@ export default Vue.extend({
 <style scoped lang="scss">
 @import url("https://fonts.googleapis.com/css?family=Material+Icons");
 
+.chat-control-button {
+  background-color: transparent;
+  img {
+    height: 32px;
+    width: 32px;
+    max-width: 32px;
+    padding: 0px;
+  }
+}
+
+.md-textarea {
+  width: 100%;
+  border: none;
+  resize: none;
+  &:focus {
+    border: none;
+    outline: none;
+  }
+}
+
 .no-space {
   padding: 0px;
   margin: 0px;
@@ -489,18 +492,6 @@ export default Vue.extend({
   }
 }
 
-.add-photo {
-  display: flex;
-  align-items: flex-end;
-  min-width: 20px;
-  width: 20px;
-  height: 24px;
-  font-size: 2rem;
-  cursor: pointer;
-  font-weight: bold;
-  color: #e6eaee;
-  background-color: transparent;
-}
 .imgpreview {
   position: relative;
 }
@@ -553,16 +544,6 @@ export default Vue.extend({
   min-width: 40px;
   border-radius: 32px;
   margin-right: 0.5rem;
-}
-.voicemessage__control {
-  padding: 0px;
-  display: flex;
-  cursor: pointer;
-  font-size: 24px;
-  background-color: transparent;
-  svg {
-    width: 24px;
-  }
 }
 
 .transp {

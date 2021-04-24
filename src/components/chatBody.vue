@@ -160,13 +160,9 @@ export default Vue.extend({
 }
 
 .audiomessage {
+  height: 32px;
   max-width: 100%;
 }
-/* .imagemessage {
-  width: 100%;
-  max-width: 500px;
-} */
-
 .reply {
   color: #999;
   cursor: pointer;

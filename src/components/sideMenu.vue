@@ -126,6 +126,7 @@ export default Vue.extend({
 }
 
 .container {
+  padding: 0px;
   transition: min-width 0.3s ease-in, max-width 0.3s ease-in, width 0.3s ease-in;
   display: inline-flex;
   position: fixed;
@@ -177,7 +178,7 @@ export default Vue.extend({
   top: 0px;
   left: 0px;
   height: 100vh;
-  background: linear-gradient(89.81deg, #3a6136 0.03%, #005d40 64.36%);
+  background: var(--bs-green);
   color: white;
   width: 0px;
   max-width: 350px;
@@ -187,7 +188,7 @@ export default Vue.extend({
 .menu-content {
   z-index: 1000;
   width: 100%;
-  background: linear-gradient(89.81deg, #3a6136 0.03%, #005d40 64.36%);
+  background: var(--bs-green);
 }
 
 .close-button {

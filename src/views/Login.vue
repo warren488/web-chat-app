@@ -162,10 +162,6 @@ export default Vue.extend({
   justify-content: center;
   height: 100vh;
   width: 100vw;
-  background: linear-gradient(
-    325deg,
-    rgb(39, 130, 51) 0,
-    rgb(110, 129, 49) 100%
-  );
+  background: var(--bs-green);
 }
 </style>

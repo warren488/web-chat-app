@@ -13,7 +13,7 @@ import * as firebase from "firebase/app";
 import "firebase/auth";
 import { eventBus } from "@/common/eventBus";
 import { Notyf } from "notyf";
-
+import MdField from "vue-material/dist/components/MdField";
 Vue.config.productionTip = false;
 
 /** if we have a token then there's no possibility of running this a second time on login */
@@ -85,11 +85,7 @@ window.ononline = () => {
   eventBus.$emit("online");
   store.state.network = true;
 };
-
-import VueMaterial from "vue-material";
-
-Vue.use(VueMaterial);
-
+Vue.use(MdField);
 new Vue({
   router,
   store,

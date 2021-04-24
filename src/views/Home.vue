@@ -706,6 +706,14 @@ export default Vue.extend({
   }
 }
 
+.nav-link {
+  color: var(--bs-white);
+  text-transform: uppercase;
+  .active {
+    color: var(--bs-secondary);
+  }
+}
+
 .chat__sidebar {
   background-color: var(--bs-green);
   width: 350px;

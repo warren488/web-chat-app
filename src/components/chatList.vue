@@ -26,7 +26,7 @@
           <img
             class="profile-img"
             v-if="!friend.imgUrl"
-            src="../assets/abstract-user-flat-1.svg"
+            src="/assets/img/abstract-user-flat-1.svg"
             alt=""
           />
           <img
@@ -142,7 +142,7 @@ export default Vue.extend({
   height: 1.5rem;
   font-size: 1.2rem;
   font-weight: bold;
-  color: var(--md-theme-default-primary);
+  color: var(--bs-green);
 }
 
 .chat-preview {
@@ -156,6 +156,12 @@ export default Vue.extend({
 .preview-text {
   white-space: nowrap;
   overflow: hidden;
+  h3 {
+    font-size: 16px;
+  }
+  p {
+    margin-bottom: 0px;
+  }
 }
 
 .profile-img {
@@ -180,11 +186,7 @@ header h1 {
   text-align: center;
 }
 .chatList {
-  background: linear-gradient(
-    89.81deg,
-    rgb(58, 97, 54) 0.03%,
-    rgb(0, 93, 64) 64.36%
-  );
+  background: var(--bs-green);
   // padding: 5px;
   color: beige;
 }
