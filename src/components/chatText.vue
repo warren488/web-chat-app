@@ -418,7 +418,8 @@ export default Vue.extend({
         });
       }
       this.messageText = "";
-      console.log(this.$refs.msgText.$el);
+      console.log(this.$refs);
+      // @fixme potential cause of problems
       this.$refs.msgText.$el.focus();
       this.previewData = null;
     }

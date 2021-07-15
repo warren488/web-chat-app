@@ -22,7 +22,7 @@
         }"
         @click="() => emitOpen(friend)"
       >
-        <div style="display: flex">
+        <div style="display: flex; max-width: 100%">
           <img
             class="profile-img"
             v-if="!friend.imgUrl"

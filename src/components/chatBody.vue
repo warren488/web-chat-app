@@ -17,7 +17,7 @@
               {{ message.fromId === user.id ? "me" : message.from }}
             </h4>
             <span>{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
-            <p class="reply" @click="replyClick(message._id)">reply</p>
+            <span class="reply" @click="replyClick(message._id)">reply</span>
           </div>
           <div class="message__body">
             <audio
@@ -36,9 +36,9 @@
               v-if="message.linkPreview"
               :previewData="message.linkPreview"
             ></linkPreview>
-            <p v-if="message.media !== 'audio'" class="wrap">
+            <span v-if="message.media !== 'audio'" class="wrap">
               {{ message.text }}
-            </p>
+            </span>
             <span v-if="message.quoted" class="quoted">
               <div class="message__title">
                 <h4>
@@ -52,7 +52,7 @@
                   {{ new Date(message.quoted.createdAt).toLocaleTimeString() }}
                 </span>
               </div>
-              <p class="wrap">{{ message.quoted.text }}</p>
+              <span class="wrap">{{ message.quoted.text }}</span>
               <!-- make sure i add this when i quote a message -->
               <audio
                 class="audiomessage"
@@ -215,14 +215,21 @@ export default Vue.extend({
   overflow-wrap: break-word;
 }
 
-li.sent .message .message__body > p.wrap::after {
+li.sent .message .message__body > .wrap::after {
+  content: "\2713";
+  color: gray;
+  float: right;
+  margin: 0px 0px 0px 5px;
+}
+
+li.received .message .message__body > .wrap::after {
   content: "\2713";
   color: blue;
   float: right;
   margin: 0px 0px 0px 5px;
 }
 
-li.received .message .message__body > p.wrap::after {
+li.read .message .message__body > .wrap::after {
   content: "\2714";
   color: green;
   float: right;

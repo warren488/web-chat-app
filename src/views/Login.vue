@@ -10,28 +10,46 @@
         <div class="form-field">
           <h3 class="">Login</h3>
         </div>
-        <div class="form-field">
-          <label for="username">username</label>
+        <div class="mb-3">
+          <label for="username" class="form-label fw-bold">
+            Userame
+          </label>
           <input
             v-model.lazy="userData.username"
             type="text"
-            name="username"
-            autofocus
+            class="form-control border-light"
+            id="username"
           />
         </div>
-        <div class="form-field">
-          <label for="password">password</label>
+        <label for="password" class="form-label fw-bold">Password</label>
+        <div class="input-group mb-3">
           <input
             v-model.lazy="userData.password"
             type="password"
-            name="password"
+            ref="passwordinput"
+            class="form-control border-light"
+            id="password"
+            aria-describedby="basic-addon3"
           />
+          <button
+            class="btn btn-outline-light bg-white p-0 px-1"
+            type="button"
+            id="button-addon2"
+            @click="seePassword"
+          >
+            <img
+              class="toggle password visibility"
+              src="/assets/img/eye-fill.svg"
+              style="width: 32px;"
+            />
+          </button>
         </div>
         <div v-if="feedbackText" class="feedback" ref="feedback">
           {{ feedbackText }}
         </div>
         <div class="form-field">
-          <button class="mybt">Login</button>
+          <!-- <button class="mybt">Login</button> -->
+          <button class="btn btn-success mb-2">Login</button>
           <a href="" @click.prevent="$router.push('/signup')"
             >no account? signup here</a
           >
@@ -71,6 +89,13 @@ export default Vue.extend({
   },
   methods: {
     ...mapActions(["setUpApp"]),
+    seePassword() {
+      if (this.$refs.passwordinput.type === "text") {
+        this.$refs.passwordinput.type = "password";
+      } else {
+        this.$refs.passwordinput.type = "text";
+      }
+    },
     async login(): Promise<Boolean> {
       this.feedback = "";
       if (

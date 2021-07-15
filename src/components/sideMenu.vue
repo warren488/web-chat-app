@@ -1,17 +1,20 @@
 <template>
   <div :class="{ container: true, active: active }">
     <div @click="close" class="backdrop"></div>
-    <div class="menu-content">
+    <div class="menu-content list-group">
       <button class="close-button" @click="close">X</button>
       <!-- <slot></slot> -->
       <div
         v-for="item in menuData"
         :key="item.name"
         @click="getHandler(item, 0)"
-        class="menu-item"
+        class="list-group-item"
       >
         <button class="menubt">{{ item.name }}</button>
-        <div class="submenu" v-if="item.submenu && activeSubMenu === item.name">
+        <div
+          class="list-group submenu"
+          v-if="item.submenu && activeSubMenu === item.name"
+        >
           <button class="menubt menubt--back" @click.stop="subMenu = null">
             back
           </button>
@@ -19,12 +22,13 @@
             v-for="subitem in item.submenu"
             :key="subitem.name"
             @click="getHandler(subitem, 1)"
-            class="submenu-item menubt"
+            class="list-group-item menubt"
           >
             {{ subitem.name }}
             <input
               :ref="`l1.${subitem.name}`"
               :checked="subitem.checked"
+              class="form-check-input"
               v-if="subitem.type === 'toggle'"
               type="checkbox"
             />
@@ -125,6 +129,22 @@ export default Vue.extend({
   }
 }
 
+.form-check-input:checked {
+  background-color: var(--bs-green);
+}
+
+.list-group-item {
+  background-color: transparent;
+  text-align: center;
+  text-decoration: none;
+  button {
+    text-transform: capitalize;
+    font-size: 32px;
+    padding: 0px;
+    margin: 0px;
+  }
+}
+
 .container {
   padding: 0px;
   transition: min-width 0.3s ease-in, max-width 0.3s ease-in, width 0.3s ease-in;
@@ -145,7 +165,7 @@ export default Vue.extend({
   font-size: 18px;
   margin: 8px 0px;
   cursor: pointer;
-  border-bottom: 1px solid white;
+  // border-bottom: 1px solid white;
   color: white;
   background-color: transparent;
   white-space: nowrap;
@@ -156,15 +176,6 @@ export default Vue.extend({
   }
 }
 
-.menubt--back,
-.close-button {
-  position: absolute;
-  top: 0px;
-  left: 0px;
-}
-
-.menu-content,
-.submenu,
 .leveltwo {
   padding-top: 16px;
   display: inline-flex;
