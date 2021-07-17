@@ -375,7 +375,7 @@ export default new Vuex.Store({
           linkPreview: data.linkPreview,
           url: data.url,
           /** @todo this does not go with the typical schema values for status */
-          status: read ? "read" : "unread"
+          status: read ? "read" : "received"
         }
       });
       context.commit("updateLastMessage", {
@@ -428,25 +428,20 @@ export default new Vuex.Store({
         ) {
           message.status = read ? "read" : "received";
           // this is needed because the computed property does a check for the messages as a group and doesnt detect these changes
-          let messageNode = document.getElementById(message._id);
-          if (messageNode) {
-            messageNode.classList.remove("pending");
-            messageNode.classList.remove("sent");
-            messageNode.classList.remove("received");
-            messageNode.classList.add(message.status);
-          }
+          markDOMElementAsRead(message._id, read);
         }
       }
     },
-    socketReceivedHandler2(context, { friendship_id, Id, createdAt }) {
+    socketReceivedHandler2(context, { friendship_id, Id, createdAt, read }) {
       let index = binaryCustomSearch(context.state.messages[friendship_id], {
         createdAt
       });
+      const messageStatus = read ? "read" : "received";
       if (typeof index === "number") {
         const message = context.state.messages[friendship_id][index];
         if (message._id === Id) {
-          message.status = "received";
-          markDOMElementAsRead(Id);
+          message.status = messageStatus;
+          markDOMElementAsRead(Id, read);
         } else {
           // this case means we must have multiple messages with the same timestamp
           const messages = context.state.messages[friendship_id];
@@ -455,8 +450,8 @@ export default new Vuex.Store({
           for (let i = index; i < messages.length; i++) {
             if (messages[i].createdAt === createdAt) {
               if (messages[i]._id === Id) {
-                messages[i].status = "received";
-                markDOMElementAsRead(Id);
+                messages[i].status = messageStatus;
+                markDOMElementAsRead(Id, read);
                 found = true;
                 // break if we find the message to mark
                 break;
@@ -471,8 +466,8 @@ export default new Vuex.Store({
             for (let i = index; i >= 0; i--) {
               if (messages[i].createdAt === createdAt) {
                 if (messages[i]._id === Id) {
-                  messages[i].status = "received";
-                  markDOMElementAsRead(Id);
+                  messages[i].status = messageStatus;
+                  markDOMElementAsRead(Id, read);
                   found = true;
                   // break if we find the message to mark
                   break;

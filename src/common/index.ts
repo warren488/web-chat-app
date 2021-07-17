@@ -123,12 +123,13 @@ export const unsubscribeToNotif = async () => {
   });
 };
 
-export const markDOMElementAsRead = Id => {
+export const markDOMElementAsRead = (Id, read) => {
   let messageElement = document.getElementById(Id);
   if (messageElement) {
     messageElement.classList.remove("pending");
     messageElement.classList.remove("sent");
-    messageElement.classList.add("received");
+    messageElement.classList.remove("received");
+    messageElement.classList.add(read ? "read" : "received");
   }
 };
 
