@@ -17,7 +17,10 @@
           <img src="/assets/img/close.svg" alt />
         </button>
       </div>
-      <linkPreview :previewData="previewData"></linkPreview>
+      <linkPreview
+        :previewData="previewData"
+        :loading="loadingPreview"
+      ></linkPreview>
       <form class="form-row" @submit.prevent="sendMessage" id="message-form">
         <button
           class="chat-control-button"
@@ -242,6 +245,7 @@ export default Vue.extend({
         "🧐"
       ],
       shouldStop: false,
+      loadingPreview: false,
       isRecording: false,
       audioBlob: null,
       previewData: null,
@@ -290,18 +294,28 @@ export default Vue.extend({
       }
       this.$emit("typing");
     },
-    scanForLink() {
-      let urlMatches = this.$refs.msgText.value.match(
+    scanForLink(input) {
+      console.log("scanning for link", input);
+      let urlMatches = input.match(
         // eslint-disable-next-line no-useless-escape
         /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
       );
       if (urlMatches) {
+        console.log("found url");
         if (!this.previewData || urlMatches[0] !== this.previewData.url) {
-          getPreviewData(urlMatches[0]).then(data => {
-            if ("title" in data || "image" in data || "description" in data) {
-              this.previewData = data;
-            }
-          });
+          this.loadingPreview = true;
+          getPreviewData(urlMatches[0])
+            .then(data => {
+              this.loadingPreview = false;
+              if ("title" in data || "image" in data || "description" in data) {
+                this.previewData = data;
+              } else {
+                this.previewData = null;
+              }
+            })
+            .catch(() => {
+              this.loadingPreview = false;
+            });
         }
       } else {
         this.previewData = null;
