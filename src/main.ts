@@ -63,7 +63,7 @@ window.onfocus = () => {
   if (store.state.currChatFriendshipId) {
     console.log(store.state.currChatFriendshipId);
 
-    store.commit("markChatMessagesAsRead", {
+    store.commit("markLocalChatMessagesAsRead", {
       friendship_id: store.state.currChatFriendshipId
     });
     const messages = store.state.messages[store.state.currChatFriendshipId];

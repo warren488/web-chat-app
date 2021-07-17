@@ -17,7 +17,7 @@ import {
   getNotifications,
   countUnreads,
   isInChat,
-  markChatMessagesAsRead
+  markLocalChatMessagesAsRead
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
@@ -62,6 +62,17 @@ export default new Vuex.Store({
     initMessages: state => state.messages === null
   },
   actions: {
+    meth: async (context, data) => {
+      context.commit("markLocalChatMessagesAsRead");
+      // await axios({
+      //   method: "GET",
+      //   url: `${baseURI}/api/users/me/notifications`,
+      //   headers: {
+      //     "Content-type": "application/json",
+      //     "x-auth": getCookie("token")
+      //   }
+      // });
+    },
     setNotifAudioFile: (context, file) => {
       context.state.notifAudioFile = file;
       setCookie("notifAudioFile", file, 1000000);
@@ -182,7 +193,6 @@ export default new Vuex.Store({
           });
       });
 
-      promiseArr.push();
       await Promise.all(promiseArr).then(promises => {
         context.state.dataLoaded = true;
         eventBus.dataLoaded();
@@ -229,6 +239,11 @@ export default new Vuex.Store({
                         context.state.focused &&
                         friendship_id === context.state.currChatFriendshipId
                       ) {
+                        /**
+                         * no need to update the dom nodes because these are messages
+                         * received by me so we dont show the status this is mainly
+                         * for the unread count
+                         */
                         message.status = "read";
                       } else {
                         context.commit("incUnread", { friendship_id });
@@ -266,13 +281,6 @@ export default new Vuex.Store({
           console.log("reconnect", args);
         })
       );
-      context.state.socket.on(
-        "disconnect",
-        eventWrapper((...args) => {
-          console.log("disconnect", args);
-        })
-      );
-
       context.state.socket.on(
         "newMessage",
         eventWrapper(async data => {
@@ -388,7 +396,7 @@ export default new Vuex.Store({
     },
     socketSweepHandler2(
       context,
-      { range, friendship_id, fromId: sweepEventFromId }
+      { range, friendship_id, fromId: sweepEventFromId, read }
     ) {
       if (sweepEventFromId === context.state.user.id) {
         return;
@@ -414,14 +422,18 @@ export default new Vuex.Store({
         if (message.createdAt > range[1]) {
           break;
         }
-        if (message.fromId === context.state.user.id) {
-          message.status = "received";
+        if (
+          message.fromId === context.state.user.id &&
+          message.status !== "read"
+        ) {
+          message.status = read ? "read" : "received";
           // this is needed because the computed property does a check for the messages as a group and doesnt detect these changes
           let messageNode = document.getElementById(message._id);
           if (messageNode) {
             messageNode.classList.remove("pending");
             messageNode.classList.remove("sent");
-            messageNode.classList.add("received");
+            messageNode.classList.remove("received");
+            messageNode.classList.add(message.status);
           }
         }
       }
@@ -554,10 +566,11 @@ export default new Vuex.Store({
     setfriendshipIds(state, friendshipIds) {
       state.friendshipIds = friendshipIds;
     },
-    markChatMessagesAsRead(state, { friendship_id }) {
-      console.log(friendship_id, state.messages, state.messages[friendship_id]);
-      state.messages[friendship_id] = markChatMessagesAsRead(
-        state.messages[friendship_id]
+    markLocalChatMessagesAsRead(state, { friendship_id }) {
+      /** @todo tell the server to mark all these as read  */
+      state.messages[friendship_id] = markLocalChatMessagesAsRead(
+        state.messages[friendship_id],
+        state.user.id
       );
       state.unreads[friendship_id] = 0;
     },
@@ -565,8 +578,9 @@ export default new Vuex.Store({
       state.currChatFriendshipId = friendship_id;
       if (isInChat(friendship_id)) {
         /** @todo tell the server to mark all these as read  */
-        state.messages[friendship_id] = markChatMessagesAsRead(
-          state.messages[friendship_id]
+        state.messages[friendship_id] = markLocalChatMessagesAsRead(
+          state.messages[friendship_id],
+          state.user.id
         );
         state.unreads[friendship_id] = 0;
         markAsReceived(friendship_id, [

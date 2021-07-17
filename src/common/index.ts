@@ -413,11 +413,19 @@ export const isInChat = friendship_id => {
   );
 };
 
-export function markChatMessagesAsRead(messages) {
+export function markLocalChatMessagesAsRead(messages, userId) {
+  /**
+   * this is all used in order to keep count of the unread badge that will be on the chat
+   * and is not the same as us getting info that the other user has read our messages
+   */
   const unreadLimit = 50;
   const start = Math.max(messages.length - unreadLimit, 0);
   for (let i = start; i < messages.length; i++) {
-    messages[i].status = "read";
+    /** @todo only mark as read if its not sent by me */
+    console.log("markLocalChatMessagesAsRead", messages[i]);
+    if (userId !== messages[i].fromId) {
+      messages[i].status = "read";
+    }
   }
   return messages;
 }
@@ -610,15 +618,20 @@ export const notifyMe = data => {
     }
 
     // Otherwise, we need to ask the user for permission
+    /**
+     *  Update: this is more or less no longer accepted by browsers
+     * because the users needs to initiate the permission request
+     */
     else if (Notification.permission !== "denied") {
-      Notification.requestPermission()
-        .then(function(permission) {
-          // If the user accepts, let's create a notification
-          if (permission === "granted") {
-            var notification = new Notification(text);
-          }
-        })
-        .catch(err => {});
+      // Potentially do something in the app to show we cant give them notifs
+      // Notification.requestPermission()
+      //   .then(function(permission) {
+      //     // If the user accepts, let's create a notification
+      //     if (permission === "granted") {
+      //       var notification = new Notification(text);
+      //     }
+      //   })
+      //   .catch(err => {});
     }
 
     // At last, if the user has denied notifications, and you
