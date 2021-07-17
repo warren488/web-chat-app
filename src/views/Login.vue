@@ -108,12 +108,12 @@ export default Vue.extend({
       let authData;
       try {
         authData = (await login(this.userData)).data;
+        setCookie("username", authData.username, 1000000);
+        setCookie("token", authData.token, 1000000);
         /** i dont think we necessarily need to wait on or keep track of this
          * it should complete before the user tries to send any images or audio,
          * remember this is required for only writes and not reads */
         getFirebaseSigninToken().then(token => signInToFirebase(token));
-        setCookie("username", authData.username, 1000000);
-        setCookie("token", authData.token, 1000000);
         await this.setUpApp();
         this.$router.push("/home");
         return true;

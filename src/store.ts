@@ -360,6 +360,16 @@ export default new Vuex.Store({
         context.state.focused &&
         data.friendship_id === context.state.currChatFriendshipId;
 
+      let messageStatus;
+      /**
+       * @todo have a queue where we can store events that are to update the message
+       * status, where these events come in before the actual message
+       */
+      if (data.fromId === context.state.user.id) {
+        messageStatus = "sent";
+      } else {
+        messageStatus = read ? "read" : "receieved";
+      }
       context.commit("appendMessageToChat", {
         friendship_id: data.friendship_id,
         message: {
@@ -375,7 +385,7 @@ export default new Vuex.Store({
           linkPreview: data.linkPreview,
           url: data.url,
           /** @todo this does not go with the typical schema values for status */
-          status: read ? "read" : "received"
+          status: messageStatus
         }
       });
       context.commit("updateLastMessage", {
@@ -668,7 +678,7 @@ export default new Vuex.Store({
       };
     },
     appendMessageToChat(state, { friendship_id, message }) {
-      if (!isInChat(friendship_id)) {
+      if (!isInChat(friendship_id) && message.fromId !== state.user.id) {
         state.unreads = {
           ...state.unreads,
           [friendship_id]: state.unreads[friendship_id] + 1
