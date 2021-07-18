@@ -230,10 +230,11 @@ li.received .message .message__body > .wrap::after {
 }
 
 li.read .message .message__body > .wrap::after {
-  content: "\2714";
+  content: "\2714\2714";
   color: green;
   float: right;
-  margin: 0px 0px 0px 5px;
+  margin: 0px 2px 0px 5px;
+  letter-spacing: -6px;
 }
 
 li.pending .message .message__body > p.wrap::after {

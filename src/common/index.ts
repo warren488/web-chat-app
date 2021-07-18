@@ -40,13 +40,13 @@ export const CONSTANTS = Object.freeze({
     }
   }
 });
-export const clearNotifications = async () => {
+export const clearNotifications = async (searchOptions?: Object) => {
   if ("serviceWorker" in navigator) {
     return navigator.serviceWorker
       .getRegistration("/worker.js")
       .then(registration => {
         if (registration) {
-          registration.getNotifications().then(notifications => {
+          registration.getNotifications(searchOptions).then(notifications => {
             notifications.forEach(notification => {
               notification.close();
             });
@@ -57,6 +57,12 @@ export const clearNotifications = async () => {
 };
 
 export const subscribeToNotif = async () => {
+  console.log("subscribing");
+  let notification = new Notyf({
+    duration: 7000,
+    dismissible: true,
+    position: { x: "center", y: "top" }
+  });
   try {
     if ("serviceWorker" in navigator) {
       const registration = await navigator.serviceWorker.register(
@@ -80,6 +86,7 @@ export const subscribeToNotif = async () => {
         }
       });
     }
+    notification.success(`successfully subscribed to push notifications`);
   } catch (error) {
     console.log(error);
     let parsedError = error;
@@ -90,11 +97,8 @@ export const subscribeToNotif = async () => {
         message: error.message
       };
     }
-    let notification = new Notyf({
-      duration: 7000,
-      dismissible: true,
-      position: { x: "center", y: "top" }
-    });
+    console.log(parsedError);
+
     notification.error(
       `there was an error subscribing to the push notifications `
     );
