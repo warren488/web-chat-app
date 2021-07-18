@@ -71,7 +71,7 @@ export const subscribeToNotif = async () => {
           scope: "/"
         }
       );
-      registration.update();
+      await registration.update();
       await requestPermission();
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,

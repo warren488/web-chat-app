@@ -13,7 +13,7 @@ self.addEventListener("push", async function(e) {
       // be more than one notification with the same tag.... for now
       notifications.forEach(notification => {
         dataCount += notification.data;
-        notification.close();
+        // notification.close();
       });
       return self.registration.showNotification(
         `${data.title}${dataCount > 1 ? ` (${dataCount})` : ""}`,
