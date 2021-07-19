@@ -20,13 +20,16 @@
             <span class="reply" @click="replyClick(message._id)">reply</span>
           </div>
           <div class="message__body">
-            <audio
-              class="audiomessage"
-              v-if="message.type === 'media' && message.media === 'audio'"
-              :src="message.url"
-              controls
-            ></audio>
+            <div class="audiomessage wrap">
+              <audio
+                style="max-height: 100%"
+                v-if="message.type === 'media' && message.media === 'audio'"
+                :src="message.url"
+                controls
+              ></audio>
+            </div>
             <imagepreview
+              class="wrap"
               :fitToBox="true"
               :componentLength="300"
               v-if="message.type === 'media' && message.media === 'image'"
@@ -237,7 +240,7 @@ li.read .message .message__body > .wrap::after {
   letter-spacing: -6px;
 }
 
-li.pending .message .message__body > p.wrap::after {
+li.pending .message .message__body > .wrap::after {
   content: "\2755";
   color: #900;
   background: red;

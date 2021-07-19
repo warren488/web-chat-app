@@ -17,7 +17,8 @@ import {
   getNotifications,
   countUnreads,
   isInChat,
-  markLocalChatMessagesAsRead
+  markLocalChatMessagesAsRead,
+  clearNotifications
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
@@ -594,6 +595,7 @@ export default new Vuex.Store({
             state.messages[friendship_id].length - 1
           ].createdAt
         ]);
+        clearNotifications({ tag: friendship_id });
       }
     },
     setChat(state, { friendship_id, data }) {

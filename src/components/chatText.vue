@@ -36,9 +36,8 @@
             height="32"
           />
         </button>
-        <md-field style="width: 100%">
+        <md-field v-if="!hasAudio && !isRecording" style="width: 100%">
           <md-textarea
-            v-if="!hasAudio && !isRecording"
             ref="msgText"
             @keydown="keydownHandler"
             @input="scanForLink"
@@ -488,6 +487,9 @@ export default Vue.extend({
 }
 
 .md-textarea {
+  /** this number is a bit arbitrary but the text is off center and 
+  i cant figure out another way to do it  */
+  padding-top: 5px;
   width: 100%;
   border: none;
   resize: none;

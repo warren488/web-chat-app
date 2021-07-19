@@ -3,7 +3,7 @@ console.log("service worker loaded");
 self.addEventListener("push", async function(e) {
   const data = e.data.json();
 
-  let searchOptions = { tag: data.fromId };
+  let searchOptions = { tag: data.friendship_id };
   let newBody = data.text;
   let dataCount = 1;
   const notifPromise = self.registration
@@ -19,7 +19,7 @@ self.addEventListener("push", async function(e) {
         `${data.title}${dataCount > 1 ? ` (${dataCount})` : ""}`,
         {
           body: newBody,
-          tag: data.fromId,
+          tag: data.friendship_id,
           badge: "/test-72x72.png",
           icon: "/test-72x72.png",
           /**
