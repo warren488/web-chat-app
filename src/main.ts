@@ -26,6 +26,7 @@ navigator.serviceWorker.addEventListener("message", event => {
   console.log(event.data, event.data);
   if (event.data.type === "openChat") {
     store.commit("setCurrentChat", event.data.chat);
+    store.commit("setHomeView", "chatbody");
   }
 });
 

@@ -47,10 +47,12 @@ export default new Vuex.Store({
     currChatMessages: [],
     events: [],
     friendshipIds: [],
-    unreads: {}
+    unreads: {},
+    homeView: "chatlist"
   },
   getters: {
     user: state => state.user,
+    homeView: state => state.homeView,
     unreads: state => state.unreads,
     messages: state => state.messages,
     events: state => state.events,
@@ -202,6 +204,7 @@ export default new Vuex.Store({
       await Promise.all(promiseArr).then(promises => {
         if (chat) {
           context.commit("setCurrentChat", chat);
+          context.commit("setHomeView", "chatbody");
         }
         context.state.dataLoaded = true;
         eventBus.dataLoaded();
@@ -573,6 +576,11 @@ export default new Vuex.Store({
         // assume there were no notifications before so just set it to 1
         targetFriend.notificationCount = 1;
       }
+    },
+    setHomeView(state, view) {
+      console.log("set home view");
+
+      state.homeView = view;
     },
     setFriendShips(state, friendShips) {
       state.friendShips = friendShips;
