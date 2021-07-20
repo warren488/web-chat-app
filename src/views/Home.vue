@@ -199,7 +199,7 @@
             ref="chatBody"
             :key="currChatFriendshipId"
             :friendship_id="currChatFriendshipId"
-            :messages="currMessages"
+            :messages="currChatMessages"
             :highlighted="highlightedMessageId"
             @replyClick="replyHandler"
             @viewMore="viewMore"
@@ -330,7 +330,7 @@ export default Vue.extend({
       getMessagePage(
         this.currChatFriendshipId,
         100,
-        this.messages[this.currChatFriendshipId][0].createdAt
+        this.currChatMessages[this.currChatFriendshipId][0].createdAt
       ).then(({ data }) => {
         /**
          * @todo - I need to account for instances where we will get the messages that have the same timestamp
@@ -356,7 +356,9 @@ export default Vue.extend({
       });
       // TODO: FIXME: implement sort and search algorith for messages or get data from the sub component
       // massive performance issue
-      for (const chatMessage of this.messages[this.currChatFriendshipId]) {
+      for (const chatMessage of this.currChatMessages[
+        this.currChatFriendshipId
+      ]) {
         console.log(chatMessage);
         if (chatMessage._id === message.hID) {
           quoted = chatMessage;
@@ -372,13 +374,13 @@ export default Vue.extend({
           createdAt: Date.now()
         }
       });
-      let index = this.messages[this.currChatFriendshipId].length - 1;
+      let index = this.currChatMessages[this.currChatFriendshipId].length - 1;
 
       if (message.type === "media") {
         message.uploadPromise
           .then(url => {
             delete message.uploadPromise;
-            this.messages[this.currChatFriendshipId][index].url = url;
+            this.currChatMessages[this.currChatFriendshipId][index].url = url;
             return this.emitEvent({
               eventName: "sendMessage",
               data: {
@@ -477,13 +479,13 @@ export default Vue.extend({
       /** if we get this far and dont have any messages, will we ever?
        * maybe just use the socket here directly to make absolutely surethat we dont have any
        */
-      if (!this.messages[friendship_id]) {
+      if (!this.currChatMessages[friendship_id]) {
         return this.loadMessages({ friendship_id }).then(() => {
           /**
            * @todo this is a bit disconnected, we set the current messages using the
            * argument, but then we set the currentMessages variable after
            */
-          this.currentMessages = this.messages[friendship_id];
+          this.currentMessages = this.currChatMessages[friendship_id];
           this.setCurrentChat(friendship_id);
           this.socket.emit(
             "checkin",
@@ -499,7 +501,6 @@ export default Vue.extend({
           );
         });
       } else {
-        this.currentMessages = this.messages[friendship_id];
         this.setCurrentChat(friendship_id);
       }
       this.view = "chatbody";
@@ -529,6 +530,7 @@ export default Vue.extend({
       "messages",
       "socket",
       "currChatFriendshipId",
+      "currChatMessages",
       "socketConnected",
       "events"
     ]),
@@ -593,9 +595,6 @@ export default Vue.extend({
           ]
         }
       ];
-    },
-    currMessages() {
-      return this.currentMessages;
     },
     currFriend() {
       if (this.friendShips) {

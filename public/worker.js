@@ -8,13 +8,29 @@ self.addEventListener("push", async function(e) {
   let dataCount = 1;
   const notifPromise = self.registration
     .getNotifications(searchOptions)
-    .then(function(notifications) {
+    .then(async function(notifications) {
       // in reality this apps use cases for tags should mean there will never
       // be more than one notification with the same tag.... for now
       notifications.forEach(notification => {
-        dataCount += notification.data;
+        dataCount += notification.data.count;
         // notification.close();
       });
+      const isInFocus = await self.clients
+        .matchAll({ type: "window" })
+        .then(clientsArr => {
+          // If a Window tab is already in focus
+          console.log(clientsArr);
+          console.log(self.clients);
+          return clientsArr.some(windowClient => {
+            if (windowClient.focused) {
+              return true;
+            }
+            return false;
+          });
+        });
+      if (isInFocus) {
+        return Promise.resolve();
+      }
       return self.registration.showNotification(
         `${data.title}${dataCount > 1 ? ` (${dataCount})` : ""}`,
         {
@@ -26,7 +42,7 @@ self.addEventListener("push", async function(e) {
            * @fixme we need to find a way to clear this number when we clear
            * notifications on opening the app
            */
-          data: dataCount,
+          data: { count: dataCount, friendship_id: data.friendship_id },
           vibrate: [400],
           timestamp: data.createdAt
         }
@@ -37,25 +53,39 @@ self.addEventListener("push", async function(e) {
 
 // Notification click event listener
 self.addEventListener("notificationclick", e => {
+  const chat = e.notification.data.friendship_id;
+  console.log(e.notification);
+  console.log(self.clients);
   // Close the notification popout
-  e.notification.close();
+  // e.notification.close();
   // Get all the Window clients
   e.waitUntil(
     self.clients.matchAll({ type: "window" }).then(clientsArr => {
       // If a Window tab matching the targeted URL already exists, focus that;
-      console.log(self.clients);
-      const hadWindowToFocus = clientsArr.some(windowClient => {
-        if (windowClient.url.startsWith(`https://myapp-4f894.web.app/`)) {
-          windowClient.focus();
-          return true;
-        }
-        return false;
-      });
-      // Otherwise, open a new tab to the applicable URL and focus it.
-      if (!hadWindowToFocus)
-        clients
-          .openWindow(`https://myapp-4f894.web.app/`)
-          .then(windowClient => (windowClient ? windowClient.focus() : null));
+      try {
+        const hadWindowToFocus = clientsArr.some(async windowClient => {
+          if (windowClient.url.startsWith(`https://myapp-4f894.web.app`)) {
+            const focusedClient = await windowClient.focus();
+            focusedClient.postMessage({
+              type: "openChat",
+              chat
+            });
+            return true;
+          }
+          return false;
+        });
+        // Otherwise, open a new tab to the applicable URL and focus it.
+        if (!hadWindowToFocus)
+          clients
+            /** postMessage seems to be a little funny here when we try to use it immediately after
+             * a window is created, maybe i just need to do a bit more diggin
+             */
+            /** @fixme subsequentl reloads will always open this chat */
+            .openWindow(`https://myapp-4f894.web.app?chat=${chat}`)
+            .then(windowClient => (windowClient ? windowClient.focus() : null));
+      } catch (error) {
+        console.log(error);
+      }
     })
   );
 });

@@ -20,53 +20,57 @@
             <span class="reply" @click="replyClick(message._id)">reply</span>
           </div>
           <div class="message__body">
-            <div class="audiomessage wrap">
+            <div class=" wrap">
               <audio
-                style="max-height: 100%"
+                class="audiomessage"
                 v-if="message.type === 'media' && message.media === 'audio'"
+                style="max-height: 100%"
                 :src="message.url"
                 controls
               ></audio>
-            </div>
-            <imagepreview
-              class="wrap"
-              :fitToBox="true"
-              :componentLength="300"
-              v-if="message.type === 'media' && message.media === 'image'"
-              :message="message"
-            />
-            <linkPreview
-              v-if="message.linkPreview"
-              :previewData="message.linkPreview"
-            ></linkPreview>
-            <span v-if="message.media !== 'audio'" class="wrap">
-              {{ message.text }}
-            </span>
-            <span v-if="message.quoted" class="quoted">
-              <div class="message__title">
-                <h4>
-                  {{
-                    message.quoted.fromId === user.id
-                      ? "me"
-                      : message.quoted.from
-                  }}
-                </h4>
-                <span>
-                  {{ new Date(message.quoted.createdAt).toLocaleTimeString() }}
+              <linkPreview
+                v-if="message.linkPreview"
+                :previewData="message.linkPreview"
+              ></linkPreview>
+              <div style="display: flex; flex-direction: column">
+                <imagepreview
+                  :fitToBox="true"
+                  :componentLength="300"
+                  v-if="message.type === 'media' && message.media === 'image'"
+                  :message="message"
+                />
+                <span class="text-content" v-if="message.media !== 'audio'">
+                  {{ message.text }}
                 </span>
               </div>
-              <span class="wrap">{{ message.quoted.text }}</span>
-              <!-- make sure i add this when i quote a message -->
-              <audio
-                class="audiomessage"
-                v-if="
-                  message.quoted.type === 'media' &&
-                    message.quoted.media === 'audio'
-                "
-                :src="message.quoted.url"
-                controls
-              ></audio>
-            </span>
+              <span v-if="message.quoted" class="quoted">
+                <div class="message__title">
+                  <h4>
+                    {{
+                      message.quoted.fromId === user.id
+                        ? "me"
+                        : message.quoted.from
+                    }}
+                  </h4>
+                  <span>
+                    {{
+                      new Date(message.quoted.createdAt).toLocaleTimeString()
+                    }}
+                  </span>
+                </div>
+                <span class="wrap">{{ message.quoted.text }}</span>
+                <!-- make sure i add this when i quote a message -->
+                <audio
+                  class="audiomessage"
+                  v-if="
+                    message.quoted.type === 'media' &&
+                      message.quoted.media === 'audio'
+                  "
+                  :src="message.quoted.url"
+                  controls
+                ></audio>
+              </span>
+            </div>
           </div>
         </div>
       </li>

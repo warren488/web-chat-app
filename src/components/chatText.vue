@@ -456,7 +456,7 @@ export default Vue.extend({
       if (!element) {
         return "";
       }
-      let message = element.querySelector(".message__body .wrap");
+      let message = element.querySelector(".message__body .wrap .text-content");
       if (message) {
         return message.innerHTML;
       } else {
@@ -607,8 +607,8 @@ export default Vue.extend({
 .replypreview {
   display: flex;
   flex-wrap: nowrap;
-  max-width: 100%;
-  min-width: 85%;
+  margin-bottom: 0.5rem;
+  width: 100%;
 }
 .replypreview__text {
   white-space: nowrap;

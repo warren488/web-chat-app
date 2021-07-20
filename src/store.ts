@@ -44,6 +44,7 @@ export default new Vuex.Store({
     dataLoadStarted: false,
     socket: null,
     currChatFriendshipId: "",
+    currChatMessages: [],
     events: [],
     friendshipIds: [],
     unreads: {}
@@ -57,6 +58,7 @@ export default new Vuex.Store({
     socketConnected: state => (state.socket ? state.socket.connected : false),
     socket: state => state.socket,
     currChatFriendshipId: state => state.currChatFriendshipId,
+    currChatMessages: state => state.currChatMessages,
     notifAudio: state => new Audio(`/${state.notifAudioFile}`),
     friendShips: state => state.friendShips,
     initFriends: state => state.friendShips === null,
@@ -110,6 +112,8 @@ export default new Vuex.Store({
         .catch(console.log);
     },
     setUpApp: async context => {
+      const url = new URL(window.location.href);
+      const chat = url.searchParams.get("chat");
       context.commit("resetState");
       context.state.dataLoadStarted = true;
       await context.dispatch("loadNotifications");
@@ -140,7 +144,7 @@ export default new Vuex.Store({
        *  -
        */
 
-      getUserInfo().then(({ data }) => {
+      await getUserInfo().then(({ data }) => {
         context.state.user = data;
         console.log(data);
         // basically im trying to run this event as soon as it is safe to call socket.emit
@@ -167,7 +171,7 @@ export default new Vuex.Store({
             let friendship_id = friendShip._id;
             promiseArr.push(
               context
-                .dispatch("loadMessages", { friendship_id, limit: 10 })
+                .dispatch("loadMessages", { friendship_id, limit: 30 })
                 .then(() => {
                   /** so these are so many listeners we are adding fot the connect event
                    * althoughg it only fires once hmmmm....
@@ -189,12 +193,16 @@ export default new Vuex.Store({
                       token: getCookie("token")
                     });
                   }
+                  return;
                 })
             );
           });
       });
 
       await Promise.all(promiseArr).then(promises => {
+        if (chat) {
+          context.commit("setCurrentChat", chat);
+        }
         context.state.dataLoaded = true;
         eventBus.dataLoaded();
       });
@@ -581,6 +589,7 @@ export default new Vuex.Store({
       state.unreads[friendship_id] = 0;
     },
     setCurrentChat(state, friendship_id) {
+      console.log("storeeeeeeeeee", state.messages);
       state.currChatFriendshipId = friendship_id;
       if (isInChat(friendship_id)) {
         /** @todo tell the server to mark all these as read  */
@@ -597,6 +606,8 @@ export default new Vuex.Store({
         ]);
         clearNotifications({ tag: friendship_id });
       }
+      console.log("storeeeeeeeeee", state.messages[friendship_id]);
+      state.currChatMessages = state.messages[friendship_id];
     },
     setChat(state, { friendship_id, data }) {
       state.messages[friendship_id] = data;

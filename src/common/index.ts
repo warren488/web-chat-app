@@ -427,7 +427,7 @@ export function markLocalChatMessagesAsRead(messages, userId) {
   const start = Math.max(messages.length - unreadLimit, 0);
   for (let i = start; i < messages.length; i++) {
     /** @todo only mark as read if its not sent by me */
-    console.log("markLocalChatMessagesAsRead", messages[i]);
+    // console.log("markLocalChatMessagesAsRead", messages[i]);
     if (userId !== messages[i].fromId) {
       messages[i].status = "read";
     }
