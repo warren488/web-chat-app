@@ -54,6 +54,7 @@ export default new Vuex.Store({
   getters: {
     user: state => state.user,
     homeView: state => state.homeView,
+    dataLoaded: state => state.dataLoaded,
     unreads: state => state.unreads,
     messages: state => state.messages,
     events: state => state.events,
@@ -470,21 +471,22 @@ export default new Vuex.Store({
         }
       }
     },
+    /**
+     * @function socketReceivedHandler2
+     *  @NB this function is run when we say to the server yes we got this message
+     * the server sends the event that triggers this method, do we need to run this
+     * for messages sent by us? it can be useful when on multiple devices, so the server
+     * will tell our other devices, hey this message was received/read on another device
+     */
     socketReceivedHandler2(context, { friendship_id, Id, createdAt, read }) {
-      console.log("received", Id);
-
       let index = binaryCustomSearch(context.state.messages[friendship_id], {
         createdAt
       });
-
       const messageStatus = read ? "read" : "received";
       if (typeof index === "number") {
-        console.log(context.state.messages[friendship_id][index]);
         const message = context.state.messages[friendship_id][index];
         // is the id of the message we found the same as the one we're trying to update
         if (message._id === Id) {
-          console.log("ids");
-
           context.commit("updateMessageStatus", {
             friendship_id,
             index,

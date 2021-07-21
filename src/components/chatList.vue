@@ -12,50 +12,54 @@
     </header>
     <ol class="item-list">
       <li
-        v-for="friend of myFriends"
-        :key="friend._id"
-        :id="friend._id"
+        v-for="friendShip of myFriendShips"
+        :key="friendShip._id"
+        :id="friendShip._id"
         :class="{
-          active: friend._id === currentChat,
+          active: friendShip._id === currentChat,
           'chat-preview': true,
           'notification-item': true
         }"
-        @click="() => emitOpen(friend)"
+        @click="() => emitOpen(friendShip)"
       >
         <div style="display: flex; max-width: 100%">
           <img
             class="profile-img"
-            v-if="!friend.imgUrl"
+            v-if="!friendShip.imgUrl"
             src="/assets/img/abstract-user-flat-1.svg"
             alt=""
           />
           <img
             class="profile-img"
-            v-if="friend.imgUrl"
-            :src="friend.imgUrl"
+            v-if="friendShip.imgUrl"
+            :src="friendShip.imgUrl"
             alt=""
           />
           <div class="preview-text">
             <h3 class="">
-              {{ friend.username }}
+              {{ friendShip.username }}
             </h3>
             <p
               class="last-message"
-              v-if="friend.lastMessage && friend.lastMessage[0]"
+              v-if="friendShip.lastMessage && friendShip.lastMessage[0]"
             >
-              <span v-if="friend.lastMessage[0].status !== 'typing'">{{
-                friend.lastMessage[0].fromId === user.id
+              <span v-if="friendShip.lastMessage[0].status !== 'typing'">{{
+                friendShip.lastMessage[0].fromId === user.id
                   ? "me:"
-                  : `${friend.username}:`
+                  : `${friendShip.username}:`
               }}</span>
-              {{ friend.lastMessage[0].text ? friend.lastMessage[0].text : "" }}
+              {{
+                friendShip.lastMessage[0].text
+                  ? friendShip.lastMessage[0].text
+                  : ""
+              }}
             </p>
           </div>
         </div>
         <span
-          v-if="unreads && unreads[friend._id] > 0"
+          v-if="unreads && unreads[friendShip._id] > 0"
           class="badge bg-secondary"
-          >{{ unreads[friend._id] }}</span
+          >{{ unreads[friendShip._id] }}</span
         >
       </li>
     </ol>
@@ -77,8 +81,8 @@ export default Vue.extend({
       if (self.filter) {
         return self.filter(self.filterString);
       }
-      return self.friends.filter(friend =>
-        friend.username.includes(self.filterString)
+      return self.friendShips.filter(friendShip =>
+        friendShip.username.includes(self.filterString)
       );
     }, 300);
   },
@@ -90,32 +94,32 @@ export default Vue.extend({
   },
   props: {
     title: String,
-    friends: Array,
+    friendShips: Array,
     currentChat: String,
     filter: Function
   },
   methods: {
     getCookie,
-    emitOpen(friend) {
+    emitOpen(friendShip) {
       /** @todo - in the future we want to simply get and array of names
        * and then load full user data once we open a profile instead of search results containing
        * full data for all users returned
        */
-      this.$emit("open", friend);
+      this.$emit("open", friendShip);
     },
     filterFunc: function() {
       if (this.props.filter) {
         return this.props.filter(this.filterString);
       }
-      return this.friends.filter(friend =>
-        friend.username.includes(this.filterString)
+      return this.friendShips.filter(friendShip =>
+        friendShip.username.includes(this.filterString)
       );
     }
   },
   computed: {
     ...mapGetters(["user", "unreads"]),
-    myFriends() {
-      return this.friends;
+    myFriendShips() {
+      return this.friendShips;
     },
     header() {
       return this.title;

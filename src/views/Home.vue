@@ -100,8 +100,8 @@
             <chatList
               title="Chat"
               :filter="filter"
-              :friends="friendShips"
-              @open="openChat"
+              :friendShips="friendShips"
+              @open="({ _id }) => $router.push('/home?chat=' + _id)"
               :currentChat="currChatFriendshipId"
             />
           </div>
@@ -264,7 +264,20 @@ import "notyf/notyf.min.css";
 
 export default Vue.extend({
   name: "home",
-  mounted() {},
+  props: ["chat"],
+  mounted() {
+    if (this.$route.query.chat) {
+      console.log(this.$route.query.chat);
+
+      /** if the data isnt loaded yet then there is a line in the setup that will do this for us */
+      if (this.dataLoaded) {
+        this.openChat({ _id: this.$route.query.chat });
+      }
+    } else {
+      this.setCurrentChat("");
+      this.setHomeView("chatlist");
+    }
+  },
   data() {
     return {
       sideMenuActive: false,
@@ -291,7 +304,6 @@ export default Vue.extend({
       "addGroupToChatSart",
       "appendMessageToChat",
       "updateSentMessage",
-      "updateReceivedMessage",
       "setCurrentChat",
       "setHomeView"
     ]),
@@ -524,7 +536,16 @@ export default Vue.extend({
       this.highlightedMessageId = null;
     }
   },
-  watch: {},
+  watch: {
+    $route(params) {
+      if (params.query.chat) {
+        this.openChat({ _id: params.query.chat });
+      } else {
+        this.setCurrentChat("");
+        this.setHomeView("chatlist");
+      }
+    }
+  },
   computed: {
     ...mapGetters([
       "friendShips",
@@ -536,6 +557,7 @@ export default Vue.extend({
       "currChatMessages",
       "socketConnected",
       "events",
+      "dataLoaded",
       "homeView"
     ]),
     sideMenuData() {

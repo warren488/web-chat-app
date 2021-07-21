@@ -15,7 +15,8 @@ export default new Router({
       beforeEnter: authBeforeEnter,
       path: "/home",
       name: "home",
-      component: Home
+      component: Home,
+      props: route => ({ chat: route.query.chat })
     },
     {
       path: "/login",

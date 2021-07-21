@@ -6,7 +6,7 @@
         v-for="message of allMessages"
         :key="message._id"
         :class="{
-          [message.status]: message.fromId === user.id,
+          [message.status]: true,
           me: message.fromId === user.id
         }"
         :id="message._id"
@@ -20,7 +20,9 @@
             <span class="reply" @click="replyClick(message._id)">reply</span>
           </div>
           <div class="message__body">
-            <div class=" wrap">
+            <div
+              :class="{ wrap: true, wrap__status: message.fromId === user.id }"
+            >
               <audio
                 class="audiomessage"
                 v-if="message.type === 'media' && message.media === 'audio'"
@@ -222,21 +224,21 @@ export default Vue.extend({
   overflow-wrap: break-word;
 }
 
-li.sent .message .message__body > .wrap::after {
+li.sent .message .message__body > .wrap__status::after {
   content: "\2713";
   color: gray;
   float: right;
   margin: 0px 0px 0px 5px;
 }
 
-li.received .message .message__body > .wrap::after {
+li.received .message .message__body > .wrap__status::after {
   content: "\2713";
   color: blue;
   float: right;
   margin: 0px 0px 0px 5px;
 }
 
-li.read .message .message__body > .wrap::after {
+li.read .message .message__body > .wrap__status::after {
   content: "\2714\2714";
   color: green;
   float: right;
@@ -244,7 +246,7 @@ li.read .message .message__body > .wrap::after {
   letter-spacing: -6px;
 }
 
-li.pending .message .message__body > .wrap::after {
+li.pending .message .message__body > .wrap__status::after {
   content: "\2755";
   color: #900;
   background: red;
