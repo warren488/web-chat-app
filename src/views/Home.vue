@@ -318,7 +318,10 @@ export default Vue.extend({
     },
     logout() {
       logout()
-        .then(data => signOutOfFirebase())
+        /** @todo send some indication this was an automatic unsubcription, maybe in
+         * the future we can treat this user differently
+         */
+        .then(data => Promise.all([unsubscribeToNotif(), signOutOfFirebase()]))
         .then(data => this.$router.push("/login"))
         .catch(err => console.log(err)); //alert("error logging out, please try again!"));
     },

@@ -45,6 +45,7 @@ export default new Vuex.Store({
     socket: null,
     currChatFriendshipId: "",
     currChatMessages: [],
+    updateQueue: [],
     events: [],
     friendshipIds: [],
     unreads: {},
@@ -382,13 +383,19 @@ export default new Vuex.Store({
       } else {
         messageStatus = read ? "read" : "receieved";
       }
-      context.commit("appendMessageToChat", {
+      /**
+       * @NBNBNB
+       * the format for the message array is:
+       * [theirMsgId, myMsgId, msgId]
+       */
+      const idIndex = data.fromId === context.state.user.id ? 1 : 0;
+      const newMessage = {
         friendship_id: data.friendship_id,
         message: {
           createdAt: data.createdAt,
           from: data.from,
           text: data.text,
-          _id: data.Ids[0],
+          _id: data.Ids[1],
           quoted: data.quoted,
           fromId: data.fromId,
           type: data.type,
@@ -399,7 +406,16 @@ export default new Vuex.Store({
           /** @todo this does not go with the typical schema values for status */
           status: messageStatus
         }
+      };
+      context.state.updateQueue.forEach(event => {
+        if (
+          event.Id === newMessage.message._id &&
+          messageStatus.status !== "read"
+        ) {
+          messageStatus.status = event.read ? "read" : "received";
+        }
       });
+      context.commit("appendMessageToChat", newMessage);
       context.commit("updateLastMessage", {
         friendship_id: data.friendship_id,
         lastMessage: data
@@ -455,14 +471,25 @@ export default new Vuex.Store({
       }
     },
     socketReceivedHandler2(context, { friendship_id, Id, createdAt, read }) {
+      console.log("received", Id);
+
       let index = binaryCustomSearch(context.state.messages[friendship_id], {
         createdAt
       });
+
       const messageStatus = read ? "read" : "received";
       if (typeof index === "number") {
+        console.log(context.state.messages[friendship_id][index]);
         const message = context.state.messages[friendship_id][index];
+        // is the id of the message we found the same as the one we're trying to update
         if (message._id === Id) {
-          message.status = messageStatus;
+          console.log("ids");
+
+          context.commit("updateMessageStatus", {
+            friendship_id,
+            index,
+            status: messageStatus
+          });
           markDOMElementAsRead(Id, read);
         } else {
           // this case means we must have multiple messages with the same timestamp
@@ -472,7 +499,11 @@ export default new Vuex.Store({
           for (let i = index; i < messages.length; i++) {
             if (messages[i].createdAt === createdAt) {
               if (messages[i]._id === Id) {
-                messages[i].status = messageStatus;
+                context.commit("updateMessageStatus", {
+                  friendship_id,
+                  index: i,
+                  status: messageStatus
+                });
                 markDOMElementAsRead(Id, read);
                 found = true;
                 // break if we find the message to mark
@@ -483,24 +514,16 @@ export default new Vuex.Store({
               break;
             }
           }
-          if (!found) {
-            // loop down while messages still have identical timestamps
-            for (let i = index; i >= 0; i--) {
-              if (messages[i].createdAt === createdAt) {
-                if (messages[i]._id === Id) {
-                  messages[i].status = messageStatus;
-                  markDOMElementAsRead(Id, read);
-                  found = true;
-                  // break if we find the message to mark
-                  break;
-                }
-              } else {
-                // break if we are no longer looping through messages with the same createdAt
-                break;
-              }
-            }
-          }
         }
+      } else {
+        // else if we havent found the message in question
+        context.state.updateQueue.push({
+          friendship_id,
+          Id,
+          createdAt,
+          read,
+          type: "received"
+        });
       }
     },
     /** @todo this needs error handling */
@@ -597,7 +620,6 @@ export default new Vuex.Store({
       state.unreads[friendship_id] = 0;
     },
     setCurrentChat(state, friendship_id) {
-      console.log("storeeeeeeeeee", state.messages);
       state.currChatFriendshipId = friendship_id;
       if (isInChat(friendship_id)) {
         /** @todo tell the server to mark all these as read  */
@@ -741,8 +763,22 @@ export default new Vuex.Store({
       state.messages[data.friendship_id][data.index].createdAt = data.createdAt;
       state.messages[data.friendship_id].sort(sortMessageArray);
     },
-    updateReceivedMessage(state, data) {
-      state.messages[data.friendship_id][data.index].status = "received";
+    updateMessageStatus(state, data) {
+      let recountUnreads =
+        state.messages[data.friendship_id][data.index].status !== "read" &&
+        data.status === "read";
+
+      state.messages[data.friendship_id][data.index].status = data.status;
+      if (recountUnreads) {
+        const unreads = countUnreads({
+          chat: state.messages[data.friendship_id],
+          user_id: state.user.id
+        });
+        state.unreads = {
+          ...state.unreads,
+          [data.friendship_id]: unreads
+        };
+      }
     }
   }
 });
