@@ -145,13 +145,7 @@
       >
         <div class="active-chat" v-if="currFriend">
           <header class="chat-header">
-            <button
-              class="chatBack"
-              @click="
-                setHomeView('chatlist');
-                setCurrentChat('');
-              "
-            >
+            <button class="chatBack" @click="$router.back()">
               <svg
                 fill="white"
                 version="1.1"

@@ -623,6 +623,10 @@ export default new Vuex.Store({
     },
     setCurrentChat(state, friendship_id) {
       state.currChatFriendshipId = friendship_id;
+      if (friendship_id === "") {
+        state.currChatMessages = [];
+        return;
+      }
       if (isInChat(friendship_id)) {
         /** @todo tell the server to mark all these as read  */
         state.messages[friendship_id] = markLocalChatMessagesAsRead(
