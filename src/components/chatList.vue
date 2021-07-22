@@ -12,7 +12,7 @@
     </header>
     <ol class="item-list">
       <li
-        v-for="friendShip of myFriendShips"
+        v-for="friendShip of myUserList"
         :key="friendShip._id"
         :id="friendShip._id"
         :class="{
@@ -73,19 +73,6 @@ import { debounce } from "debounce";
 import { mapGetters } from "vuex";
 
 export default Vue.extend({
-  created() {
-    console.log("unreads", this.unreads);
-
-    let self = this;
-    this.filterFuncDebounced = debounce(function() {
-      if (self.filter) {
-        return self.filter(self.filterString);
-      }
-      return self.friendShips.filter(friendShip =>
-        friendShip.username.includes(self.filterString)
-      );
-    }, 300);
-  },
   name: "chatList",
   data() {
     return {
@@ -94,9 +81,20 @@ export default Vue.extend({
   },
   props: {
     title: String,
-    friendShips: Array,
+    userList: Array,
     currentChat: String,
     filter: Function
+  },
+  created() {
+    let self = this;
+    this.filterFuncDebounced = debounce(function() {
+      if (self.filter) {
+        return self.filter(self.filterString);
+      }
+      return self.userList.filter(user =>
+        user.username.includes(self.filterString)
+      );
+    }, 300);
   },
   methods: {
     getCookie,
@@ -111,15 +109,15 @@ export default Vue.extend({
       if (this.props.filter) {
         return this.props.filter(this.filterString);
       }
-      return this.friendShips.filter(friendShip =>
+      return this.userList.filter(friendShip =>
         friendShip.username.includes(this.filterString)
       );
     }
   },
   computed: {
     ...mapGetters(["user", "unreads"]),
-    myFriendShips() {
-      return this.friendShips;
+    myUserList() {
+      return this.userList;
     },
     header() {
       return this.title;

@@ -100,7 +100,7 @@
             <chatList
               title="Chat"
               :filter="filter"
-              :friendShips="friendShips"
+              :userList="friendShips"
               @open="({ _id }) => $router.push('/home?chat=' + _id)"
               :currentChat="currChatFriendshipId"
             />
@@ -114,7 +114,7 @@
             <chatList
               title="Search"
               :filter="filter"
-              :friends="searchResults"
+              :userList="searchResults"
               @open="viewFriendship"
               :currentChat="currChatFriendshipId"
             />
@@ -129,7 +129,7 @@
               v-if="user"
               title="Friend Requests"
               :filter="filter"
-              :friends="user.interactions.receivedRequests"
+              :userList="user.interactions.receivedRequests"
               @open="viewFriendship"
               :currentChat="currChatFriendshipId"
             />
