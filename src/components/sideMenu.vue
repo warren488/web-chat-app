@@ -65,9 +65,6 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { getCookie } from "@/common";
-import { debounce } from "debounce";
-import { mapGetters } from "vuex";
 
 export default Vue.extend({
   props: {

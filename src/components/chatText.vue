@@ -40,7 +40,7 @@
           <md-textarea
             ref="msgText"
             @keydown="keydownHandler"
-            @input="scanForLink"
+            @input="scanForLinkDebounced"
             id="msg-txt"
             v-model="messageText"
             name="message"
@@ -152,6 +152,7 @@ import {
   getPreviewData
 } from "@/common";
 import { mapGetters, mapActions, mapMutations } from "vuex";
+import { debounce } from "debounce";
 // @ts-ignore
 import linkPreview from "./linkPreview";
 
@@ -258,6 +259,9 @@ export default Vue.extend({
     typing: {}
   },
   components: { linkPreview },
+  created() {
+    this.scanForLinkDebounced = debounce(this.scanForLink, 300);
+  },
   methods: {
     addEmoji(e) {
       if (e.target.dataset.value) {
@@ -294,7 +298,6 @@ export default Vue.extend({
       this.$emit("typing");
     },
     scanForLink(input) {
-      console.log("scanning for link", input);
       let urlMatches = input.match(
         // eslint-disable-next-line no-useless-escape
         /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
