@@ -9,7 +9,7 @@ import {
   getUserInfo,
   setCookie,
   binaryCustomSearch,
-  markDOMElementAsRead,
+  updateDOMMessageStatus,
   sortMessageArray,
   markAsReceived,
   scrollBottom2,
@@ -69,17 +69,6 @@ export default new Vuex.Store({
     initMessages: state => state.messages === null
   },
   actions: {
-    meth: async (context, data) => {
-      context.commit("markLocalChatMessagesAsRead");
-      // await axios({
-      //   method: "GET",
-      //   url: `${baseURI}/api/users/me/notifications`,
-      //   headers: {
-      //     "Content-type": "application/json",
-      //     "x-auth": getCookie("token")
-      //   }
-      // });
-    },
     setNotifAudioFile: (context, file) => {
       context.state.notifAudioFile = file;
       setCookie("notifAudioFile", file, 1000000);
@@ -236,7 +225,8 @@ export default new Vuex.Store({
               /** @todo scrolling behaviour doesnt feel like it should be here */
               let shouldScroll;
               let chatBody = document.querySelector(`.chat__main`);
-              /** figure out if we should scroll to force it later since our function wont work well with multiple new messages */
+              /** figure out if we should scroll to force it later since
+               *  our function wont work well with multiple new messages */
               if (chatBody) {
                 shouldScroll = scrollBottom2({
                   element: chatBody,
@@ -384,19 +374,17 @@ export default new Vuex.Store({
       } else {
         messageStatus = read ? "read" : "receieved";
       }
-      /**
-       * @NBNBNB
-       * the format for the message array is:
-       * [theirMsgId, myMsgId, msgId]
-       */
-      const idIndex = data.fromId === context.state.user.id ? 1 : 0;
       const newMessage = {
         friendship_id: data.friendship_id,
         message: {
           createdAt: data.createdAt,
           from: data.from,
           text: data.text,
-          _id: data.Ids[1],
+          msgId: data.msgId,
+          _id:
+            data.fromId === context.state.user.id
+              ? data.Ids.senderId
+              : data.Ids.receiverId,
           quoted: data.quoted,
           fromId: data.fromId,
           type: data.type,
@@ -410,10 +398,10 @@ export default new Vuex.Store({
       };
       context.state.updateQueue.forEach(event => {
         if (
-          event.Id === newMessage.message._id &&
-          messageStatus.status !== "read"
+          event.msgId === newMessage.message.msgId &&
+          newMessage.message.status !== "read"
         ) {
-          messageStatus.status = event.read ? "read" : "received";
+          newMessage.message.status = event.read ? "read" : "received";
         }
       });
       context.commit("appendMessageToChat", newMessage);
@@ -427,7 +415,7 @@ export default new Vuex.Store({
         context.state.socket.emit("gotMessage", {
           friendship_id: data.friendship_id,
           token: getCookie("token"),
-          Ids: data.Ids,
+          msgId: data.msgId,
           createdAt: data.createdAt,
           read
         });
@@ -437,9 +425,6 @@ export default new Vuex.Store({
       context,
       { range, friendship_id, fromId: sweepEventFromId, read }
     ) {
-      if (sweepEventFromId === context.state.user.id) {
-        return;
-      }
       let startIndex;
       let result = binaryCustomSearch(context.state.messages[friendship_id], {
         createdAt: range[0]
@@ -462,12 +447,16 @@ export default new Vuex.Store({
           break;
         }
         if (
-          message.fromId === context.state.user.id &&
+          // message.fromId === context.state.user.id &&
           message.status !== "read"
         ) {
-          message.status = read ? "read" : "received";
+          context.commit("updateMessageStatus", {
+            friendship_id,
+            index: i,
+            status: read ? "read" : "received"
+          });
           // this is needed because the computed property does a check for the messages as a group and doesnt detect these changes
-          markDOMElementAsRead(message._id, read);
+          updateDOMMessageStatus(message.msgId, read);
         }
       }
     },
@@ -478,7 +467,9 @@ export default new Vuex.Store({
      * for messages sent by us? it can be useful when on multiple devices, so the server
      * will tell our other devices, hey this message was received/read on another device
      */
-    socketReceivedHandler2(context, { friendship_id, Id, createdAt, read }) {
+    socketReceivedHandler2(context, { friendship_id, msgId, createdAt, read }) {
+      console.log("received somewhere");
+
       let index = binaryCustomSearch(context.state.messages[friendship_id], {
         createdAt
       });
@@ -486,13 +477,13 @@ export default new Vuex.Store({
       if (typeof index === "number") {
         const message = context.state.messages[friendship_id][index];
         // is the id of the message we found the same as the one we're trying to update
-        if (message._id === Id) {
+        if (message.msgId === msgId) {
           context.commit("updateMessageStatus", {
             friendship_id,
             index,
             status: messageStatus
           });
-          markDOMElementAsRead(Id, read);
+          updateDOMMessageStatus(msgId, read);
         } else {
           // this case means we must have multiple messages with the same timestamp
           const messages = context.state.messages[friendship_id];
@@ -500,13 +491,13 @@ export default new Vuex.Store({
           // loop up while messages still have identical timestamps
           for (let i = index; i < messages.length; i++) {
             if (messages[i].createdAt === createdAt) {
-              if (messages[i]._id === Id) {
+              if (messages[i].msgId === msgId) {
                 context.commit("updateMessageStatus", {
                   friendship_id,
                   index: i,
                   status: messageStatus
                 });
-                markDOMElementAsRead(Id, read);
+                updateDOMMessageStatus(msgId, read);
                 found = true;
                 // break if we find the message to mark
                 break;
@@ -521,7 +512,7 @@ export default new Vuex.Store({
         // else if we havent found the message in question
         context.state.updateQueue.push({
           friendship_id,
-          Id,
+          msgId,
           createdAt,
           read,
           type: "received"
@@ -764,7 +755,12 @@ export default new Vuex.Store({
       }
     },
     updateSentMessage(state, data) {
-      state.messages[data.friendship_id][data.index]._id = data.id;
+      state.messages[data.friendship_id][data.index]._id = data._id;
+      state.messages[data.friendship_id][data.index].msgId = data.msgId;
+      /** this can pass because it will only ever update messages we send
+       * and its sole purpose is to put the message as 'sent' after we get
+       * back the info from the server
+       */
       state.messages[data.friendship_id][data.index].status = "sent";
       state.messages[data.friendship_id][data.index].createdAt = data.createdAt;
       state.messages[data.friendship_id].sort(sortMessageArray);
@@ -785,6 +781,10 @@ export default new Vuex.Store({
           [data.friendship_id]: unreads
         };
       }
+      updateDOMMessageStatus(
+        state.messages[data.friendship_id][data.index].msgId,
+        data.status === "read"
+      );
     }
   }
 });

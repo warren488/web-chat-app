@@ -4,12 +4,12 @@
     <ol class="chat__messages" id="messages">
       <li
         v-for="message of allMessages"
-        :key="message._id"
+        :key="message.msgId"
         :class="{
           [message.status]: true,
           me: message.fromId === user.id
         }"
-        :id="message._id"
+        :id="message.msgId"
       >
         <div class="message">
           <div class="message__title">
@@ -17,7 +17,7 @@
               {{ message.fromId === user.id ? "me" : message.from }}
             </h4>
             <span>{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
-            <span class="reply" @click="replyClick(message._id)">reply</span>
+            <span class="reply" @click="replyClick(message.msgId)">reply</span>
           </div>
           <div class="message__body">
             <div

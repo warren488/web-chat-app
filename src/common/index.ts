@@ -127,8 +127,8 @@ export const unsubscribeToNotif = async () => {
   });
 };
 
-export const markDOMElementAsRead = (Id, read) => {
-  let messageElement = document.getElementById(Id);
+export const updateDOMMessageStatus = (msgId, read) => {
+  let messageElement = document.getElementById(msgId);
   if (messageElement) {
     messageElement.classList.remove("pending");
     messageElement.classList.remove("sent");

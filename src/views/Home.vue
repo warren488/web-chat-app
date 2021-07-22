@@ -145,7 +145,7 @@
       >
         <div class="active-chat" v-if="currFriend">
           <header class="chat-header">
-            <button class="chatBack" @click="$router.back()">
+            <button class="chatBack" @click="$router.push('/home')">
               <svg
                 fill="white"
                 version="1.1"
@@ -367,7 +367,7 @@ export default Vue.extend({
       // massive performance issue
       for (const chatMessage of this.messages[this.currChatFriendshipId]) {
         console.log(chatMessage);
-        if (chatMessage._id === message.hID) {
+        if (chatMessage.msgId === message.hID) {
           quoted = chatMessage;
           break;
         }
@@ -401,7 +401,8 @@ export default Vue.extend({
             this.updateSentMessage({
               friendship_id: this.currChatFriendshipId,
               index,
-              id: data.msgId,
+              msgId: data.msgId,
+              _id: data._id,
               createdAt: data.createdAt
             });
           })
@@ -422,7 +423,8 @@ export default Vue.extend({
             this.updateSentMessage({
               friendship_id: this.currChatFriendshipId,
               index,
-              id: data.msgId,
+              msgId: data.msgId,
+              _id: data._id,
               createdAt: data.createdAt
             });
           })
