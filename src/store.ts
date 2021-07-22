@@ -446,10 +446,7 @@ export default new Vuex.Store({
         if (message.createdAt > range[1]) {
           break;
         }
-        if (
-          // message.fromId === context.state.user.id &&
-          message.status !== "read"
-        ) {
+        if (message.fromId !== sweepEventFromId && message.status !== "read") {
           context.commit("updateMessageStatus", {
             friendship_id,
             index: i,
