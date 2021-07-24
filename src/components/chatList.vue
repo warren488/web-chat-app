@@ -22,7 +22,9 @@
         }"
         @click="() => emitOpen(friendShip)"
       >
-        <div style="display: flex; max-width: 100%">
+        <div
+          style="display: flex; max-width: 100%;width: 100%; align-items: center"
+        >
           <img
             class="profile-img"
             v-if="!friendShip.imgUrl"
@@ -36,7 +38,7 @@
             alt=""
           />
           <div class="preview-text">
-            <h3 class="">
+            <h3 style="font-weight: bold; margin-bottom: 0px">
               {{ friendShip.username }}
             </h3>
             <p
@@ -55,12 +57,10 @@
               }}
             </p>
           </div>
+          <span v-if="unreads && unreads[friendShip._id] > 0" class="badge"
+            >{{ unreads[friendShip._id] }}
+          </span>
         </div>
-        <span
-          v-if="unreads && unreads[friendShip._id] > 0"
-          class="badge bg-secondary"
-          >{{ unreads[friendShip._id] }}</span
-        >
       </li>
     </ol>
   </div>
@@ -145,6 +145,7 @@ export default Vue.extend({
   font-size: 1.2rem;
   font-weight: bold;
   color: var(--bs-green);
+  border: thin solid var(--bs-green);
 }
 
 .chat-preview {
@@ -156,6 +157,7 @@ export default Vue.extend({
 }
 
 .preview-text {
+  flex-grow: 1;
   white-space: nowrap;
   overflow: hidden;
   h3 {
@@ -168,8 +170,10 @@ export default Vue.extend({
 
 .profile-img {
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  min-width: 50px;
+  min-height: 50px;
+  width: 50px;
+  height: 50px;
   margin-right: 5px;
 }
 

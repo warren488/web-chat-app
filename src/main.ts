@@ -22,13 +22,16 @@ if (token) {
   store.dispatch("setUpApp");
 }
 
-navigator.serviceWorker.addEventListener("message", event => {
-  console.log(event.data, event.data);
-  if (event.data.type === "openChat") {
-    store.commit("setCurrentChat", event.data.chat);
-    store.commit("setHomeView", "chatbody");
-  }
-});
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", event => {
+    console.log(event.data, event.data);
+    if (event.data.type === "openChat") {
+      router.push("/home?chat=" + event.data.chat);
+      // store.commit("setCurrentChat", event.data.chat);
+      // store.commit("setHomeView", "chatbody");
+    }
+  });
+}
 
 eventBus.$on("newFriend", function(data) {
   if (data.requestAccepted) {

@@ -66,6 +66,11 @@ self.addEventListener("notificationclick", e => {
         const hadWindowToFocus = clientsArr.some(async windowClient => {
           if (windowClient.url.startsWith(`https://myapp-4f894.web.app`)) {
             const focusedClient = await windowClient.focus();
+            /** so what we have down here isnt necessarily required in order to get to the page
+             * cause we can simply the url to navigate to our chat however that usually creates
+             * an entire page reload when we focus on the page and slows things down so instead
+             * we tell the app itself to navigate to that page
+             */
             focusedClient.postMessage({
               type: "openChat",
               chat

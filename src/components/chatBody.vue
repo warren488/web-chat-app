@@ -153,8 +153,17 @@ export default Vue.extend({
 
 <style>
 .chat__main {
+  display: flex;
+  flex-direction: column;
   max-height: 100vh;
   overflow-y: scroll;
+}
+.chat__view-more {
+  align-self: center;
+  margin-top: 1rem;
+  border: none;
+  border-radius: 1.5rem;
+  padding: 0.2rem 0.5rem;
 }
 .chat__messages li {
   display: flex;
