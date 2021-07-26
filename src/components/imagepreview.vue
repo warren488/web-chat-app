@@ -1,7 +1,6 @@
 <template>
   <span
     class="full-container"
-    @click="() => (isOpen ? close() : open())"
     :style="{
       '--full-width': `${componentLength}px`,
       '--full-height': `${componentLength}px`
@@ -16,10 +15,20 @@
     >
       download
     </button>
+    <viewImageModal
+      ref="imgModal"
+      :width="fullPageWidth"
+      :height="fullPageHeight"
+      :src="loadedSrc"
+      :showModal="isOpen"
+      @close="close"
+      :alt="'profile picture'"
+    />
     <loader type="ring" :display="loading"></loader>
     <span ref="imgcontainer">
       <img
         class="imagemessage"
+        @click="open"
         ref="img"
         :style="{
           '--image-height': getMessageImageHeight(message.meta).height,
@@ -29,10 +38,16 @@
     </span>
   </span>
 </template>
-<script>
+<script lang="ts">
 import Vue from "vue";
-import loader from "./loader";
+import loader from "./loader.vue";
+import viewImageModal from "./viewImageModal.vue";
+
 export default Vue.extend({
+  components: {
+    viewImageModal,
+    loader
+  },
   props: {
     message: Object,
     componentLength: Number,
@@ -41,6 +56,8 @@ export default Vue.extend({
   mounted() {
     this.$refs.img.onload = function() {
       this.downloadable = false;
+      // we dont want to waste bandwidth by passing in the url and making the image load
+      this.loadedSrc = this.message.url;
       this.loading = false;
     }.bind(this);
   },
@@ -48,32 +65,32 @@ export default Vue.extend({
     return {
       isOpen: false,
       loading: false,
-      downloadable: true
+      downloadable: true,
+      loadedSrc: "",
+      fullPageWidth: null,
+      fullPageHeight: null
     };
   },
-  components: { loader },
   methods: {
     downloadHandler() {
       this.loading = true;
       this.$refs.img.src = this.message.url;
     },
+
     close() {
-      this.$refs.img.style.transform = ``;
-      this.$refs.imgcontainer.classList.remove("activeimage");
+      console.log("close");
       this.isOpen = false;
     },
     open() {
       let dimensions = this.getDimensionsForBox(
         window.innerWidth * 0.85,
         window.innerHeight * 0.85
-      );
-      let coords = this.$refs.img.getBoundingClientRect();
-      let scale = dimensions.get("width") / coords.width;
-      this.$refs.img.style.transform = `translate(-50%, -50%)scale(${scale})`;
-      this.$refs.imgcontainer.classList.add("activeimage");
+      ) as Map<String, Number>;
+      this.fullPageWidth = dimensions.get("width");
+      this.fullPageHeight = dimensions.get("height");
       this.isOpen = true;
     },
-    getDimensionsForBox(length, height) {
+    getDimensionsForBox(length, height): Map<String, Number> {
       let WHRatio = this.message.meta.width / this.message.meta.height;
       let propertyMap = new Map();
       /** if it id wider than it is tall */
@@ -129,7 +146,7 @@ export default Vue.extend({
 }
 
 .imagemessage {
-  //   position: relative;
+  cursor: pointer;
   top: auto;
   left: auto;
   transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s, transform 0.3s ease;

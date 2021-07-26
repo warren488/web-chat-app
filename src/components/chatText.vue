@@ -31,7 +31,7 @@
         >
           <img
             src="/assets/img/emoji-smile.svg"
-            alt="Bootstrap"
+            alt="open emojis"
             width="32"
             height="32"
           />

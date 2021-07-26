@@ -166,22 +166,24 @@
               </svg>
             </button>
             <div class="chat-header__info-display">
+              <viewImageModal
+                :showModal="profileImageOpen"
+                @close="profileImageOpen = false"
+                :src="
+                  currFriend.imgUrl || '/assets/img/abstract-user-flat-1.svg'
+                "
+                :alt="'profile picture'"
+              />
               <img
                 @click="profileImageOpen = !profileImageOpen"
-                :class="{
-                  'chat-header__profile-img': true,
-                  'chat-header__profile-img--open': profileImageOpen
-                }"
+                class="chat-header__profile-img"
                 v-if="!currFriend.imgUrl"
                 src="/assets/img/abstract-user-flat-1.svg"
                 alt=""
               />
               <img
                 @click="profileImageOpen = !profileImageOpen"
-                :class="{
-                  'chat-header__profile-img': true,
-                  'chat-header__profile-img--open': profileImageOpen
-                }"
+                class="chat-header__profile-img"
                 v-if="currFriend.imgUrl"
                 :src="currFriend.imgUrl"
                 alt=""
@@ -226,6 +228,7 @@ import chatList from "@/components/chatList.vue";
 import chatText from "@/components/chatText.vue";
 import chatBody from "@/components/chatBody.vue";
 import sideMenu from "@/components/sideMenu.vue";
+import viewImageModal from "@/components/viewImageModal.vue";
 import modal from "@/components/modal.vue";
 /** using profile view as a component... hmmm */
 import profile from "@/views/Profile.vue";
@@ -633,7 +636,8 @@ export default Vue.extend({
     chatText,
     modal,
     profile,
-    sideMenu
+    sideMenu,
+    viewImageModal
   }
 });
 </script>
@@ -837,10 +841,6 @@ export default Vue.extend({
     left: initial;
     border-radius: 50%;
     margin-right: 16px;
-
-    &--open {
-      animation: bigup 0.5s ease forwards;
-    }
   }
   &__info-display {
     display: flex;

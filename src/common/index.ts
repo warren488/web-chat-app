@@ -47,6 +47,7 @@ export const clearNotifications = async (searchOptions?: Object) => {
       .then(registration => {
         if (registration) {
           registration.getNotifications(searchOptions).then(notifications => {
+            // since we're searching by tag it should only be one right?
             notifications.forEach(notification => {
               notification.close();
             });
