@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div style="position: relative">
     <!-- Modal -->
     <div
       class="modal fade"
@@ -45,7 +45,7 @@
 <script>
 export default {
   name: "modal",
-  props: ["showModal", "text", "src", "props", "alt", "width", "height"],
+  props: ["showModal", "text", "src", "alt", "width", "height"],
   data() {
     return {
       focus: null,
@@ -75,20 +75,6 @@ export default {
       this.$emit("close");
     }
   },
-  computed: {
-    computedSrc() {
-      console.log(this.src);
-      return this.src;
-    },
-    computedWidth() {
-      console.log(this.width);
-      return this.width;
-    },
-    computedHeight() {
-      console.log(this.height);
-      return this.height;
-    }
-  },
   watch: {
     showModal(newVal) {
       if (newVal) {
@@ -97,15 +83,14 @@ export default {
         this.close();
       }
     }
-    // src(newVal) {
-    //   console.log(newVal);
-    //   this.$refs.img.src = newVal;
-    //   // return this.src;
-    // }
   }
 };
 </script>
 <style lang="scss" scoped>
+.modal {
+  backdrop-filter: blur(4px);
+}
+
 .img {
   width: 100%;
   height: 100%;

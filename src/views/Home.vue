@@ -7,7 +7,7 @@
       :menuData="sideMenuData"
     >
     </sideMenu>
-    <modal
+    <newModal
       :showModal="modalData.openProfile"
       @close="modalData.openProfile = false"
     >
@@ -18,7 +18,7 @@
           :displayData="modalData.visibleProfile"
         />
       </template>
-    </modal>
+    </newModal>
     <main class="main-section">
       <div
         :class="{
@@ -229,7 +229,7 @@ import chatText from "@/components/chatText.vue";
 import chatBody from "@/components/chatBody.vue";
 import sideMenu from "@/components/sideMenu.vue";
 import viewImageModal from "@/components/viewImageModal.vue";
-import modal from "@/components/modal.vue";
+import newModal from "@/components/newModal.vue";
 /** using profile view as a component... hmmm */
 import profile from "@/views/Profile.vue";
 import {
@@ -255,7 +255,6 @@ import {
 } from "@/common";
 
 import { mapGetters, mapActions, mapMutations } from "vuex";
-import io from "socket.io-client";
 import store from "../store";
 import "notyf/notyf.min.css";
 
@@ -634,7 +633,7 @@ export default Vue.extend({
     chatBody,
     chatList,
     chatText,
-    modal,
+    newModal,
     profile,
     sideMenu,
     viewImageModal

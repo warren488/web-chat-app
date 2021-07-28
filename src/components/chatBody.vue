@@ -1,5 +1,6 @@
 <template>
   <div ref="messageScroll" class="chat__main">
+    <div class="bg"></div>
     <button class="chat__view-more" @click="viewMore">View more</button>
     <ol class="chat__messages" id="messages">
       <li
@@ -151,6 +152,19 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
+.bg {
+  z-index: -1;
+  background-image: url(https://firebasestorage.googleapis.com/v0/b/myapp-4f894.appspot.com/o/profileImages%2F604e20b860e2f6001718079b%2F1626573297556.jpg?alt=media&token=62152715-f3d8-4de6-81d6-6fb5c99151b6);
+  background-color: rgba(0, 0, 0, 0.2);
+  background-blend-mode: multiply;
+  background-size: cover;
+  filter: blur(3px);
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  right: 0px;
+  left: 0px;
+}
 .chat__main {
   display: flex;
   flex-direction: column;

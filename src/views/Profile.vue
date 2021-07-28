@@ -326,7 +326,7 @@ export default Vue.extend({
       return { show: this.modal.show, text: this.modal.text };
     },
     sentRequestToMe() {
-      if (this.user.interactions) {
+      if (this.user && this.user.interactions) {
         let result = this.user.interactions.receivedRequests.find(
           request => this.userData.id === request.fromId
         );
@@ -335,7 +335,7 @@ export default Vue.extend({
       return false;
     },
     hasRequestFromMe() {
-      if (this.user.interactions) {
+      if (this.user && this.user.interactions) {
         let result = this.user.interactions.sentRequests.find(
           request => this.userData.id === request.userId
         );
