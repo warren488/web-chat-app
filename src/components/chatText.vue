@@ -41,6 +41,7 @@
             ref="msgText"
             @keydown="keydownHandler"
             @input="scanForLinkDebounced"
+            @paste="handlePastedFile"
             id="msg-txt"
             v-model="messageText"
             name="message"
@@ -276,6 +277,22 @@ export default Vue.extend({
       this.shouldStop = false;
       this.audioBlob = null;
       this.audioURL = null;
+    },
+    handlePastedFile(event) {
+      var items = (event.clipboardData || event.originalEvent.clipboardData)
+        .items;
+      for (const index in items) {
+        var item = items[index];
+        if (item.kind === "file") {
+          var blob = item.getAsFile();
+          var imgpreview = this.$refs.imgpreview as HTMLImageElement;
+          imgpreview.src = URL.createObjectURL(blob);
+          this.file = blob;
+          imgpreview.onload = function() {
+            URL.revokeObjectURL(imgpreview.src); // free memory
+          };
+        }
+      }
     },
     stopAndDeleteButtonHandler() {
       if (!this.shouldStop) {

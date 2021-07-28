@@ -744,7 +744,7 @@ export default Vue.extend({
   width: 350px;
   min-width: 350px;
   height: 100vh;
-  overflow: scroll;
+  overflow-y: scroll;
 }
 .home {
   --main-header-height: 50px;

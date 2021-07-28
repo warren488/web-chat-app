@@ -7,22 +7,21 @@
         :key="message.msgId"
         :class="{
           [message.status]: true,
-          me: message.fromId === user.id
+          me: message.fromId === user.id,
+          wrap__status: message.fromId === user.id
         }"
         :id="message.msgId"
       >
         <div class="message">
           <div class="message__title">
-            <h4>
+            <!-- <h4>
               {{ message.fromId === user.id ? "me" : message.from }}
-            </h4>
+            </h4> -->
             <span>{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
             <span class="reply" @click="replyClick(message.msgId)">reply</span>
           </div>
           <div class="message__body">
-            <div
-              :class="{ wrap: true, wrap__status: message.fromId === user.id }"
-            >
+            <div :class="{ wrap: true }">
               <audio
                 class="audiomessage"
                 v-if="message.type === 'media' && message.media === 'audio'"
@@ -47,13 +46,13 @@
               </div>
               <span v-if="message.quoted" class="quoted">
                 <div class="message__title">
-                  <h4>
+                  <span class="sender">
                     {{
                       message.quoted.fromId === user.id
                         ? "me"
                         : message.quoted.from
                     }}
-                  </h4>
+                  </span>
                   <span>
                     {{
                       new Date(message.quoted.createdAt).toLocaleTimeString()
@@ -151,7 +150,7 @@ export default Vue.extend({
 });
 </script>
 
-<style>
+<style lang="scss">
 .chat__main {
   display: flex;
   flex-direction: column;
@@ -167,6 +166,7 @@ export default Vue.extend({
 }
 .chat__messages li {
   display: flex;
+  align-items: flex-end;
 }
 
 .chat__messages {
@@ -175,6 +175,9 @@ export default Vue.extend({
 
 .chat__messages li.me {
   justify-content: flex-end;
+  .message__title {
+    justify-content: flex-end;
+  }
 }
 
 .audiomessage {
@@ -195,7 +198,7 @@ export default Vue.extend({
   margin-left: 5%;
   margin-top: 5px;
   width: 95%;
-  box-shadow: 1px 1px 3px gray;
+  box-shadow: 1px 1px 3px gray inset;
 }
 .chat__messages {
   -webkit-overflow-scrolling: touch;
@@ -217,12 +220,16 @@ export default Vue.extend({
 
 .message__title {
   display: flex;
-  margin-bottom: 5px;
+  justify-content: flex-start;
+  line-height: 1;
+  font-size: 0.9rem;
 }
 
-.message__title h4 {
+.message__title .sender {
   font-weight: 600;
-  margin-right: 10px;
+  margin: 0px 10px 0px 0px;
+  line-height: 1;
+  color: inherit;
 }
 
 .message__title span {
@@ -233,35 +240,48 @@ export default Vue.extend({
   overflow-wrap: break-word;
 }
 
-li.sent .message .message__body > .wrap__status::after {
-  content: "\2713";
-  color: gray;
-  float: right;
-  margin: 0px 0px 0px 5px;
+li.wrap__status.sent .message {
+  border-right: solid thick gray;
+  // &::after {
+  //   content: "\2713";
+  //   color: gray;
+  //   float: right;
+  //   margin: 0px 0px 0px 5px;
+  // }
 }
 
-li.received .message .message__body > .wrap__status::after {
-  content: "\2713";
-  color: blue;
-  float: right;
-  margin: 0px 0px 0px 5px;
+li.wrap__status.received .message {
+  border-right: solid thick blue;
+
+  // &::after {
+  //   content: "\2713";
+  //   color: blue;
+  //   float: right;
+  //   margin: 0px 0px 0px 5px;
+  // }
 }
 
-li.read .message .message__body > .wrap__status::after {
-  content: "\2714\2714";
-  color: green;
-  float: right;
-  margin: 0px 2px 0px 5px;
-  letter-spacing: -6px;
+li.wrap__status.read .message {
+  border-right: solid thick green;
+  // &::after {
+  //   content: "\2714\2714";
+  //   color: green;
+  //   float: right;
+  //   margin: 0px 2px 0px 5px;
+  //   letter-spacing: -6px;
+  // }
 }
 
-li.pending .message .message__body > .wrap__status::after {
-  content: "\2755";
-  color: #900;
-  background: red;
-  border-radius: 3px;
-  float: right;
-  margin: 0px 0px 0px 5px;
+li.wrap__status.pending .message {
+  border-right: solid thick red;
+  // &::after {
+  //   content: "\2755";
+  //   color: #900;
+  //   background: red;
+  //   border-radius: 3px;
+  //   float: right;
+  //   margin: 0px 0px 0px 5px;
+  // }
 }
 .highlighted,
 .highlighted:hover,
