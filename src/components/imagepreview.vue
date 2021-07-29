@@ -39,6 +39,7 @@
   </span>
 </template>
 <script lang="ts">
+import { getDimensionsForBox } from "@/common";
 import Vue from "vue";
 import loader from "./loader.vue";
 import viewImageModal from "./viewImageModal.vue";
@@ -82,46 +83,23 @@ export default Vue.extend({
       this.isOpen = false;
     },
     open() {
-      let dimensions = this.getDimensionsForBox(
-        window.innerWidth * 0.85,
-        window.innerHeight * 0.85
-      ) as Map<String, Number>;
+      let dimensions = getDimensionsForBox({
+        containerWidth: window.innerWidth * 0.85,
+        containerHeight: window.innerHeight * 0.85,
+        objectWidth: this.message.meta.width,
+        objectHeight: this.message.meta.height
+      }) as Map<String, Number>;
       this.fullPageWidth = dimensions.get("width");
       this.fullPageHeight = dimensions.get("height");
       this.isOpen = true;
     },
-    getDimensionsForBox(length, height): Map<String, Number> {
-      let WHRatio = this.message.meta.width / this.message.meta.height;
-      let propertyMap = new Map();
-      /** if it id wider than it is tall */
-      if (!height) {
-        if (WHRatio >= 1) {
-          propertyMap.set("width", length);
-          propertyMap.set("height", length / WHRatio);
-          /** @todo expansion logic */
-        } else if (WHRatio < 1) {
-          propertyMap.set("height", length);
-          propertyMap.set("width", length * WHRatio);
-        }
-        return propertyMap;
-      }
-      /**
-       * if the resultant height for the length we would like to use is within the constrainst
-       */
-      if (length / WHRatio < height) {
-        propertyMap.set("width", length);
-        propertyMap.set("height", length / WHRatio);
-        return propertyMap;
-      } else {
-        /** once we get here then the widrh is guaranteed to be less than the constraint */
-        propertyMap.set("height", height);
-        propertyMap.set("width", height * WHRatio);
-        return propertyMap;
-      }
-    },
     getMessageImageHeight(meta) {
       if (this.fitToBox) {
-        let propertyMap = this.getDimensionsForBox(this.componentLength);
+        let propertyMap = getDimensionsForBox({
+          containerWidth: this.componentLength,
+          objectWidth: this.message.meta.width,
+          objectHeight: this.message.meta.height
+        });
         return {
           width: `${propertyMap.get("width")}px`,
           height: `${propertyMap.get("height")}px`

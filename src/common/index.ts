@@ -310,6 +310,46 @@ export const getUserById = async (userId): Promise<UserInfo> => {
   }).then(({ data }) => data[0]);
 };
 
+export function getDimensionsForBox({
+  containerWidth,
+  containerHeight,
+  objectWidth,
+  objectHeight
+}: {
+  containerWidth;
+  containerHeight?;
+  objectWidth;
+  objectHeight;
+}): Map<String, Number> {
+  let WHRatio = objectWidth / objectHeight;
+  let propertyMap = new Map();
+  /** if it id wider than it is tall */
+  if (!containerHeight) {
+    if (WHRatio >= 1) {
+      propertyMap.set("width", containerWidth);
+      propertyMap.set("height", containerWidth / WHRatio);
+      /** @todo expansion logic */
+    } else if (WHRatio < 1) {
+      propertyMap.set("height", containerWidth);
+      propertyMap.set("width", containerWidth * WHRatio);
+    }
+    return propertyMap;
+  }
+  /**
+   * if the resultant height for the containerWidth we would like to use is within the constrainst
+   */
+  if (containerWidth / WHRatio < containerHeight) {
+    propertyMap.set("width", containerWidth);
+    propertyMap.set("height", containerWidth / WHRatio);
+    return propertyMap;
+  } else {
+    /** once we get here then the widrh is guaranteed to be less than the constraint */
+    propertyMap.set("height", containerHeight);
+    propertyMap.set("width", containerHeight * WHRatio);
+    return propertyMap;
+  }
+}
+
 export const updateInfo = async (
   userData: Object
 ): Promise<UpdatedUserInfo> => {

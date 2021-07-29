@@ -197,7 +197,9 @@
             @close="viewCurrentFriendProfile = false"
           >
             <template v-slot:full-replace>
-              <smart-profile :userId="currFriend.friendId" />
+              <smart-profile
+                :userId="viewCurrentFriendProfile && currFriend.friendId"
+              />
             </template>
           </newModal>
           <chatBody

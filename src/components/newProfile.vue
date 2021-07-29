@@ -18,7 +18,7 @@
       </div>
       <div class="main-info__text">
         <h1>{{ details.username }}</h1>
-        <div class="status">
+        <div :class="{ status: true, empty: !!details.status }">
           {{
             details.status ||
               `${details.username} doesnt currently have a status`
@@ -79,7 +79,9 @@ export default Vue.extend({
 
 .status {
   color: var(--bs-gray);
-  font-style: italic;
+  .empty {
+    font-style: italic;
+  }
 }
 
 .profile-container {

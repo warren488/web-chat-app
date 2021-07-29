@@ -18,18 +18,26 @@ export default Vue.extend({
     return { data: null, loading: true };
   },
   created() {
-    getUserById(this.userId).then(user => {
-      this.loading = false;
-      this.data = user;
-    });
-  },
-  watch: {
-    userId() {
-      this.loading = true;
+    if (this.userId) {
       getUserById(this.userId).then(user => {
         this.loading = false;
         this.data = user;
       });
+    } else {
+      this.data = null;
+    }
+  },
+  watch: {
+    userId() {
+      this.loading = true;
+      if (this.userId) {
+        getUserById(this.userId).then(user => {
+          this.loading = false;
+          this.data = user;
+        });
+      } else {
+        this.data = null;
+      }
     }
   }
 });
