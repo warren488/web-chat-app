@@ -49,7 +49,8 @@ export default new Vuex.Store({
     events: [],
     friendshipIds: [],
     unreads: {},
-    homeView: "chatlist"
+    homeView: "chatlist",
+    checkinActive: false
   },
   getters: {
     user: state => state.user,
@@ -205,6 +206,7 @@ export default new Vuex.Store({
       context.state.socket.on(
         "reconnect",
         eventWrapper((...args) => {
+          context.state.checkinActive = true;
           let checkinData = {};
           context.state.friendshipIds.forEach(id => {
             if (context.state.messages[id]) {
@@ -280,9 +282,12 @@ export default new Vuex.Store({
                   force: true,
                   test: false
                 });
+              context.state.checkinActive = false;
             })
-            .catch(console.log);
-          console.log("reconnect", args);
+            .catch(err => {
+              console.log;
+              context.state.checkinActive = false;
+            });
         })
       );
       context.state.socket.on(

@@ -26,7 +26,7 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-// export const baseURI = "http://localhost:3002";
+// export const baseURI = "http://localhost:3000";
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
@@ -274,7 +274,7 @@ export const sortMessageArray = (a, b) => {
 export const checkusername = async (username): Promise<Boolean> => {
   return await axios({
     method: "GET",
-    url: `${baseURI}/api/users/${username}?exists=true`
+    url: `${baseURI}/api/user_exists?username=${username}`
   }).then(res => {
     return !res.data.exists;
   });
@@ -296,8 +296,18 @@ export const getUsers = async (username): Promise<UserInfo> => {
     headers: {
       "x-auth": getCookie("token")
     },
-    url: `${baseURI}/api/users?username=${username}`
+    url: `${baseURI}/api/users?username=${username}&exclude_me`
   });
+};
+
+export const getUserById = async (userId): Promise<UserInfo> => {
+  return await axios({
+    method: "GET",
+    headers: {
+      "x-auth": getCookie("token")
+    },
+    url: `${baseURI}/api/users?user_id=${userId}&exclude_me`
+  }).then(({ data }) => data[0]);
 };
 
 export const updateInfo = async (

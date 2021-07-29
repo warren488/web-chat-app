@@ -12,11 +12,7 @@
       @close="modalData.openProfile = false"
     >
       <template v-slot:full-replace>
-        <profile
-          @close="modalData.openProfile = false"
-          :readonly="true"
-          :displayData="modalData.visibleProfile"
-        />
+        <new-profile :details="modalData.visibleProfile" />
       </template>
     </newModal>
     <main class="main-section">
@@ -188,9 +184,22 @@
                 :src="currFriend.imgUrl"
                 alt=""
               />
-              <h1>{{ currFriend.username }}</h1>
+              <h1
+                class="chat-header__name"
+                @click="viewCurrentFriendProfile = true"
+              >
+                {{ currFriend.username }}
+              </h1>
             </div>
           </header>
+          <newModal
+            :showModal="viewCurrentFriendProfile"
+            @close="viewCurrentFriendProfile = false"
+          >
+            <template v-slot:full-replace>
+              <smart-profile :userId="currFriend.friendId" />
+            </template>
+          </newModal>
           <chatBody
             ref="chatBody"
             :key="currChatFriendshipId"
@@ -230,33 +239,25 @@ import chatBody from "@/components/chatBody.vue";
 import sideMenu from "@/components/sideMenu.vue";
 import viewImageModal from "@/components/viewImageModal.vue";
 import newModal from "@/components/newModal.vue";
-/** using profile view as a component... hmmm */
-import profile from "@/views/Profile.vue";
 import {
-  getFriendShips,
   getCookie,
-  getMessages,
   getMessagePage,
-  getLastMessage,
   getUsers,
-  baseURI,
-  notifyMe,
   logout,
-  setCookie,
   enableNotifs,
   enableSound,
   disableNotifs,
   disableSound,
   subscribeToNotif,
   unsubscribeToNotif,
-  uploadToFireBase,
-  signOutOfFirebase,
-  CONSTANTS
+  signOutOfFirebase
 } from "@/common";
 
 import { mapGetters, mapActions, mapMutations } from "vuex";
 import store from "../store";
 import "notyf/notyf.min.css";
+import NewProfile from "@/components/newProfile.vue";
+import SmartProfile from "@/components/smartProfile.vue";
 
 export default Vue.extend({
   name: "home",
@@ -282,7 +283,8 @@ export default Vue.extend({
       currentMessages: [],
       searchResults: [],
       highlightedMessageId: null,
-      typing: {}
+      typing: {},
+      viewCurrentFriendProfile: false
     };
   },
   methods: {
@@ -634,9 +636,10 @@ export default Vue.extend({
     chatList,
     chatText,
     newModal,
-    profile,
     sideMenu,
-    viewImageModal
+    viewImageModal,
+    NewProfile,
+    SmartProfile
   }
 });
 </script>
@@ -701,33 +704,8 @@ export default Vue.extend({
   }
 }
 // END TYPING INDOCATOR
-@keyframes bigup {
-  0% {
-    position: fixed;
-    left: initial;
-    top: initial;
-    transform: translateX(-50%) translateY(-50%);
-    z-index: 99999;
-  }
-  50% {
-    left: 50%;
-    top: 50%;
-    width: unset;
-    height: 90%;
-  }
-  75% {
-    border-radius: 0px;
-  }
-  100% {
-    position: fixed;
-    left: 50%;
-    top: 50%;
-    transform: translateX(-50%) translateY(-50%);
-    z-index: 99999;
-    width: unset;
-    height: 90%;
-    border-radius: 0px;
-  }
+.chat-header__name {
+  cursor: pointer;
 }
 
 .nav-link {
