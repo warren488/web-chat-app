@@ -214,8 +214,22 @@ export default new Vuex.Store({
                 context.state.messages[id][
                   context.state.messages[id].length - 1
                 ];
-            } else {
-              checkinData[id] = null;
+              // we will need to ask for the updated status of messages that arent read, at this point i will
+              // assume that this is almost always going to be a small number so we can simply send all the msgIds
+              // in order to make the query simple
+              /** no */
+              // checkinData[id].unread = [];
+              // for (
+              //   let i = context.state.messages[id].length - 1;
+              //   i > context.state.messages[id].length - 50 && i <= 0;
+              //   i--
+              // ) {
+              //   if (context.state.messages[id][i].status !== "read") {
+              //     checkinData[id].unread.push(
+              //       context.state.messages[id][i].msgId
+              //     );
+              //   }
+              // }
             }
           });
           context
@@ -596,8 +610,6 @@ export default new Vuex.Store({
       }
     },
     setHomeView(state, view) {
-      console.log("set home view");
-
       state.homeView = view;
     },
     setFriendShips(state, friendShips) {
