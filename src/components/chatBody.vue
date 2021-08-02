@@ -8,7 +8,95 @@
       <span v-if="!showLoader"> View more </span>
     </button>
 
-    <ol class="chat__messages" id="messages">
+    <div v-for="[key, keyMessages] of messageMap" :key="key">
+      <ol key class="chat__messages" id="messages">
+        <div
+          v-if="!(new Date().toLocaleDateString() === key)"
+          class="new-date "
+        >
+          <span class="badge rounded-pill bg-success">{{
+            new Date(Date.now() - 86400000).toLocaleDateString() === key
+              ? "Yesterday"
+              : key
+          }}</span>
+        </div>
+        <li
+          v-for="message of keyMessages"
+          :key="message.msgId"
+          :class="{
+            [message.status]: true,
+            me: message.fromId === user.id,
+            wrap__status: message.fromId === user.id
+          }"
+          :id="message.msgId"
+        >
+          <div class="message">
+            <div class="message__title">
+              <span>{{
+                new Date(message.createdAt).toLocaleTimeString()
+              }}</span>
+              <span class="reply" @click="replyClick(message.msgId)"
+                >reply</span
+              >
+            </div>
+            <div class="message__body">
+              <div :class="{ wrap: true }">
+                <audio
+                  class="audiomessage"
+                  v-if="message.type === 'media' && message.media === 'audio'"
+                  style="max-height: 100%"
+                  :src="message.url"
+                  controls
+                ></audio>
+                <linkPreview
+                  v-if="message.linkPreview"
+                  :previewData="message.linkPreview"
+                ></linkPreview>
+                <div style="display: flex; flex-direction: column">
+                  <imagepreview
+                    :fitToBox="true"
+                    :componentLength="300"
+                    v-if="message.type === 'media' && message.media === 'image'"
+                    :message="message"
+                  />
+                  <span class="text-content" v-if="message.media !== 'audio'">
+                    {{ message.text }}
+                  </span>
+                </div>
+                <span v-if="message.quoted" class="quoted">
+                  <div class="message__title">
+                    <span class="sender">
+                      {{
+                        message.quoted.fromId === user.id
+                          ? "me"
+                          : message.quoted.from
+                      }}
+                    </span>
+                    <span>
+                      {{
+                        new Date(message.quoted.createdAt).toLocaleTimeString()
+                      }}
+                    </span>
+                  </div>
+                  <span class="wrap">{{ message.quoted.text }}</span>
+                  <audio
+                    class="audiomessage"
+                    v-if="
+                      message.quoted.type === 'media' &&
+                        message.quoted.media === 'audio'
+                    "
+                    :src="message.quoted.url"
+                    controls
+                  ></audio>
+                </span>
+              </div>
+            </div>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <!-- <ol class="chat__messages" id="messages">
       <li
         v-for="(message, index) of allMessages"
         :key="message.msgId"
@@ -21,9 +109,6 @@
       >
         <div class="message">
           <div class="message__title">
-            <!-- <h4>
-              {{ message.fromId === user.id ? "me" : message.from }}
-            </h4> -->
             <span>{{ new Date(message.createdAt).toLocaleTimeString() }}</span>
             <span class="reply" @click="replyClick(message.msgId)">reply</span>
           </div>
@@ -67,7 +152,6 @@
                   </span>
                 </div>
                 <span class="wrap">{{ message.quoted.text }}</span>
-                <!-- make sure i add this when i quote a message -->
                 <audio
                   class="audiomessage"
                   v-if="
@@ -92,7 +176,7 @@
           <span>{{ new Date(message.createdAt).toLocaleDateString() }}</span>
         </div>
       </li>
-    </ol>
+    </ol> -->
   </div>
 </template>
 
@@ -166,6 +250,22 @@ export default Vue.extend({
     ...mapGetters(["user"]),
     allMessages(): Array<Message> {
       return this.messages;
+    },
+    /** @todo could this cause performance issues? all for the date to be looking fancy? */
+    messageMap() {
+      const messageMap = new Map();
+      for (const message of this.messages) {
+        /** being fancy and not creating a new variable every loop */
+        var thisDate = new Date(message.createdAt).toLocaleDateString();
+        if (messageMap.get(thisDate)) {
+          messageMap.get(thisDate).push(message);
+        } else {
+          messageMap.set(thisDate, [message]);
+        }
+      }
+
+      console.log(messageMap);
+      return messageMap;
     }
   },
   updated() {
@@ -220,11 +320,14 @@ export default Vue.extend({
 }
 
 .new-date {
-  display: flex;
-  flex-basis: 100%;
-  justify-content: center;
   position: sticky;
   top: 0.5rem;
+  display: flex;
+  justify-content: center;
+  flex-basis: 100%;
+  * {
+    background-color: lightgray;
+  }
 }
 
 .chat__messages {
