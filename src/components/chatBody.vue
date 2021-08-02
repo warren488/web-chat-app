@@ -8,12 +8,13 @@
       <span v-if="!showLoader"> View more </span>
     </button>
 
-    <div v-for="[key, keyMessages] of messageMap" :key="key">
+    <div
+      class="date__group"
+      v-for="[key, keyMessages] of messageMap"
+      :key="key"
+    >
       <ol key class="chat__messages" id="messages">
-        <div
-          v-if="!(new Date().toLocaleDateString() === key)"
-          class="new-date "
-        >
+        <div v-if="!(new Date().toLocaleDateString() === key)" class="new-date">
           <span class="badge rounded-pill bg-success">{{
             new Date(Date.now() - 86400000).toLocaleDateString() === key
               ? "Yesterday"
@@ -74,9 +75,9 @@
                     {{ message.text }}
                   </span>
                 </div>
-                <span v-if="message.quoted" class="quoted">
+                <span v-if="message.quoted" class="quoted text-dark">
                   <div class="message__title">
-                    <span class="sender">
+                    <span class="sender text-dark">
                       {{
                         message.quoted.fromId === user.id
                           ? "me"
@@ -192,7 +193,7 @@
 </template>
 
 <script lang="ts">
-import { getCookie, getMessages, getMessagePage, scrollBottom } from "@/common";
+import { getCookie, scrollBottom2 } from "@/common";
 interface Message {
   name: string;
   text: string;
@@ -221,7 +222,11 @@ export default Vue.extend({
     };
   },
   mounted() {
-    scrollBottom.call(this, { force: true, test: false });
+    scrollBottom2({
+      force: true,
+      test: false,
+      element: this.$refs.messageScroll
+    });
 
     const date = new Date(new Date().toLocaleDateString());
     const somedate = new Date(
@@ -244,7 +249,11 @@ export default Vue.extend({
   },
   methods: {
     resizeHandler() {
-      scrollBottom.call(this, { force: true, test: false });
+      scrollBottom2({
+        force: true,
+        test: false,
+        element: this.$refs.messageScroll
+      });
     },
     getCookie,
     replyClick(msgId: string): void {
@@ -280,7 +289,11 @@ export default Vue.extend({
     }
   },
   updated() {
-    scrollBottom.call(this, { force: false, test: false });
+    scrollBottom2({
+      force: false,
+      test: false,
+      element: this.$refs.messageScroll
+    });
   },
   watch: {
     highlighted(newVal: string, oldVal: string): void {
@@ -353,8 +366,8 @@ export default Vue.extend({
 
 .chat__messages .me .message {
   justify-content: flex-end;
-  border-end-start-radius: 9px;
-  border-bottom-left-radius: 9px;
+  border-end-start-radius: 1rem;
+  border-bottom-left-radius: 1rem;
   border-end-end-radius: 0px;
   border-bottom-right-radius: 0px;
   .message__title {
@@ -374,7 +387,7 @@ export default Vue.extend({
   background-color: rgb(202, 202, 202);
   display: inline-block;
   border: thin solid rgb(202, 202, 202);
-  border-radius: 9px;
+  border-radius: 1rem;
   padding: 5px;
   margin-left: 5%;
   margin-top: 5px;
@@ -389,7 +402,7 @@ export default Vue.extend({
   padding: 5px;
   padding-left: 10px;
   background-color: #e6eaee;
-  border-radius: 9px;
+  border-radius: 1rem;
   margin: 5px;
   max-width: 80%;
 }
@@ -398,7 +411,7 @@ export default Vue.extend({
   display: flex;
   justify-content: flex-start;
   line-height: 1;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
 }
 
 .message__title .sender {
@@ -441,7 +454,7 @@ li.wrap__status.received .message {
 }
 
 li.wrap__status.read .message {
-  border-right: solid thick green;
+  border-right: solid thick var(--bs-success);
   // &::after {
   //   content: "\2714\2714";
   //   color: green;

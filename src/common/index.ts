@@ -760,7 +760,7 @@ export class FocusGrabber {
 
 export const scrollBottom = function scrollBottom({ force, test }) {
   let newMessage: HTMLElement = this.$refs.messageScroll.querySelector(
-    "ol li:last-child"
+    ".date__group:last-of-type li:last-of-type"
   );
   let doScroll = !!force;
   if (newMessage) {
@@ -770,7 +770,7 @@ export const scrollBottom = function scrollBottom({ force, test }) {
 
     let newMessageHeight = newMessage.clientHeight;
     let lastMessage = this.$refs.messageScroll.querySelector(
-      "ol li:nth-last-child(2)"
+      ".date__group:last-of-type li:nth-last-of-type(2)"
     );
 
     let lastMessageHeight = lastMessage ? lastMessage.clientHeight : 0;
@@ -779,8 +779,9 @@ export const scrollBottom = function scrollBottom({ force, test }) {
         scrollHeight
       : doScroll;
     if (doScroll) {
-      this.$refs.messageScroll.scrollTop =
-        scrollHeight + newMessageHeight + newMessageHeight;
+      lastMessage.scrollIntoView({
+        behavior: "smooth"
+      });
     }
   }
 
@@ -790,7 +791,9 @@ export const scrollBottom = function scrollBottom({ force, test }) {
 
 /** @todo eventually refactor and let this replace the old one */
 export const scrollBottom2 = function scrollBottom({ element, force, test }) {
-  let newMessage: HTMLElement = element.querySelector("ol li:last-child");
+  let newMessage: HTMLElement = element.querySelector(
+    ".date__group:last-of-type li:last-of-type"
+  );
   let doScroll = !!force;
   if (newMessage) {
     let clientHeight = element.clientHeight;
@@ -798,7 +801,9 @@ export const scrollBottom2 = function scrollBottom({ element, force, test }) {
     let scrollHeight = element.scrollHeight;
 
     let newMessageHeight = newMessage.clientHeight;
-    let lastMessage = element.querySelector("ol li:nth-last-child(2)");
+    let lastMessage = element.querySelector(
+      ".date__group:last-of-type li:nth-last-of-type(2)"
+    );
 
     let lastMessageHeight = lastMessage ? lastMessage.clientHeight : 0;
     doScroll = !doScroll
@@ -806,7 +811,9 @@ export const scrollBottom2 = function scrollBottom({ element, force, test }) {
         scrollHeight
       : doScroll;
     if (doScroll && !test) {
-      element.scrollTop = scrollHeight + newMessageHeight + newMessageHeight;
+      lastMessage.scrollIntoView({
+        behavior: "smooth"
+      });
     } else if (test) {
       return doScroll;
     }
