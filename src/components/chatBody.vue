@@ -89,7 +89,7 @@
           "
           class="new-date"
         >
-          {{ new Date(message.createdAt).toLocaleDateString() }}
+          <span>{{ new Date(message.createdAt).toLocaleDateString() }}</span>
         </div>
       </li>
     </ol>
@@ -220,7 +220,11 @@ export default Vue.extend({
 }
 
 .new-date {
+  display: flex;
   flex-basis: 100%;
+  justify-content: center;
+  position: sticky;
+  top: 0.5rem;
 }
 
 .chat__messages {
