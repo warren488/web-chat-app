@@ -30,8 +30,19 @@
           }"
           :id="message.msgId"
         >
-          <div class="message">
-            <div class="message__title">
+          <div
+            :class="{
+              message: true,
+              'bg-success': message.fromId === user.id,
+              'text-white': message.fromId === user.id
+            }"
+          >
+            <div
+              :class="{
+                message__title: true,
+                light: message.fromId === user.id
+              }"
+            >
               <span>{{
                 new Date(message.createdAt).toLocaleTimeString()
               }}</span>
@@ -313,11 +324,6 @@ export default Vue.extend({
   border-radius: 1.5rem;
   padding: 0.2rem 0.5rem;
 }
-.chat__messages li {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
 
 .new-date {
   position: sticky;
@@ -332,10 +338,25 @@ export default Vue.extend({
 
 .chat__messages {
   list-style-type: none;
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    .message {
+      border-end-start-radius: 0px;
+    }
+  }
 }
 
-.chat__messages li.me {
+.chat__messages .me {
   justify-content: flex-end;
+}
+
+.chat__messages .me .message {
+  justify-content: flex-end;
+  border-end-start-radius: 9px;
+  border-bottom-left-radius: 9px;
+  border-end-end-radius: 0px;
+  border-bottom-right-radius: 0px;
   .message__title {
     justify-content: flex-end;
   }
@@ -346,7 +367,6 @@ export default Vue.extend({
   max-width: 100%;
 }
 .reply {
-  color: #999;
   cursor: pointer;
   margin-left: 5px;
 }
@@ -372,11 +392,6 @@ export default Vue.extend({
   border-radius: 9px;
   margin: 5px;
   max-width: 80%;
-  box-shadow: 3px 3px 3px lightgray;
-}
-
-.message:hover {
-  background-color: #f6faff;
 }
 
 .message__title {
@@ -393,8 +408,11 @@ export default Vue.extend({
   color: inherit;
 }
 
-.message__title span {
+.message__title {
   color: #999;
+  &.light {
+    color: #ddd;
+  }
 }
 
 .message__body .wrap {
