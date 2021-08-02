@@ -241,7 +241,7 @@ export default Vue.extend({
     this.timeArr = timeArr;
   },
   created() {
-    window.addEventListener("resize", this.resizeHandler.bind(this));
+    window.addEventListener("resize", this.resizeHandler);
   },
   beforeDestroy() {
     /** @todo does this resolve to the correct refernce even tho we used bind before? */

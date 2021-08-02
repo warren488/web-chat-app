@@ -780,6 +780,7 @@ export const scrollBottom = function scrollBottom({ force, test }) {
       : doScroll;
     if (doScroll) {
       lastMessage.scrollIntoView({
+        block: "start",
         behavior: "smooth"
       });
     }
@@ -812,6 +813,8 @@ export const scrollBottom2 = function scrollBottom({ element, force, test }) {
       : doScroll;
     if (doScroll && !test) {
       lastMessage.scrollIntoView({
+        block: "start",
+        inline: "nearest",
         behavior: "smooth"
       });
     } else if (test) {
