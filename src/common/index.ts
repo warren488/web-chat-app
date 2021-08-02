@@ -522,14 +522,15 @@ export const getMessages = async (
   });
 };
 
-export const getMessagePage = async (
-  friendship_id: string,
-  limit: number = 50,
-  timestamp
-) => {
+export const getMessagePage = async ({
+  friendship_id,
+  limit = 50,
+  timestamp,
+  msgId
+}) => {
   return await axios({
     method: "GET",
-    url: `${baseURI}/api/users/me/${friendship_id}/messagespage?limit=${limit}&timestamp=${timestamp}`,
+    url: `${baseURI}/api/users/me/${friendship_id}/messagespage?limit=${limit}&timestamp=${timestamp}&msgId=${msgId}`,
     headers: {
       "Content-type": "application/json",
       "x-auth": getCookie("token")

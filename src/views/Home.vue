@@ -210,6 +210,7 @@
             :highlighted="highlightedMessageId"
             @replyClick="replyHandler"
             @viewMore="viewMore"
+            :loadingMore="loadingMore"
             class="chatBody"
           />
           <div class="lds-ellipsis typing op">
@@ -286,7 +287,8 @@ export default Vue.extend({
       searchResults: [],
       highlightedMessageId: null,
       typing: {},
-      viewCurrentFriendProfile: false
+      viewCurrentFriendProfile: false,
+      loadingMore: false
     };
   },
   methods: {
@@ -342,20 +344,27 @@ export default Vue.extend({
        * starting with the timestamp of our latest message
        * (which will be the first in the messages array)and going backward
        */
-      getMessagePage(
-        this.currChatFriendshipId,
-        100,
-        this.messages[this.currChatFriendshipId][0].createdAt
-      ).then(({ data }) => {
-        /**
-         * @todo - I need to account for instances where we will get the messages that have the same timestamp
-         * as the timestamp used to create this page 3rd param of getMessagePage call
-         */
-        this.addGroupToChatSart({
-          friendship_id: this.currChatFriendshipId,
-          messages: data
+      this.loadingMore = true;
+      getMessagePage({
+        friendship_id: this.currChatFriendshipId,
+        limit: 100,
+        timestamp: this.messages[this.currChatFriendshipId][0].createdAt,
+        msgId: this.messages[this.currChatFriendshipId][0].msgId
+      })
+        .then(({ data }) => {
+          /**
+           * @todo - I need to account for instances where we will get the messages that have the same timestamp
+           * as the timestamp used to create this page 3rd param of getMessagePage call
+           */
+          this.addGroupToChatSart({
+            friendship_id: this.currChatFriendshipId,
+            messages: data
+          });
+          this.loadingMore = false;
+        })
+        .catch(err => {
+          this.loadingMore = false;
         });
-      });
     },
     handleNewMessage(message) {
       if (!message) {
@@ -810,12 +819,12 @@ export default Vue.extend({
   background: var(--bs-green);
   color: white;
   text-align: center;
-  padding: 15px;
+  padding: 0.5rem;
 
   &__profile-img {
     cursor: pointer;
-    width: 80px;
-    height: 80px;
+    width: 64px;
+    height: 64px;
     top: initial;
     left: initial;
     border-radius: 50%;

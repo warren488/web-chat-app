@@ -1,10 +1,16 @@
 <template>
   <div ref="messageScroll" class="chat__main">
     <div class="bg"></div>
-    <button class="chat__view-more" @click="viewMore">View more</button>
+    <button class="chat__view-more" :disabled="showLoader" @click="viewMore">
+      <span v-if="showLoader">
+        <loader type="ellipsis" :display="true" />
+      </span>
+      <span v-if="!showLoader"> View more </span>
+    </button>
+
     <ol class="chat__messages" id="messages">
       <li
-        v-for="message of allMessages"
+        v-for="(message, index) of allMessages"
         :key="message.msgId"
         :class="{
           [message.status]: true,
@@ -75,6 +81,16 @@
             </div>
           </div>
         </div>
+        <div
+          v-if="
+            allMessages[index + 1] &&
+              new Date(message.createdAt).toLocaleDateString() !==
+                new Date(allMessages[index + 1].createdAt).toLocaleDateString()
+          "
+          class="new-date"
+        >
+          {{ new Date(message.createdAt).toLocaleDateString() }}
+        </div>
       </li>
     </ol>
   </div>
@@ -94,19 +110,35 @@ import messageImage from "./messageImage";
 import imagepreview from "./imagepreview";
 // @ts-ignore
 import linkPreview from "./linkPreview";
+import Loader from "./loader.vue";
 
 export default Vue.extend({
   props: {
     frienship_id: String,
     messages: Array,
-    highlighted: String
+    highlighted: String,
+    loadingMore: Boolean
   },
-  components: { imagepreview, linkPreview },
+  components: { imagepreview, linkPreview, Loader },
   data() {
-    return {};
+    return {
+      timeArr: []
+    };
   },
   mounted() {
     scrollBottom.call(this, { force: true, test: false });
+
+    const date = new Date(new Date().toLocaleDateString());
+    const somedate = new Date(
+      new Date(this.allMessages.createdAt).toLocaleDateString()
+    );
+    const timeArr = [date.getTime()];
+    let count = 1;
+    while (timeArr[0] > somedate.getTime()) {
+      count++;
+      timeArr.unshift(date.getTime() - 86400000 * count);
+    }
+    this.timeArr = timeArr;
   },
   created() {
     window.addEventListener("resize", this.resizeHandler.bind(this));
@@ -128,6 +160,9 @@ export default Vue.extend({
     }
   },
   computed: {
+    showLoader() {
+      return this.loadingMore;
+    },
     ...mapGetters(["user"]),
     allMessages(): Array<Message> {
       return this.messages;
@@ -181,6 +216,11 @@ export default Vue.extend({
 .chat__messages li {
   display: flex;
   align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.new-date {
+  flex-basis: 100%;
 }
 
 .chat__messages {
