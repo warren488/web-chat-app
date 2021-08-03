@@ -779,7 +779,7 @@ export const scrollBottom = function scrollBottom({ force, test }) {
         scrollHeight
       : doScroll;
     if (doScroll) {
-      lastMessage.scrollIntoView({
+      newMessage.scrollIntoView({
         block: "start",
         behavior: "smooth"
       });
@@ -812,18 +812,16 @@ export const scrollBottom2 = function scrollBottom({ element, force, test }) {
         scrollHeight
       : doScroll;
     if (doScroll && !test) {
-      lastMessage.scrollIntoView({
-        block: "start",
-        inline: "nearest",
+      element.scrollTo({
+        top: scrollHeight + newMessageHeight + newMessageHeight,
         behavior: "smooth"
       });
+
+      return scrollHeight + newMessageHeight + newMessageHeight;
     } else if (test) {
       return doScroll;
     }
   }
-
-  // element.scrollTop = scrollHeight;
-  // console.log(clientHeight, scrollHeight, scrollTop);
 };
 
 function urlBase64ToUint8Array(base64String) {
