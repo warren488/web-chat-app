@@ -19,21 +19,41 @@
       "files": [
         {
           "name": "image",
-          "accept": "image/*"
+          "accept": ["image/*"]
         }
       ]
     }
   },
   "icons": [
     {
-      "src": "/test-72x72.png",
-      "sizes": "72x72 48x48 96x96",
-      "type": "image/png"
+      "src": "/test-72x72.webp",
+      "sizes": "72x72",
+      "type": "image/webp"
     },
     {
-      "src": "/test-144x144.png",
-      "sizes": "144x144 256x256 512x512",
-      "type": "image/png"
+      "src": "/test-48x48.webp",
+      "sizes": "48x48",
+      "type": "image/webp"
+    },
+    {
+      "src": "/test-96x96.webp",
+      "sizes": "96x96",
+      "type": "image/webp"
+    },
+    {
+      "src": "/test-144x144.webp",
+      "sizes": "144x144",
+      "type": "image/webp"
+    },
+    {
+      "src": "/test-256x256.webp",
+      "sizes": "256x256",
+      "type": "image/webp"
+    },
+    {
+      "src": "/test-512x512.webp",
+      "sizes": "512x512",
+      "type": "image/webp"
     }
   ]
 }

@@ -639,12 +639,14 @@ export default new Vuex.Store({
           state.user.id
         );
         state.unreads[friendship_id] = 0;
-        markAsReceived(friendship_id, [
-          state.messages[friendship_id][0].createdAt,
-          state.messages[friendship_id][
-            state.messages[friendship_id].length - 1
-          ].createdAt
-        ]);
+        if (state.messages[friendship_id].length > 0) {
+          markAsReceived(friendship_id, [
+            state.messages[friendship_id][0].createdAt,
+            state.messages[friendship_id][
+              state.messages[friendship_id].length - 1
+            ].createdAt
+          ]);
+        }
         clearNotifications({ tag: friendship_id });
       }
       console.log("storeeeeeeeeee", state.messages[friendship_id]);
@@ -664,7 +666,9 @@ export default new Vuex.Store({
       state.friendShips.splice(index, 1, state.friendShips[index]);
     },
     addEvent(state, event) {
-      state.events[event.type].push(event);
+      if (state.events[event.type]) {
+        state.events[event.type].push(event);
+      }
       console.log("events", state.events);
     },
     storeEvents(state, events) {

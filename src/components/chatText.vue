@@ -37,6 +37,7 @@
           />
         </button>
         <md-field v-if="!hasAudio && !isRecording" style="width: 100%">
+          <!-- v-model produces some slightly unexpected behavior below so we may want to do it manually -->
           <md-textarea
             ref="msgText"
             @keydown="keydownHandler"
@@ -264,6 +265,10 @@ export default Vue.extend({
     this.scanForLinkDebounced = debounce(this.scanForLink, 300);
   },
   methods: {
+    textInput(e) {
+      this.messageText = e;
+      this.scanForLinkDebounced(e);
+    },
     addEmoji(e) {
       if (e.target.dataset.value) {
         this.messageText += e.target.dataset.value;

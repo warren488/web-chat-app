@@ -574,7 +574,7 @@ export function uuid() {
 }
 
 export const binaryCustomSearch = function(arr, x) {
-  if (arr.length === 0) {
+  if (!arr || arr.length === 0) {
     return -1;
   }
 

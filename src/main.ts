@@ -78,10 +78,12 @@ window.onfocus = () => {
       friendship_id: store.state.currChatFriendshipId
     });
     const messages = store.state.messages[store.state.currChatFriendshipId];
-    markAsReceived(store.state.currChatFriendshipId, [
-      messages[0].createdAt,
-      messages[messages.length - 1].createdAt
-    ]);
+    if (messages && messages.length > 0) {
+      markAsReceived(store.state.currChatFriendshipId, [
+        messages[0].createdAt,
+        messages[messages.length - 1].createdAt
+      ]);
+    }
   }
   clearNotifications();
 };

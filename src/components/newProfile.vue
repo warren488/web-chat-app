@@ -26,13 +26,25 @@
         </div>
       </div>
     </div>
-    <button class="btn btn-success">Send Request</button>
+    <button
+      class="btn btn-success"
+      v-if="!sentRequestToMe"
+      :disabled="hasRequestFromMe"
+      @click="sendRequest"
+    >
+      Send Request
+    </button>
+    <button @click="addFriend" class="btn btn-success" v-if="sentRequestToMe">
+      Accept Request
+    </button>
   </div>
 </template>
 <script lang="ts">
 import Vue from "vue";
 import Loader from "@/components/loader.vue"; // @ is an alias to /src
 import { mapGetters } from "vuex";
+import { addFriend, sendRequest } from "@/common";
+import { Notyf } from "notyf";
 export default Vue.extend({
   created() {},
   props: {
@@ -47,12 +59,61 @@ export default Vue.extend({
     };
   },
   components: { Loader },
-  methods: {},
+  methods: {
+    sendRequest() {
+      console.log(this.details);
+      if (!this.hasRequestFromMe && !this.sentRequestToMe) {
+        sendRequest(this.details.id).then(data => {
+          let notification = new Notyf({
+            duration: 5000,
+            dismissible: true,
+            position: { x: "center", y: "top" }
+          });
+          notification.success(`request successfull sent`);
+          this.$emit("close");
+        });
+      }
+    },
+
+    addFriend() {
+      addFriend({
+        username: this.details.username,
+        id: this.details.id
+      }).then(data => {
+        let notification = new Notyf({
+          duration: 5000,
+          dismissible: true,
+          position: { x: "center", y: "top" }
+        });
+        notification.success(`request successfull accepted`);
+        this.$emit("close");
+      });
+    }
+  },
   computed: {
     ...mapGetters(["user"]),
 
     isImgLoading() {
       return this.imgLoading;
+    },
+
+    sentRequestToMe() {
+      if (this.user && this.user.interactions) {
+        let result = this.user.interactions.receivedRequests.find(
+          request => this.details.id === request.fromId
+        );
+        return !!result;
+      }
+      return false;
+    },
+    hasRequestFromMe() {
+      if (this.user && this.user.interactions) {
+        let result = this.user.interactions.sentRequests.find(
+          request => this.details.id === request.userId
+        );
+        return !!result;
+      }
+      return false;
     }
   }
 });
