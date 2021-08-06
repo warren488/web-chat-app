@@ -3,7 +3,6 @@
     <header>
       <input
         type="text"
-        id="search"
         placeholder="Search..."
         class="search-bar"
         v-model="filterString"
@@ -45,11 +44,14 @@
               class="last-message"
               v-if="friendShip.lastMessage && friendShip.lastMessage[0]"
             >
-              <span v-if="friendShip.lastMessage[0].status !== 'typing'">{{
-                friendShip.lastMessage[0].fromId === user.id
-                  ? "me:"
-                  : `${friendShip.username}:`
-              }}</span>
+              <span
+                v-if="friendShip.lastMessage[0].status !== 'typing' && user"
+                >{{
+                  friendShip.lastMessage[0].fromId === user.id
+                    ? "me:"
+                    : `${friendShip.username}:`
+                }}</span
+              >
               {{
                 friendShip.lastMessage[0].text
                   ? friendShip.lastMessage[0].text

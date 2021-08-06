@@ -94,3 +94,19 @@ self.addEventListener("notificationclick", e => {
     })
   );
 });
+
+self.addEventListener("fetch", event => {
+  const url = new URL(event.request.url);
+  // If this is an incoming POST request for the
+  // registered "action" URL, respond to it.
+  if (event.request.method === "POST" && url.pathname === "/share-target") {
+    event.respondWith(
+      (async () => {
+        const formData = await event.request.formData();
+        const image = formData.get("image") || "";
+        console.log(image);
+        return Response.redirect("/home", 303);
+      })()
+    );
+  }
+});
