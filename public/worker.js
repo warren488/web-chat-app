@@ -64,7 +64,7 @@ self.addEventListener("notificationclick", e => {
       // If a Window tab matching the targeted URL already exists, focus that;
       try {
         const hadWindowToFocus = clientsArr.some(async windowClient => {
-          if (windowClient.url.startsWith(`https://myapp-4f894.web.app`)) {
+          if (windowClient.url.includes(`myapp-4f894.web.app`)) {
             const focusedClient = await windowClient.focus();
             /** so what we have down here isnt necessarily required in order to get to the page
              * cause we can simply the url to navigate to our chat however that usually creates
