@@ -2,7 +2,6 @@
   "name": "Web chat app",
   "short_name": "Web chat",
   "start_url": ".",
-  "scope": ".",
   "description": "High aspiration web chat",
   "display": "standalone",
   "orientation": "portrait",

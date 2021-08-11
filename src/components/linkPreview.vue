@@ -28,7 +28,7 @@ export default Vue.extend({
   margin-right: 4px;
   max-width: 700px;
   border-radius: 4px;
-  background: rgb(215, 219, 223);
+  background: rgba(0, 0, 0, 0.5);
   margin-bottom: 16px;
 
   &__img {
