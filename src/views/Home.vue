@@ -380,11 +380,13 @@ export default Vue.extend({
       });
       // TODO: FIXME: implement sort and search algorith for messages or get data from the sub component
       // massive performance issue
-      for (const chatMessage of this.messages[this.currChatFriendshipId]) {
-        console.log(chatMessage);
-        if (chatMessage.msgId === message.hID) {
-          quoted = chatMessage;
-          break;
+      if (message.hID) {
+        for (const chatMessage of this.messages[this.currChatFriendshipId]) {
+          console.log(chatMessage);
+          if (chatMessage.msgId === message.hID) {
+            quoted = chatMessage;
+            break;
+          }
         }
       }
       this.appendMessageToChat({

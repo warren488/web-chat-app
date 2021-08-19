@@ -36,8 +36,8 @@ self.addEventListener("push", async function(e) {
         {
           body: newBody,
           tag: data.friendship_id,
-          badge: "/test-72x72.png",
-          icon: "/test-72x72.png",
+          badge: "/test-72x72.webp",
+          icon: "/test-72x72.webp",
           /**
            * @fixme we need to find a way to clear this number when we clear
            * notifications on opening the app
