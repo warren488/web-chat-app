@@ -1,15 +1,17 @@
 <template>
   <div>
     <div v-if="loading && !previewData">loading preview...</div>
-    <div v-if="previewData" class="linkpreview">
-      <img class="linkpreview__img" :src="previewData.image" alt />
-      <div>
-        <header class="linkpreview__title">{{ previewData.title }}</header>
-        <span class="linkpreview__description">
-          {{ previewData.description }}
-        </span>
+    <a :href="previewData.url" target="_blank">
+      <div v-if="previewData" class="linkpreview">
+        <img class="linkpreview__img" :src="previewData.image" alt />
+        <div>
+          <header class="linkpreview__title">{{ previewData.title }}</header>
+          <span class="linkpreview__description">
+            {{ previewData.description }}
+          </span>
+        </div>
       </div>
-    </div>
+    </a>
   </div>
 </template>
 <script lang="ts">
@@ -22,6 +24,10 @@ export default Vue.extend({
 });
 </script>
 <style lang="scss" scoped>
+a {
+  color: inherit;
+  text-decoration: none;
+}
 .linkpreview {
   display: flex;
   overflow: hidden;
