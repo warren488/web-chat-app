@@ -1,8 +1,8 @@
 <template>
   <div>
     <div v-if="loading && !previewData">loading preview...</div>
-    <a :href="previewData.url" target="_blank">
-      <div v-if="previewData" class="linkpreview">
+    <a v-if="previewData" :href="previewData.url" target="_blank">
+      <div class="linkpreview">
         <img class="linkpreview__img" :src="previewData.image" alt />
         <div>
           <header class="linkpreview__title">{{ previewData.title }}</header>
