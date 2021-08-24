@@ -228,6 +228,7 @@ export const login = async (userData: Object): Promise<AuthResponse> => {
 
 export const logout = async () => {
   try {
+    await Promise.all([unsubscribeToNotif(), signOutOfFirebase()]);
     let data = await axios({
       method: "POST",
       headers: {
@@ -236,7 +237,6 @@ export const logout = async () => {
       url: `${baseURI}/api/logout`
     });
     await store.commit("resetState");
-    await Promise.all([unsubscribeToNotif(), signOutOfFirebase()]);
     setCookie("token", "", -1000);
     setCookie("username", "", -1000);
     return data;
