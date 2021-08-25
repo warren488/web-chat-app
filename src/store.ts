@@ -575,6 +575,9 @@ export default new Vuex.Store({
   // todo: check if this is returns a promise or is synchronous
   mutations: {
     resetState: (state, data) => {
+      if (state.socket) {
+        state.socket.close();
+      }
       state.friendShips = null;
       state.messages = null;
       state.dataLoaded = false;

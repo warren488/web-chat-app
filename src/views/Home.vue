@@ -331,11 +331,10 @@ export default Vue.extend({
       disableNotifs();
     },
     logout() {
-      logout()
-        /** @todo send some indication this was an automatic unsubcription, maybe in
-         * the future we can treat this user differently
-         */
-        .then(data => Promise.all([unsubscribeToNotif(), signOutOfFirebase()]))
+      /** @todo send some indication this was an automatic unsubcription, maybe in
+       * the future we can treat this user differently
+       */
+      return logout()
         .then(data => this.$router.push("/login"))
         .catch(err => console.log(err)); //alert("error logging out, please try again!"));
     },
