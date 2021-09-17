@@ -1,10 +1,9 @@
 <template>
   <div
     class="modal fade"
-    id="imageViewer"
     ref="imageViewer"
     tabindex="-1"
-    aria-label="image viewer modal"
+    aria-label="modal"
     aria-hidden="true"
   >
     <div class="modal-dialog modal-dialog-centered">
@@ -36,7 +35,6 @@
   </div>
 </template>
 <script>
-import { FocusGrabber } from "@/common";
 export default {
   name: "modal",
   props: ["showModal", "text"],
@@ -55,6 +53,9 @@ export default {
     this.$refs.imageViewer.addEventListener("hidePrevented.bs.modal", event => {
       this.$emit("close");
     });
+    if (this.showModal) {
+      this.open();
+    }
   },
   methods: {
     open() {

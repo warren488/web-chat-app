@@ -1,5 +1,6 @@
 <template>
   <div ref="messageScroll" class="chat__main">
+    <youTubeModal></youTubeModal>
     <div class="bg"></div>
     <button class="chat__view-more" :disabled="showLoader" @click="viewMore">
       <span v-if="showLoader">
@@ -206,6 +207,8 @@ import messageImage from "./messageImage";
 import imagepreview from "./imagepreview";
 // @ts-ignore
 import linkPreview from "./linkPreview";
+// @ts-ignore
+import youTubeModal from "./youTubeModal";
 import Loader from "./loader.vue";
 
 export default Vue.extend({
@@ -215,7 +218,7 @@ export default Vue.extend({
     highlighted: String,
     loadingMore: Boolean
   },
-  components: { imagepreview, linkPreview, Loader },
+  components: { imagepreview, linkPreview, Loader, youTubeModal },
   data() {
     return {
       timeArr: []
