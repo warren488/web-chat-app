@@ -26,17 +26,19 @@
         </div>
       </div>
     </div>
-    <button
-      class="btn btn-success"
-      v-if="!sentRequestToMe"
-      :disabled="hasRequestFromMe"
-      @click="sendRequest"
-    >
-      Send Request
-    </button>
-    <button @click="addFriend" class="btn btn-success" v-if="sentRequestToMe">
-      Accept Request
-    </button>
+    <div v-if="!isFriend">
+      <button
+        class="btn btn-success"
+        v-if="!sentRequestToMe"
+        :disabled="hasRequestFromMe"
+        @click="sendRequest"
+      >
+        Send Request
+      </button>
+      <button @click="addFriend" class="btn btn-success" v-if="sentRequestToMe">
+        Accept Request
+      </button>
+    </div>
   </div>
 </template>
 <script lang="ts">
@@ -91,7 +93,7 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapGetters(["user"]),
+    ...mapGetters(["user", "friendShips"]),
 
     isImgLoading() {
       return this.imgLoading;
@@ -105,6 +107,11 @@ export default Vue.extend({
         return !!result;
       }
       return false;
+    },
+    isFriend() {
+      return !!this.friendShips.find(
+        ({ friendId }) => friendId === this.details.id
+      );
     },
     hasRequestFromMe() {
       if (this.user && this.user.interactions) {

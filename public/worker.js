@@ -1,18 +1,32 @@
 console.log("service worker loaded");
-
+const REQUEST_TAG = "request";
 self.addEventListener("push", async function(e) {
+  console.log(e.data);
   const data = e.data.json();
+  let tag, notifData;
+  if (data.request === true) {
+    tag = REQUEST_TAG;
+    notifData = {
+      count: 1
+    };
+  } else {
+    tag = data.friendship_id;
+    notifData = {
+      count: 1,
+      friendship_id: data.friendship_id
+    };
+  }
 
-  let searchOptions = { tag: data.friendship_id };
+  let searchOptions = { tag };
   let newBody = data.text;
-  let dataCount = 1;
+  // let dataCount = 1;
   const notifPromise = self.registration
     .getNotifications(searchOptions)
     .then(async function(notifications) {
       // in reality this apps use cases for tags should mean there will never
       // be more than one notification with the same tag.... for now
       notifications.forEach(notification => {
-        dataCount += notification.data.count;
+        notifData.count += notification.data.count;
         // notification.close();
       });
       const isInFocus = await self.clients
@@ -32,17 +46,17 @@ self.addEventListener("push", async function(e) {
         return Promise.resolve();
       }
       return self.registration.showNotification(
-        `${data.title}${dataCount > 1 ? ` (${dataCount})` : ""}`,
+        `${data.title}${notifData.count > 1 ? ` (${notifData.count})` : ""}`,
         {
           body: newBody,
-          tag: data.friendship_id,
+          tag,
           badge: "/test-72x72.webp",
           icon: "/test-72x72.webp",
           /**
            * @fixme we need to find a way to clear this number when we clear
            * notifications on opening the app
            */
-          data: { count: dataCount, friendship_id: data.friendship_id },
+          data: notifData,
           vibrate: [400],
           timestamp: data.createdAt
         }
@@ -53,7 +67,13 @@ self.addEventListener("push", async function(e) {
 
 // Notification click event listener
 self.addEventListener("notificationclick", e => {
-  const chat = e.notification.data.friendship_id;
+  let chat, openUrl;
+  if (e.notification.data.tag === REQUEST_TAG) {
+    openUrl = `${self.location.hostname}`;
+  } else {
+    chat = e.notification.data.friendship_id;
+    openUrl = `${self.location.hostname}?chat=${chat}`;
+  }
   console.log(e.notification);
   console.log(self.clients);
   // Close the notification popout
@@ -64,20 +84,22 @@ self.addEventListener("notificationclick", e => {
       // If a Window tab matching the targeted URL already exists, focus that;
       try {
         const hadWindowToFocus = clientsArr.some(async windowClient => {
-          if (windowClient.url.includes(`myapp-4f894.web.app`)) {
-            const focusedClient = await windowClient.focus();
-            /** so what we have down here isnt necessarily required in order to get to the page
-             * cause we can simply the url to navigate to our chat however that usually creates
-             * an entire page reload when we focus on the page and slows things down so instead
-             * we tell the app itself to navigate to that page
-             */
+          // if (windowClient.url.includes(`myapp-4f894.web.app`)) {
+          const focusedClient = await windowClient.focus();
+          /** so what we have down here isnt necessarily required in order to get to the page
+           * cause we can simply the url to navigate to our chat however that usually creates
+           * an entire page reload when we focus on the page and slows things down so instead
+           * we tell the app itself to navigate to that page
+           */
+          if (chat) {
             focusedClient.postMessage({
               type: "openChat",
               chat
             });
-            return true;
           }
-          return false;
+          return true;
+          // }
+          // return false;
         });
         // Otherwise, open a new tab to the applicable URL and focus it.
         if (!hadWindowToFocus)
@@ -86,7 +108,7 @@ self.addEventListener("notificationclick", e => {
              * a window is created, maybe i just need to do a bit more diggin
              */
             /** @fixme subsequentl reloads will always open this chat */
-            .openWindow(`https://myapp-4f894.web.app?chat=${chat}`)
+            .openWindow(openUrl)
             .then(windowClient => (windowClient ? windowClient.focus() : null));
       } catch (error) {
         console.log(error);
