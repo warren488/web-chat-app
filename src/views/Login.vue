@@ -1,5 +1,8 @@
 <template>
   <div class="form-container">
+    <div class="loader-backdrop" v-if="loading">
+      <loader type="ring" :display="true" />
+    </div>
     <modal
       @close="modal.show = false"
       :showModal="modalData.show"
@@ -60,6 +63,7 @@
 </template>
 <script lang="ts">
 import Modal from "@/components/modal.vue"; // @ is an alias to /src
+import Loader from "@/components/loader.vue"; // @ is an alias to /src
 import {
   login,
   setCookie,
@@ -73,9 +77,10 @@ import axios, { AxiosPromise } from "axios";
 import { mapActions } from "vuex";
 
 export default Vue.extend({
-  components: { Modal },
+  components: { Modal, Loader },
   data() {
     return {
+      loading: false,
       userData: {
         username: "",
         password: ""
@@ -107,6 +112,7 @@ export default Vue.extend({
       }
       let authData;
       try {
+        this.loading = true;
         authData = (await login(this.userData)).data;
         setCookie("username", authData.username, 1000000);
         setCookie("token", authData.token, 1000000);
@@ -116,11 +122,14 @@ export default Vue.extend({
         getFirebaseSigninToken().then(token => signInToFirebase(token));
         await this.setUpApp();
         this.$router.push("/home");
+        this.loading = false;
         return true;
       } catch (error) {
         console.log(error);
         this.feedback = errorToMessage(error);
+        this.loading = false;
       }
+      this.loading = false;
     },
     isTrueString(string: String): Boolean {
       return typeof string === "string" && string.trim().length > 0;
@@ -142,6 +151,19 @@ export default Vue.extend({
 }
 .olderror {
   --error-color: darkred;
+}
+
+.loader-backdrop {
+  position: absolute;
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(100, 100, 100, 0.5);
 }
 
 .feedback {

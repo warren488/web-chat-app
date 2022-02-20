@@ -2,7 +2,9 @@
   <div :class="{ container: true, active: active }">
     <div @click="close" class="backdrop"></div>
     <div class="menu-content list-group">
-      <button class="close-button" @click="close">X</button>
+      <button class="menubt menubt--back" @click="close">
+        back
+      </button>
       <!-- <slot></slot> -->
       <div
         v-for="item in menuData"
@@ -134,6 +136,9 @@ export default Vue.extend({
   background-color: transparent;
   text-align: center;
   text-decoration: none;
+}
+
+.list-group {
   button {
     text-transform: capitalize;
     font-size: 32px;

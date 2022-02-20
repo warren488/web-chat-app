@@ -45,6 +45,11 @@
       "type": "image/webp"
     },
     {
+      "src": "/test-192x192.webp",
+      "sizes": "192x192",
+      "type": "image/webp"
+    },
+    {
       "src": "/test-256x256.webp",
       "sizes": "256x256",
       "type": "image/webp"

@@ -1,5 +1,8 @@
 <template>
   <div class="centered-form">
+    <div class="loader-backdrop" v-if="loading">
+      <loader type="ring" :display="true" />
+    </div>
     <modal
       @close="closeAndGo"
       :showModal="modalData.show"
@@ -77,11 +80,12 @@
 <script lang="ts">
 import Vue from "vue";
 import Modal from "@/components/modal.vue"; // @ is an alias to /src
+import Loader from "@/components/loader.vue"; // @ is an alias to /src
 import { signup, setCookie, checkusername } from "@/common";
 import { errorToMessage } from "../common/network";
 import { mapActions } from "vuex";
 export default Vue.extend({
-  components: { Modal },
+  components: { Modal, Loader },
   data() {
     return {
       userData: {},
@@ -90,7 +94,8 @@ export default Vue.extend({
       modal: {
         show: false,
         text: ""
-      }
+      },
+      loading: false
     };
   },
   methods: {
@@ -116,6 +121,7 @@ export default Vue.extend({
         return (this.feedback = "make sure passwords match");
       }
       try {
+        this.loading = true;
         /**
          * we dont want to send empty data to the server because for example the email must be
          * unique, if we allow the email to be sent empty then we will continuously get conflicts
@@ -136,7 +142,9 @@ export default Vue.extend({
           confirmPassword: ""
         };
         await this.setUpApp();
+        this.loading = false;
       } catch (error) {
+        this.loading = false;
         this.feedback = errorToMessage(error);
       }
     }
@@ -162,6 +170,19 @@ export default Vue.extend({
 
 form.invalid {
   box-shadow: 1px 1px 1px red;
+}
+
+.loader-backdrop {
+  position: absolute;
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(100, 100, 100, 0.5);
 }
 
 .form-field h3 {
