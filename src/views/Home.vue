@@ -191,6 +191,9 @@
                 {{ currFriend.username }}
               </h1>
             </div>
+            <button @click="showVideo = true">
+              watch
+            </button>
           </header>
           <newModal
             :showModal="viewCurrentFriendProfile"
@@ -219,6 +222,10 @@
             <div></div>
             <div></div>
           </div>
+          <!-- for now we want to destroy it every time, but very possibly we may not want to in the future
+            hence both the v-if and display
+             -->
+          <TYPlayer :display="showVideo" @close="showVideo = false" />
           <chat-text
             :highlighted="highlightedMessageId"
             @newMessage="handleNewMessage"
@@ -261,6 +268,7 @@ import store from "../store";
 import "notyf/notyf.min.css";
 import NewProfile from "@/components/newProfile.vue";
 import SmartProfile from "@/components/smartProfile.vue";
+import TYPlayer from "@/components/YTPlayer.vue";
 
 export default Vue.extend({
   name: "home",
@@ -288,7 +296,8 @@ export default Vue.extend({
       highlightedMessageId: null,
       typing: {},
       viewCurrentFriendProfile: false,
-      loadingMore: false
+      loadingMore: false,
+      showVideo: false
     };
   },
   methods: {
@@ -651,7 +660,8 @@ export default Vue.extend({
     sideMenu,
     viewImageModal,
     NewProfile,
-    SmartProfile
+    SmartProfile,
+    TYPlayer
   }
 });
 </script>

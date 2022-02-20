@@ -119,13 +119,15 @@ export const subscribeToNotif = async () => {
 };
 
 export const unsubscribeToNotif = async () => {
-  await fetch(`${baseURI}/api/users/${store.state.user.id}/unsubscribe`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-auth": getCookie("token")
-    }
-  });
+  if (store.state.user) {
+    await fetch(`${baseURI}/api/users/${store.state.user.id}/unsubscribe`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-auth": getCookie("token")
+      }
+    });
+  }
 };
 
 export const updateDOMMessageStatus = (msgId, read) => {
@@ -618,13 +620,21 @@ export const getLastMessage = async (friendship_id: string) => {
   });
 };
 
-export const eventWrapper = handler => {
+export const eventWrapper = (eventName, handler) => {
   return data => {
     if (data && data.eventData) {
       console.log("addEvent");
       store.commit("addEvent", data.eventData);
     }
-    return handler(data);
+    let OThandlers = store.state.oneTimeListeners.get(eventName);
+    console.log(eventName, OThandlers);
+    if (OThandlers) {
+      for (const OThandler of OThandlers.values()) {
+        OThandler(data);
+      }
+    }
+    if (handler) handler(data);
+    return;
   };
 };
 

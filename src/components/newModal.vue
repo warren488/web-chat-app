@@ -55,6 +55,10 @@ export default {
     this.$refs.imageViewer.addEventListener("hidePrevented.bs.modal", event => {
       this.$emit("close");
     });
+    if (this.showModal === true) {
+      console.log(this.showModal);
+      this.open();
+    }
   },
   methods: {
     open() {

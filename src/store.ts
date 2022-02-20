@@ -34,6 +34,7 @@ export default new Vuex.Store({
   state: {
     notifAudioFile: getCookie("notifAudioFile") || "juntos.mp3",
     user: null,
+    oneTimeListeners: new Map(),
     friendShips: null,
     network: window.navigator.onLine,
     focused: document.visibilityState === "visible",
@@ -145,7 +146,7 @@ export default new Vuex.Store({
         if (!context.state.socket.connected) {
           context.state.socket.on(
             "connect",
-            eventWrapper(() => {
+            eventWrapper("connect", () => {
               context.state.socket.emit("checkin", {
                 // @ts-ignore
                 userId: data.id,
@@ -174,7 +175,7 @@ export default new Vuex.Store({
                   if (!context.state.socket.connected) {
                     context.state.socket.on(
                       "connect",
-                      eventWrapper(() => {
+                      eventWrapper("connect", () => {
                         context.state.socket.emit("checkin", {
                           friendship_id,
                           token: getCookie("token")
@@ -205,7 +206,7 @@ export default new Vuex.Store({
     attachListeners: context => {
       context.state.socket.on(
         "reconnect",
-        eventWrapper((...args) => {
+        eventWrapper("reconnect", (...args) => {
           context.state.checkinActive = true;
           let checkinData = {};
           context.state.friendshipIds.forEach(id => {
@@ -306,35 +307,49 @@ export default new Vuex.Store({
       );
       context.state.socket.on(
         "newMessage",
-        eventWrapper(async data => {
+        eventWrapper("newMessage", async data => {
           await context.dispatch("socketNewMessageHandler", data);
         })
       );
       context.state.socket.on(
         "received",
         eventWrapper(
+          "received",
           async data => await context.dispatch("socketReceivedHandler2", data)
         )
       );
       context.state.socket.on(
         "sweep",
         eventWrapper(
+          "sweep",
           async data => await context.dispatch("socketSweepHandler2", data)
         )
       );
       context.state.socket.on(
         "newFriend",
         eventWrapper(
+          "newFriend",
           async data => await context.dispatch("socketNewFriendHandler", data)
         )
       );
       context.state.socket.on(
         "newFriendRequest",
         eventWrapper(
+          "newFriendRequest",
           async data =>
             await context.dispatch("socketNewFriendRequestHandler", data)
         )
       );
+      context.state.socket.on(
+        "watchVidRequest",
+        eventWrapper(
+          "watchVidRequest",
+          async data =>
+            await context.dispatch("socketWatchVidRequestHandler", data)
+        )
+      );
+      context.state.socket.on("pauseVideo", eventWrapper("pauseVideo", null));
+      context.state.socket.on("playVideo", eventWrapper("playVideo", null));
     },
     socketNewFriendHandler: (context, data) => {
       context.state.friendShips.push({
@@ -351,6 +366,16 @@ export default new Vuex.Store({
     socketNewFriendRequestHandler: (context, data) => {
       eventBus.$emit("newFriendRequest", data);
       context.state.user.interactions.receivedRequests.push(data);
+    },
+    socketWatchVidRequestHandler: (context, data) => {
+      let handlers = context.state.oneTimeListeners.get("watchVidRequest");
+      console.log("watchVidRequest", handlers);
+      if (handlers) {
+        for (const handler of handlers.values()) {
+          handler(data);
+        }
+      }
+      eventBus.$emit("watchVidRequest", data);
     },
     socketNewMessageHandler: (context, { token, data }) => {
       if (token === getCookie("token")) {
@@ -542,7 +567,7 @@ export default new Vuex.Store({
         if (!context.state.socket.connected) {
           context.state.socket.on(
             "connect",
-            eventWrapper(() => {
+            eventWrapper("connect", () => {
               context.state.socket.emit(
                 eventName,
                 {
@@ -570,6 +595,9 @@ export default new Vuex.Store({
           );
         }
       });
+    },
+    addOneTimeListener(context, data) {
+      context.commit("registerListener", data);
     }
   },
   // todo: check if this is returns a promise or is synchronous
@@ -585,6 +613,15 @@ export default new Vuex.Store({
       state.socket = null;
       state.currChatFriendshipId = "";
       state.friendshipIds = [];
+    },
+    registerListener(state, { customName, event, handler }) {
+      console.log("registerListener");
+      let existingListeners = state.oneTimeListeners.get(event);
+      if (!existingListeners) {
+        existingListeners = new Map();
+      }
+      existingListeners.set(customName, handler);
+      state.oneTimeListeners.set(event, existingListeners);
     },
     incUnread(state, { friendship_id }) {
       state.unreads = {
