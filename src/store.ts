@@ -350,6 +350,10 @@ export default new Vuex.Store({
       );
       context.state.socket.on("pauseVideo", eventWrapper("pauseVideo", null));
       context.state.socket.on("playVideo", eventWrapper("playVideo", null));
+      context.state.socket.on(
+        "acceptedWatchRequest",
+        eventWrapper("acceptedWatchRequest", null)
+      );
     },
     socketNewFriendHandler: (context, data) => {
       context.state.friendShips.push({
@@ -368,13 +372,6 @@ export default new Vuex.Store({
       context.state.user.interactions.receivedRequests.push(data);
     },
     socketWatchVidRequestHandler: (context, data) => {
-      let handlers = context.state.oneTimeListeners.get("watchVidRequest");
-      console.log("watchVidRequest", handlers);
-      if (handlers) {
-        for (const handler of handlers.values()) {
-          handler(data);
-        }
-      }
       eventBus.$emit("watchVidRequest", data);
     },
     socketNewMessageHandler: (context, { token, data }) => {
@@ -598,6 +595,9 @@ export default new Vuex.Store({
     },
     addOneTimeListener(context, data) {
       context.commit("registerListener", data);
+    },
+    removeOneTimeListener(context, data) {
+      context.commit("removeListener", data);
     }
   },
   // todo: check if this is returns a promise or is synchronous
@@ -621,6 +621,16 @@ export default new Vuex.Store({
         existingListeners = new Map();
       }
       existingListeners.set(customName, handler);
+      state.oneTimeListeners.set(event, existingListeners);
+    },
+    removeListener(state, { customName, event }) {
+      console.log("removeListener");
+      let existingListeners = state.oneTimeListeners.get(event);
+      if (!existingListeners) {
+        return;
+      }
+      existingListeners.delete(customName);
+      // not sure if i need to do this
       state.oneTimeListeners.set(event, existingListeners);
     },
     incUnread(state, { friendship_id }) {
