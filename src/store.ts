@@ -23,6 +23,7 @@ import {
 
 import { eventBus } from "@/common/eventBus";
 import io from "socket.io-client";
+import { Notyf } from "notyf";
 
 /**
  * @fixme - update state to always hold the current friendship ID and a reference to that friend
@@ -51,7 +52,8 @@ export default new Vuex.Store({
     friendshipIds: [],
     unreads: {},
     homeView: "chatlist",
-    checkinActive: false
+    checkinActive: false,
+    showPopupNotif: false
   },
   getters: {
     user: state => state.user,
@@ -395,6 +397,14 @@ export default new Vuex.Store({
         }
         return;
       }
+      if (context.state.showPopupNotif) {
+        let notification = new Notyf({
+          duration: 5000,
+          dismissible: true,
+          position: { x: "right", y: "bottom" }
+        });
+        notification.success(`${data.from}: ${data.text}`);
+      }
       if (context.state.enableSoundNotif) {
         context.getters.notifAudio.play();
       }
@@ -614,6 +624,12 @@ export default new Vuex.Store({
       state.currChatFriendshipId = "";
       state.friendshipIds = [];
     },
+    enablePopupNotif(state) {
+      state.showPopupNotif = true;
+    },
+    disablePopupNotif(state) {
+      state.showPopupNotif = false;
+    },
     registerListener(state, { customName, event, handler }) {
       console.log("registerListener");
       let existingListeners = state.oneTimeListeners.get(event);
@@ -713,7 +729,8 @@ export default new Vuex.Store({
       /**
        * @fixme this is a terrible way of getting vue to recognize that something has changed ideally I need to find the proper vue way to do this
        * */
-      state.friendShips.splice(index, 1, state.friendShips[index]);
+      state.friendShips.unshift(state.friendShips[index]);
+      state.friendShips.splice(index + 1, 1);
     },
     addEvent(state, event) {
       if (state.events[event.type]) {

@@ -209,7 +209,7 @@
             <button
               class="btn btn-success"
               v-if="chatProminent"
-              @click="chatProminent = false"
+              @click="makeChatBackdrop"
             >
               hide chat
             </button>
@@ -262,7 +262,7 @@
           @close="
             player = { friendship_id: null, url: null, loadComponent: null }
           "
-          @toggleChat="chatProminent = true"
+          @toggleChat="makeChatProminent"
         />
       </div>
     </main>
@@ -366,8 +366,18 @@ export default Vue.extend({
       "appendMessageToChat",
       "updateSentMessage",
       "setCurrentChat",
-      "setHomeView"
+      "setHomeView",
+      "enablePopupNotif",
+      "disablePopupNotif"
     ]),
+    makeChatProminent() {
+      this.chatProminent = true;
+      this.disablePopupNotif();
+    },
+    makeChatBackdrop() {
+      this.chatProminent = false;
+      this.enablePopupNotif();
+    },
     tabChanged(tabId) {
       if (tabId === "tab-requests") {
         // clear unread requests

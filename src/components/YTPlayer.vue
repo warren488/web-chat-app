@@ -98,6 +98,7 @@ export default Vue.extend({
         window.player.playVideo();
       }
     });
+    this.enablePopupNotif();
   },
   data() {
     return {
@@ -109,7 +110,11 @@ export default Vue.extend({
   },
   methods: {
     ...mapActions(["emitEvent", "addOneTimeListener", "removeOneTimeListener"]),
-    ...mapMutations(["setCurrentChat"]),
+    ...mapMutations([
+      "setCurrentChat",
+      "enablePopupNotif",
+      "disablePopupNotif"
+    ]),
     async acceptedWatchRequestHandler(data) {
       console.log("acceptedWatchRequestHandler");
       if (data.userId === this.user.id) {
@@ -255,6 +260,7 @@ export default Vue.extend({
       event: "acceptedWatchRequest",
       customName: "YT"
     });
+    this.disablePopupNotif();
   }
 });
 </script>
