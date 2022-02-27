@@ -257,8 +257,7 @@
         <TYPlayer
           v-if="player.loadComponent"
           :display="true"
-          :friendship_id="player.friendship_id"
-          :url="player.url"
+          :forwardedPendingRequest="player.pendingRequest"
           @close="
             player = { friendship_id: null, url: null, loadComponent: null }
           "
@@ -317,13 +316,12 @@ export default Vue.extend({
     // if the component is loaded then it will handle this itself
     this.addOneTimeListener({
       customName: "Home",
-      event: "watchVidRequest",
+      event: "watchSessRequest",
       handler: data => {
         console.log("from home");
 
         if (!this.player.loadComponent) {
-          this.player.url = data.url;
-          this.player.friendship_id = data.friendship_id;
+          this.player.pendingRequest = data;
           this.player.loadComponent = true;
         }
       }

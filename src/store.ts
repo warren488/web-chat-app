@@ -53,7 +53,8 @@ export default new Vuex.Store({
     unreads: {},
     homeView: "chatlist",
     checkinActive: false,
-    showPopupNotif: false
+    showPopupNotif: false,
+    playlists: new Map()
   },
   getters: {
     user: state => state.user,
@@ -70,7 +71,8 @@ export default new Vuex.Store({
     notifAudio: state => new Audio(`/${state.notifAudioFile}`),
     friendShips: state => state.friendShips,
     initFriends: state => state.friendShips === null,
-    initMessages: state => state.messages === null
+    initMessages: state => state.messages === null,
+    playlist: state => state.playlists
   },
   actions: {
     setNotifAudioFile: (context, file) => {
@@ -355,6 +357,10 @@ export default new Vuex.Store({
       context.state.socket.on(
         "acceptedWatchRequest",
         eventWrapper("acceptedWatchRequest", null)
+      );
+      context.state.socket.on(
+        "watchSessRequest",
+        eventWrapper("watchSessRequest", null)
       );
     },
     socketNewFriendHandler: (context, data) => {
@@ -674,6 +680,9 @@ export default new Vuex.Store({
         // assume there were no notifications before so just set it to 1
         targetFriend.notificationCount = 1;
       }
+    },
+    addPlaylist(state, playlist) {
+      state.playlists.set(playlist.uuid, playlist);
     },
     setHomeView(state, view) {
       state.homeView = view;

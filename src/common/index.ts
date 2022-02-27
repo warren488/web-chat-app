@@ -25,8 +25,8 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-export const baseURI = "http://localhost:3000";
+export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+// export const baseURI = "http://localhost:3000";
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
@@ -497,6 +497,13 @@ export const getNotifications = async () => {
       "Content-type": "application/json",
       "x-auth": getCookie("token")
     }
+  });
+};
+
+export const getPlaylists = async () => {
+  // TODO: FIXME: Use the store as a cache instead of doing this and skipping out the store
+  return store.dispatch("emitEvent", {
+    eventName: "getPlaylists"
   });
 };
 
