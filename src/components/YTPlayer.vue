@@ -52,7 +52,10 @@
           >
             Playlist
           </button>
-          <ul class="dropdown-menu" aria-labelledby="playlist-dropdown">
+          <ul
+            class="dropdown-menu playlist"
+            aria-labelledby="playlist-dropdown"
+          >
             <li
               class="dropdown-item"
               v-for="vid of playlist.vids"
@@ -457,6 +460,11 @@ export default Vue.extend({
 .list-group-item {
   height: 5rem;
   padding: 0px;
+}
+
+.dropdown-menu.playlist {
+  max-height: 70vh;
+  overflow-y: scroll;
 }
 
 .playlist-item {
