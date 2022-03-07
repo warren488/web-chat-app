@@ -344,16 +344,12 @@ export default new Vuex.Store({
             await context.dispatch("socketNewFriendRequestHandler", data)
         )
       );
-      context.state.socket.on(
-        "watchVidRequest",
-        eventWrapper(
-          "watchVidRequest",
-          async data =>
-            await context.dispatch("socketWatchVidRequestHandler", data)
-        )
-      );
       context.state.socket.on("pauseVideo", eventWrapper("pauseVideo", null));
       context.state.socket.on("playVideo", eventWrapper("playVideo", null));
+      context.state.socket.on(
+        "playListUpdated",
+        eventWrapper("playListUpdated", null)
+      );
       context.state.socket.on(
         "acceptedWatchRequest",
         eventWrapper("acceptedWatchRequest", null)
@@ -378,9 +374,6 @@ export default new Vuex.Store({
     socketNewFriendRequestHandler: (context, data) => {
       eventBus.$emit("newFriendRequest", data);
       context.state.user.interactions.receivedRequests.push(data);
-    },
-    socketWatchVidRequestHandler: (context, data) => {
-      eventBus.$emit("watchVidRequest", data);
     },
     socketNewMessageHandler: (context, { token, data }) => {
       if (token === getCookie("token")) {

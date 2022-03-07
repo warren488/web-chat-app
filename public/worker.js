@@ -1,5 +1,8 @@
 console.log("service worker loaded");
+// NB: because the tags allow us to replace notifications we use them to indicate a friend request
+// while at the same time we have a different one for each chat
 const REQUEST_TAG = "request";
+
 self.addEventListener("push", async function(e) {
   console.log(e.data);
   const data = e.data.json();

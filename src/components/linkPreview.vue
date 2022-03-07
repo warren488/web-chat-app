@@ -1,7 +1,12 @@
 <template>
   <div class="preview-container">
     <div v-if="loading && !previewData">loading preview...</div>
-    <a v-if="previewData" :href="previewData.url" target="_blank">
+    <a
+      v-if="previewData"
+      :href="previewData.url"
+      target="_blank"
+      style="max-width: 100%"
+    >
       <div class="linkpreview">
         <img class="linkpreview__img" :src="previewData.image" alt />
         <div>

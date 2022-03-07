@@ -18,6 +18,14 @@
       @accept="acceptWatchRequest"
       @deny="denyWatchRequest"
     >
+      <template v-if="pendingRequest" v-slot:body>
+        <link-preview
+          v-for="vid of pendingRequest.vids"
+          :key="vid.url"
+          :previewData="vid"
+        >
+        </link-preview>
+      </template>
     </new-modal>
     <!-- </div> -->
     <div class="in-chat-player" id="player-container" ref="player-container">
@@ -33,7 +41,7 @@
         <button class="btn btn-success" @click="$emit('toggleChat')">
           Show chat
         </button>
-        <div class="dropdown" v-if="playlist">
+        <div class="btn-group dropdown" v-if="playlist">
           <button
             class="btn btn-success dropdown-toggle"
             type="button"
@@ -46,24 +54,31 @@
           </button>
           <ul class="dropdown-menu" aria-labelledby="playlist-dropdown">
             <li
-              class="list-group-item"
+              class="dropdown-item"
               v-for="vid of playlist.vids"
               :key="vid.url"
             >
               <link-preview :previewData="vid"></link-preview>
             </li>
-            <li class="list-group-item">
-              <div class="input-group">
+            <li class="dropdown-item">
+              <div class="input-group mb-3">
+                <!-- <div class="form-control"> -->
                 <input
-                  v-model.lazy="addToPlaylistUrl"
+                  v-model.lazy="newLinkUrl"
                   type="text"
                   placeholder="add video"
                   class="form-control"
+                  @input="newLinkInputDebounced"
                 />
                 <button @click="addToCreatedList" class="btn btn-success">
                   +
                 </button>
+                <!-- </div> -->
               </div>
+              <link-preview
+                v-if="newLinkPreviewData"
+                :previewData="newLinkPreviewData"
+              ></link-preview>
             </li>
           </ul>
         </div>
@@ -74,7 +89,7 @@
 </template>
 <script>
 import Vue from "vue";
-import { eventBus } from "@/common/eventBus";
+import { debounce } from "debounce";
 import newModal from "@/components/newModal.vue";
 import { mapActions, mapGetters, mapMutations } from "vuex";
 import { getPlaylists, getPreviewData, uuid } from "@/common";
@@ -92,6 +107,9 @@ export default Vue.extend({
     CreateSessionModal,
     type: String,
     forwardedPendingRequest: Object
+  },
+  created() {
+    this.newLinkInputDebounced = debounce(this.newLinkInput, 500);
   },
   mounted() {
     //   i do this because after the first time we open the component it technically doesnt get destroyed so the
@@ -125,6 +143,15 @@ export default Vue.extend({
     });
     this.addOneTimeListener({
       customName: "YT",
+      event: "playListUpdated",
+      handler: data => {
+        if (this.playlist._id === data._id) {
+          this.playlist = data;
+        }
+      }
+    });
+    this.addOneTimeListener({
+      customName: "YT",
       event: "playVideo",
       handler: data => {
         console.log("playVideo othandler");
@@ -140,6 +167,7 @@ export default Vue.extend({
     return {
       //   showVideo: false,
       addLink: false,
+      newLinkPreviewData: null,
       player: null,
       vids: [],
       playlistName: "",
@@ -148,7 +176,7 @@ export default Vue.extend({
       playlists: [],
       currentIndex: 0,
       selectedPlaylistId: "",
-      addToPlaylistUrl: ""
+      newLinkUrl: ""
     };
   },
   methods: {
@@ -159,13 +187,26 @@ export default Vue.extend({
       "disablePopupNotif",
       "addPlaylist"
     ]),
+    async newLinkInput(event) {
+      console.log(event.target.value, this.newLinkUrl);
+      // TODO: check the specs for the input event to see if there's a better way to do this
+      this.newLinkUrl = event.target.value;
+      let previewData = await getPreviewData(event.target.value);
+      this.newLinkPreviewData = previewData;
+      return true;
+    },
     async addToCreatedList({ listId, url }) {
       console.log(this.playlist);
-      let previewData = await getPreviewData(this.addToPlaylistUrl);
+      if (!this.newLinkUrl) {
+        return;
+      }
+      let previewData = await getPreviewData(this.newLinkUrl);
       let newPlaylist = await this.emitEvent({
         eventName: "addVideoToPlaylist",
         data: {
           listId: this.playlist._id,
+          // NB: this (for now) will serve to tell the server that we are watching this playlist with someone so update their list as well
+          friendship_id: this.currChatFriendshipId,
           vid: previewData
         }
       });
@@ -197,6 +238,7 @@ export default Vue.extend({
         return;
       }
       this.playlist = data;
+      this.currentIndex = 0;
       if (this.player) {
         this.player.destroy();
       }
@@ -392,7 +434,6 @@ export default Vue.extend({
   },
   destroyed() {
     // TODO: I should also remove playvideo and pausevideo but those wont cause any harm
-    this.removeOneTimeListener({ event: "watchVidRequest", customName: "YT" });
     this.removeOneTimeListener({
       event: "acceptedWatchRequest",
       customName: "YT"
