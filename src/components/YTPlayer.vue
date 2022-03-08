@@ -79,7 +79,7 @@
                 <!-- </div> -->
               </div>
               <link-preview
-                v-if="newLinkPreviewData"
+                :loading="loadingPreview"
                 :previewData="newLinkPreviewData"
               ></link-preview>
             </li>
@@ -171,6 +171,7 @@ export default Vue.extend({
       //   showVideo: false,
       addLink: false,
       newLinkPreviewData: null,
+      loadingPreview: false,
       player: null,
       vids: [],
       playlistName: "",
@@ -191,12 +192,24 @@ export default Vue.extend({
       "addPlaylist"
     ]),
     async newLinkInput(event) {
-      console.log(event.target.value, this.newLinkUrl);
-      // TODO: check the specs for the input event to see if there's a better way to do this
-      this.newLinkUrl = event.target.value;
-      let previewData = await getPreviewData(event.target.value);
-      this.newLinkPreviewData = previewData;
-      return true;
+      try {
+        this.loadingPreview = true;
+        console.log(event.target.value, this.newLinkUrl);
+        // TODO: check the specs for the input event to see if there's a better way to do this
+        this.newLinkUrl = event.target.value;
+        let previewData = await getPreviewData(event.target.value);
+        if (previewData.message == "error") {
+          this.newLinkPreviewData = null;
+        } else {
+          console.log(previewData);
+          this.newLinkPreviewData = previewData;
+        }
+        this.loadingPreview = false;
+        return true;
+      } catch (error) {
+        this.loadingPreview = false;
+        return true;
+      }
     },
     async addToCreatedList({ listId, url }) {
       console.log(this.playlist);

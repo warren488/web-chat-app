@@ -291,7 +291,7 @@ import {
 } from "@/common";
 
 import { mapGetters, mapActions, mapMutations } from "vuex";
-import store from "../store";
+import store from "../store/index";
 import "notyf/notyf.min.css";
 import NewProfile from "@/components/newProfile.vue";
 import SmartProfile from "@/components/smartProfile.vue";

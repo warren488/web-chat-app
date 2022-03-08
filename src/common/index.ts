@@ -10,7 +10,7 @@ import * as firebase from "firebase/app";
 import "firebase/storage";
 import "firebase/auth";
 import { Notyf } from "notyf";
-import store from "@/store";
+import store from "@/store/index";
 
 // Your web app's Firebase configuration
 var firebaseConfig = {

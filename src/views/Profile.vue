@@ -203,7 +203,7 @@ import {
   addFriend,
   sendRequest
 } from "@/common";
-import store from "../store";
+import store from "../store/index";
 import { mapGetters } from "vuex";
 export default Vue.extend({
   created() {
