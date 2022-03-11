@@ -22,7 +22,12 @@
         @click="() => emitOpen(friendShip)"
       >
         <div
-          style="display: flex; max-width: 100%;width: 100%; align-items: center"
+          style="
+            display: flex;
+            max-width: 100%;
+            width: 100%;
+            align-items: center;
+          "
         >
           <img
             class="profile-img"
@@ -78,6 +83,7 @@ export default Vue.extend({
   name: "chatList",
   data() {
     return {
+      filteredList: this.userList,
       filterString: ""
     };
   },
@@ -89,13 +95,14 @@ export default Vue.extend({
   },
   created() {
     let self = this;
-    this.filterFuncDebounced = debounce(function() {
+    this.filterFuncDebounced = debounce(async function() {
       if (self.filter) {
-        return self.filter(self.filterString);
+        self.filteredList = await self.filter(self.filterString);
+      } else {
+        self.filteredList = self.userList.filter(user =>
+          user.username.includes(self.filterString)
+        );
       }
-      return self.userList.filter(user =>
-        user.username.includes(self.filterString)
-      );
     }, 300);
   },
   methods: {
@@ -108,8 +115,8 @@ export default Vue.extend({
       this.$emit("open", friendShip);
     },
     filterFunc: function() {
-      if (this.props.filter) {
-        return this.props.filter(this.filterString);
+      if (this.filter) {
+        return this.filter(this.filterString);
       }
       return this.userList.filter(friendShip =>
         friendShip.username.includes(this.filterString)
@@ -119,6 +126,10 @@ export default Vue.extend({
   computed: {
     ...mapGetters(["user", "unreads"]),
     myUserList() {
+      console.log("here");
+      if (this.filterString) {
+        return this.filteredList;
+      }
       return this.userList;
     },
     header() {

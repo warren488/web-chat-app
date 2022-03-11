@@ -95,7 +95,6 @@
           >
             <chatList
               title="Chat"
-              :filter="filter"
               :userList="friendShips"
               @open="({ _id }) => $router.push('/home?chat=' + _id)"
               :currentChat="currChatFriendshipId"
@@ -124,7 +123,6 @@
             <chatList
               v-if="user"
               title="Friend Requests"
-              :filter="filter"
               :userList="user.interactions.receivedRequests"
               @open="viewFriendship"
               :currentChat="currChatFriendshipId"
@@ -599,10 +597,11 @@ export default Vue.extend({
 
       this.setHomeView("chatbody");
     },
-    filter(filterString: string) {
-      getUsers(filterString).then(({ data }) => {
-        this.searchResults = data;
-      });
+    async filter(filterString: string) {
+      if (!filterString) {
+        return [];
+      }
+      return getUsers(filterString).then(({ data }) => data);
     },
     replyHandler(msgId) {
       this.highlightedMessageId = msgId;
