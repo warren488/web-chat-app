@@ -442,9 +442,7 @@ export const markAsReceived = async (friendship_id, range) => {
     data: {
       range,
       friendship_id,
-      read:
-        store.state.focused &&
-        friendship_id === store.state.currChatFriendshipId
+      read: store.getters.isInChat == friendship_id
     }
   });
 };
@@ -467,9 +465,7 @@ export const countUnreads = ({ chat, user_id }) => {
 };
 
 export const isInChat = friendship_id => {
-  return (
-    store.state.focused && friendship_id === store.state.currChatFriendshipId
-  );
+  return store.getters.isInChat === friendship_id;
 };
 
 export function markLocalChatMessagesAsRead(messages, userId) {

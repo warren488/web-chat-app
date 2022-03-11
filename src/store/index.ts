@@ -24,6 +24,8 @@ import {
 import { eventBus } from "@/common/eventBus";
 import io from "socket.io-client";
 import { Notyf } from "notyf";
+import appState from "./modules/appState";
+import appData from "./modules/appData";
 
 /**
  * @fixme - update state to always hold the current friendship ID and a reference to that friend
@@ -32,20 +34,19 @@ import { Notyf } from "notyf";
 Vue.use(Vuex);
 
 export default new Vuex.Store({
+  modules: {
+    appState,
+    appData
+  },
   state: {
     notifAudioFile: getCookie("notifAudioFile") || "juntos.mp3",
     user: null,
     oneTimeListeners: new Map(),
     friendShips: null,
-    network: window.navigator.onLine,
-    focused: document.visibilityState === "visible",
     messages: null,
-    dataLoaded: false,
     enableSoundNotif: ["true", null].includes(getCookie("soundNotifPref")),
     enableVisualNotif: ["true", null].includes(getCookie("notifPref")),
-    dataLoadStarted: false,
     socket: null,
-    currChatFriendshipId: "",
     currChatMessages: [],
     updateQueue: [],
     events: [],
@@ -59,14 +60,11 @@ export default new Vuex.Store({
   getters: {
     user: state => state.user,
     homeView: state => state.homeView,
-    dataLoaded: state => state.dataLoaded,
     unreads: state => state.unreads,
     messages: state => state.messages,
     events: state => state.events,
-    network: state => state.network,
     socketConnected: state => (state.socket ? state.socket.connected : false),
     socket: state => state.socket,
-    currChatFriendshipId: state => state.currChatFriendshipId,
     currChatMessages: state => state.currChatMessages,
     notifAudio: state => new Audio(`/${state.notifAudioFile}`),
     friendShips: state => state.friendShips,
@@ -114,7 +112,7 @@ export default new Vuex.Store({
       const url = new URL(window.location.href);
       const chat = url.searchParams.get("chat");
       context.commit("resetState");
-      context.state.dataLoadStarted = true;
+      context.commit("setDataLoadSarted");
       await context.dispatch("loadNotifications");
       if (context.state.friendShips === null) {
         await context.dispatch("setFriendShips");
@@ -200,164 +198,11 @@ export default new Vuex.Store({
 
       await Promise.all(promiseArr).then(promises => {
         if (chat) {
-          context.commit("setCurrentChat", chat);
+          context.dispatch("setCurrentChat", chat);
           context.commit("setHomeView", "chatbody");
         }
-        context.state.dataLoaded = true;
-        eventBus.dataLoaded();
+        context.commit("setDataLoadedTrue");
       });
-    },
-    attachListeners: context => {
-      context.state.socket.on(
-        "reconnect",
-        eventWrapper("reconnect", (...args) => {
-          context.state.checkinActive = true;
-          let checkinData = {};
-          context.state.friendshipIds.forEach(id => {
-            if (context.state.messages[id]) {
-              checkinData[id] =
-                context.state.messages[id][
-                  context.state.messages[id].length - 1
-                ];
-              // we will need to ask for the updated status of messages that arent read, at this point i will
-              // assume that this is almost always going to be a small number so we can simply send all the msgIds
-              // in order to make the query simple
-              /** no */
-              // checkinData[id].unread = [];
-              // for (
-              //   let i = context.state.messages[id].length - 1;
-              //   i > context.state.messages[id].length - 50 && i <= 0;
-              //   i--
-              // ) {
-              //   if (context.state.messages[id][i].status !== "read") {
-              //     checkinData[id].unread.push(
-              //       context.state.messages[id][i].msgId
-              //     );
-              //   }
-              // }
-            }
-          });
-          context
-            .dispatch("emitEvent", {
-              eventName: "masCheckin",
-              data: checkinData
-            })
-            .then(newMessages => {
-              /** @todo scrolling behaviour doesnt feel like it should be here */
-              let shouldScroll;
-              let chatBody = document.querySelector(`.chat__main`);
-              /** figure out if we should scroll to force it later since
-               *  our function wont work well with multiple new messages */
-              if (chatBody) {
-                shouldScroll = scrollBottom2({
-                  element: chatBody,
-                  force: false,
-                  test: true
-                });
-              }
-              for (let friendship_id in newMessages) {
-                newMessages[friendship_id].sort(sortMessageArray);
-                newMessages[friendship_id] = newMessages[friendship_id].map(
-                  message => {
-                    if (message.fromId !== context.state.user.id) {
-                      if (
-                        context.state.focused &&
-                        friendship_id === context.state.currChatFriendshipId
-                      ) {
-                        /**
-                         * no need to update the dom nodes because these are messages
-                         * received by me so we dont show the status this is mainly
-                         * for the unread count
-                         */
-                        message.status = "read";
-                      } else {
-                        context.commit("incUnread", { friendship_id });
-                      }
-                    }
-                    return message;
-                  }
-                );
-                context.commit("addBulkPreSortedMessages", {
-                  friendship_id,
-                  messages: newMessages[friendship_id]
-                });
-                markAsReceived(friendship_id, [
-                  newMessages[friendship_id][0].createdAt,
-                  newMessages[friendship_id][
-                    newMessages[friendship_id].length - 1
-                  ].createdAt
-                ]);
-                context.commit("updateLastMessage", {
-                  friendship_id,
-                  lastMessage:
-                    newMessages[friendship_id][
-                      newMessages[friendship_id].length - 1
-                    ]
-                });
-              }
-              if (shouldScroll)
-                scrollBottom2({
-                  element: chatBody,
-                  force: true,
-                  test: false
-                });
-              context.state.checkinActive = false;
-            })
-            .catch(err => {
-              console.log;
-              context.state.checkinActive = false;
-            });
-        })
-      );
-      context.state.socket.on(
-        "newMessage",
-        eventWrapper("newMessage", async data => {
-          await context.dispatch("socketNewMessageHandler", data);
-        })
-      );
-      context.state.socket.on(
-        "received",
-        eventWrapper(
-          "received",
-          async data => await context.dispatch("socketReceivedHandler2", data)
-        )
-      );
-      context.state.socket.on(
-        "sweep",
-        eventWrapper(
-          "sweep",
-          async data => await context.dispatch("socketSweepHandler2", data)
-        )
-      );
-      context.state.socket.on(
-        "newFriend",
-        eventWrapper(
-          "newFriend",
-          async data => await context.dispatch("socketNewFriendHandler", data)
-        )
-      );
-      context.state.socket.on(
-        "newFriendRequest",
-        eventWrapper(
-          "newFriendRequest",
-          async data =>
-            await context.dispatch("socketNewFriendRequestHandler", data)
-        )
-      );
-      context.state.socket.on("pauseVideo", eventWrapper("pauseVideo", null));
-      context.state.socket.on("playVideo", eventWrapper("playVideo", null));
-      context.state.socket.on(
-        "playListUpdated",
-        eventWrapper("playListUpdated", null)
-      );
-      context.state.socket.on(
-        "acceptedWatchRequest",
-        eventWrapper("acceptedWatchRequest", null)
-      );
-      context.state.socket.on(
-        "watchSessRequest",
-        eventWrapper("watchSessRequest", null)
-      );
     },
     socketNewFriendHandler: (context, data) => {
       context.state.friendShips.push({
@@ -374,102 +219,6 @@ export default new Vuex.Store({
     socketNewFriendRequestHandler: (context, data) => {
       eventBus.$emit("newFriendRequest", data);
       context.state.user.interactions.receivedRequests.push(data);
-    },
-    socketNewMessageHandler: (context, { token, data }) => {
-      if (token === getCookie("token")) {
-        return;
-      }
-      /** if we get a message about the other persons typing */
-      if (data.type === "typing") {
-        // if its saying the person has started typing
-        if (data.status === "start") {
-          context.commit("showTyping", data.friendship_id);
-          if (data.friendship_id === context.state.currChatFriendshipId) {
-            document.querySelector(".typing").classList.remove("op");
-          }
-          // if its saying the person has stopped typing
-        } else if (data.status === "stop") {
-          context.commit("hideTyping", data.friendship_id);
-          if (data.friendship_id === context.state.currChatFriendshipId) {
-            document.querySelector(".typing").classList.add("op");
-          }
-        }
-        return;
-      }
-      if (context.state.showPopupNotif) {
-        let notification = new Notyf({
-          duration: 5000,
-          dismissible: true,
-          position: { x: "right", y: "bottom" }
-        });
-        notification.success(`${data.from}: ${data.text}`);
-      }
-      if (context.state.enableSoundNotif) {
-        context.getters.notifAudio.play();
-      }
-      if (context.state.enableVisualNotif) {
-        notifyMe({ from: data.from, message: data.text });
-      }
-      const read =
-        context.state.focused &&
-        data.friendship_id === context.state.currChatFriendshipId;
-
-      let messageStatus;
-      /**
-       * @todo have a queue where we can store events that are to update the message
-       * status, where these events come in before the actual message
-       */
-      if (data.fromId === context.state.user.id) {
-        messageStatus = "sent";
-      } else {
-        messageStatus = read ? "read" : "receieved";
-      }
-      const newMessage = {
-        friendship_id: data.friendship_id,
-        message: {
-          createdAt: data.createdAt,
-          from: data.from,
-          text: data.text,
-          msgId: data.msgId,
-          _id:
-            data.fromId === context.state.user.id
-              ? data.Ids.senderId
-              : data.Ids.receiverId,
-          quoted: data.quoted,
-          fromId: data.fromId,
-          type: data.type,
-          media: data.media,
-          meta: data.meta,
-          linkPreview: data.linkPreview,
-          url: data.url,
-          /** @todo this does not go with the typical schema values for status */
-          status: messageStatus
-        }
-      };
-      context.state.updateQueue.forEach(event => {
-        if (
-          event.msgId === newMessage.message.msgId &&
-          newMessage.message.status !== "read"
-        ) {
-          newMessage.message.status = event.read ? "read" : "received";
-        }
-      });
-      context.commit("appendMessageToChat", newMessage);
-      context.commit("updateLastMessage", {
-        friendship_id: data.friendship_id,
-        lastMessage: data
-      });
-      /** let the next user know that this message is green ticked */
-      /** if we are signed in on multiple devices only tick if the message isnt coming from us */
-      if (data.fromId !== context.state.user.id) {
-        context.state.socket.emit("gotMessage", {
-          friendship_id: data.friendship_id,
-          token: getCookie("token"),
-          msgId: data.msgId,
-          createdAt: data.createdAt,
-          read
-        });
-      }
     },
     socketSweepHandler2(
       context,
@@ -617,10 +366,7 @@ export default new Vuex.Store({
       }
       state.friendShips = null;
       state.messages = null;
-      state.dataLoaded = false;
-      state.dataLoadStarted = false;
       state.socket = null;
-      state.currChatFriendshipId = "";
       state.friendshipIds = [];
     },
     enablePopupNotif(state) {
@@ -693,32 +439,6 @@ export default new Vuex.Store({
         state.user.id
       );
       state.unreads[friendship_id] = 0;
-    },
-    setCurrentChat(state, friendship_id) {
-      state.currChatFriendshipId = friendship_id;
-      if (friendship_id === "") {
-        state.currChatMessages = [];
-        return;
-      }
-      if (isInChat(friendship_id)) {
-        /** @todo tell the server to mark all these as read  */
-        state.messages[friendship_id] = markLocalChatMessagesAsRead(
-          state.messages[friendship_id],
-          state.user.id
-        );
-        state.unreads[friendship_id] = 0;
-        if (state.messages[friendship_id].length > 0) {
-          markAsReceived(friendship_id, [
-            state.messages[friendship_id][0].createdAt,
-            state.messages[friendship_id][
-              state.messages[friendship_id].length - 1
-            ].createdAt
-          ]);
-        }
-        clearNotifications({ tag: friendship_id });
-      }
-      console.log("storeeeeeeeeee", state.messages[friendship_id]);
-      state.currChatMessages = state.messages[friendship_id];
     },
     setChat(state, { friendship_id, data }) {
       state.messages[friendship_id] = data;
@@ -830,7 +550,7 @@ export default new Vuex.Store({
         0,
         ...messages
       );
-      if (!isInChat) {
+      if (!isInChat(friendship_id)) {
         let chatUnreads = countUnreads({
           chat: state.messages[friendship_id],
           user_id: state.user.id

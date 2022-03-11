@@ -354,6 +354,7 @@ export default Vue.extend({
       "setFriends",
       "setUpApp",
       "loadMessages",
+      "setCurrentChat",
       "emitEvent"
     ]),
     ...mapMutations([
@@ -363,7 +364,6 @@ export default Vue.extend({
       "addGroupToChatSart",
       "appendMessageToChat",
       "updateSentMessage",
-      "setCurrentChat",
       "setHomeView",
       "enablePopupNotif",
       "disablePopupNotif"

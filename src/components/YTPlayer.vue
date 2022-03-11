@@ -184,13 +184,13 @@ export default Vue.extend({
     };
   },
   methods: {
-    ...mapActions(["emitEvent", "addOneTimeListener", "removeOneTimeListener"]),
-    ...mapMutations([
+    ...mapActions([
+      "emitEvent",
+      "addOneTimeListener",
       "setCurrentChat",
-      "enablePopupNotif",
-      "disablePopupNotif",
-      "addPlaylist"
+      "removeOneTimeListener"
     ]),
+    ...mapMutations(["enablePopupNotif", "disablePopupNotif", "addPlaylist"]),
     async newLinkInput(event) {
       try {
         this.loadingPreview = true;
