@@ -1,8 +1,9 @@
 <template>
+  <!-- // NB!!! v-ifs dont work really well with this modal because the v-if destroys it before we can remove the 
+  // backdrop, i think this occurs because its created in js (maybe partially) -->
   <div
     class="modal fade"
-    id="imageViewer"
-    ref="imageViewer"
+    ref="modalContainer"
     tabindex="-1"
     aria-label="image viewer modal"
     aria-hidden="true"
@@ -11,6 +12,7 @@
       <div class="modal-content">
         <slot name="full-replace">
           <div class="modal-header">
+            {{ header }}
             <slot name="header"></slot>
           </div>
 
@@ -22,12 +24,29 @@
           <div class="modal-footer">
             <slot name="footer">
               <button
+                v-if="!confirm"
                 ref="closeButton"
-                class="modal-default-button mybt"
+                class="btn btn-success"
                 @click="$emit('close')"
               >
                 OK
               </button>
+              <div v-if="confirm">
+                <button
+                  ref="closeButton"
+                  class="btn btn-danger mx-1"
+                  @click="$emit('deny')"
+                >
+                  Deny
+                </button>
+                <button
+                  ref="closeButton"
+                  class="btn btn-success"
+                  @click="$emit('accept')"
+                >
+                  Accept
+                </button>
+              </div>
             </slot>
           </div>
         </slot>
@@ -38,8 +57,10 @@
 <script>
 import { FocusGrabber } from "@/common";
 export default {
+  // NB!!! v-ifs dont work really well with this modal because the v-if destroys it before we can remove the
+  // backdrop, i think this occurs because its created in js (maybe partially)
   name: "modal",
-  props: ["showModal", "text"],
+  props: ["showModal", "text", "header", "confirm"],
   data() {
     return {
       myModal: null
@@ -47,14 +68,21 @@ export default {
   },
   mounted() {
     // @ts-ignore
-    this.myModal = new bootstrap.Modal(this.$refs.imageViewer, {
+    this.myModal = new bootstrap.Modal(this.$refs.modalContainer, {
       backdrop: "static",
       keyboard: false
     });
     console.log(this.myModal);
-    this.$refs.imageViewer.addEventListener("hidePrevented.bs.modal", event => {
-      this.$emit("close");
-    });
+    this.$refs.modalContainer.addEventListener(
+      "hidePrevented.bs.modal",
+      event => {
+        this.$emit("close");
+      }
+    );
+    if (this.showModal === true) {
+      console.log(this.showModal);
+      this.open();
+    }
   },
   methods: {
     open() {

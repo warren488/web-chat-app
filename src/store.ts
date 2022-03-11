@@ -23,6 +23,7 @@ import {
 
 import { eventBus } from "@/common/eventBus";
 import io from "socket.io-client";
+import { Notyf } from "notyf";
 
 /**
  * @fixme - update state to always hold the current friendship ID and a reference to that friend
@@ -34,6 +35,7 @@ export default new Vuex.Store({
   state: {
     notifAudioFile: getCookie("notifAudioFile") || "juntos.mp3",
     user: null,
+    oneTimeListeners: new Map(),
     friendShips: null,
     network: window.navigator.onLine,
     focused: document.visibilityState === "visible",
@@ -50,7 +52,9 @@ export default new Vuex.Store({
     friendshipIds: [],
     unreads: {},
     homeView: "chatlist",
-    checkinActive: false
+    checkinActive: false,
+    showPopupNotif: false,
+    playlists: new Map()
   },
   getters: {
     user: state => state.user,
@@ -67,7 +71,8 @@ export default new Vuex.Store({
     notifAudio: state => new Audio(`/${state.notifAudioFile}`),
     friendShips: state => state.friendShips,
     initFriends: state => state.friendShips === null,
-    initMessages: state => state.messages === null
+    initMessages: state => state.messages === null,
+    playlist: state => state.playlists
   },
   actions: {
     setNotifAudioFile: (context, file) => {
@@ -145,7 +150,7 @@ export default new Vuex.Store({
         if (!context.state.socket.connected) {
           context.state.socket.on(
             "connect",
-            eventWrapper(() => {
+            eventWrapper("connect", () => {
               context.state.socket.emit("checkin", {
                 // @ts-ignore
                 userId: data.id,
@@ -174,7 +179,7 @@ export default new Vuex.Store({
                   if (!context.state.socket.connected) {
                     context.state.socket.on(
                       "connect",
-                      eventWrapper(() => {
+                      eventWrapper("connect", () => {
                         context.state.socket.emit("checkin", {
                           friendship_id,
                           token: getCookie("token")
@@ -205,7 +210,7 @@ export default new Vuex.Store({
     attachListeners: context => {
       context.state.socket.on(
         "reconnect",
-        eventWrapper((...args) => {
+        eventWrapper("reconnect", (...args) => {
           context.state.checkinActive = true;
           let checkinData = {};
           context.state.friendshipIds.forEach(id => {
@@ -306,34 +311,52 @@ export default new Vuex.Store({
       );
       context.state.socket.on(
         "newMessage",
-        eventWrapper(async data => {
+        eventWrapper("newMessage", async data => {
           await context.dispatch("socketNewMessageHandler", data);
         })
       );
       context.state.socket.on(
         "received",
         eventWrapper(
+          "received",
           async data => await context.dispatch("socketReceivedHandler2", data)
         )
       );
       context.state.socket.on(
         "sweep",
         eventWrapper(
+          "sweep",
           async data => await context.dispatch("socketSweepHandler2", data)
         )
       );
       context.state.socket.on(
         "newFriend",
         eventWrapper(
+          "newFriend",
           async data => await context.dispatch("socketNewFriendHandler", data)
         )
       );
       context.state.socket.on(
         "newFriendRequest",
         eventWrapper(
+          "newFriendRequest",
           async data =>
             await context.dispatch("socketNewFriendRequestHandler", data)
         )
+      );
+      context.state.socket.on("pauseVideo", eventWrapper("pauseVideo", null));
+      context.state.socket.on("playVideo", eventWrapper("playVideo", null));
+      context.state.socket.on(
+        "playListUpdated",
+        eventWrapper("playListUpdated", null)
+      );
+      context.state.socket.on(
+        "acceptedWatchRequest",
+        eventWrapper("acceptedWatchRequest", null)
+      );
+      context.state.socket.on(
+        "watchSessRequest",
+        eventWrapper("watchSessRequest", null)
       );
     },
     socketNewFriendHandler: (context, data) => {
@@ -372,6 +395,14 @@ export default new Vuex.Store({
           }
         }
         return;
+      }
+      if (context.state.showPopupNotif) {
+        let notification = new Notyf({
+          duration: 5000,
+          dismissible: true,
+          position: { x: "right", y: "bottom" }
+        });
+        notification.success(`${data.from}: ${data.text}`);
       }
       if (context.state.enableSoundNotif) {
         context.getters.notifAudio.play();
@@ -542,7 +573,7 @@ export default new Vuex.Store({
         if (!context.state.socket.connected) {
           context.state.socket.on(
             "connect",
-            eventWrapper(() => {
+            eventWrapper("connect", () => {
               context.state.socket.emit(
                 eventName,
                 {
@@ -570,6 +601,12 @@ export default new Vuex.Store({
           );
         }
       });
+    },
+    addOneTimeListener(context, data) {
+      context.commit("registerListener", data);
+    },
+    removeOneTimeListener(context, data) {
+      context.commit("removeListener", data);
     }
   },
   // todo: check if this is returns a promise or is synchronous
@@ -585,6 +622,31 @@ export default new Vuex.Store({
       state.socket = null;
       state.currChatFriendshipId = "";
       state.friendshipIds = [];
+    },
+    enablePopupNotif(state) {
+      state.showPopupNotif = true;
+    },
+    disablePopupNotif(state) {
+      state.showPopupNotif = false;
+    },
+    registerListener(state, { customName, event, handler }) {
+      console.log("registerListener");
+      let existingListeners = state.oneTimeListeners.get(event);
+      if (!existingListeners) {
+        existingListeners = new Map();
+      }
+      existingListeners.set(customName, handler);
+      state.oneTimeListeners.set(event, existingListeners);
+    },
+    removeListener(state, { customName, event }) {
+      console.log("removeListener");
+      let existingListeners = state.oneTimeListeners.get(event);
+      if (!existingListeners) {
+        return;
+      }
+      existingListeners.delete(customName);
+      // not sure if i need to do this
+      state.oneTimeListeners.set(event, existingListeners);
     },
     incUnread(state, { friendship_id }) {
       state.unreads = {
@@ -611,6 +673,9 @@ export default new Vuex.Store({
         // assume there were no notifications before so just set it to 1
         targetFriend.notificationCount = 1;
       }
+    },
+    addPlaylist(state, playlist) {
+      state.playlists.set(playlist.uuid, playlist);
     },
     setHomeView(state, view) {
       state.homeView = view;
@@ -666,7 +731,8 @@ export default new Vuex.Store({
       /**
        * @fixme this is a terrible way of getting vue to recognize that something has changed ideally I need to find the proper vue way to do this
        * */
-      state.friendShips.splice(index, 1, state.friendShips[index]);
+      state.friendShips.unshift(state.friendShips[index]);
+      state.friendShips.splice(index + 1, 1);
     },
     addEvent(state, event) {
       if (state.events[event.type]) {

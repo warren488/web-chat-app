@@ -1,7 +1,12 @@
 <template>
-  <div>
+  <div class="preview-container">
     <div v-if="loading && !previewData">loading preview...</div>
-    <a v-if="previewData" :href="previewData.url" target="_blank">
+    <a
+      v-if="previewData"
+      :href="previewData.url"
+      target="_blank"
+      style="max-width: 100%"
+    >
       <div class="linkpreview">
         <img class="linkpreview__img" :src="previewData.image" alt />
         <div>
@@ -36,6 +41,7 @@ a {
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.5);
   margin-bottom: 16px;
+  // max-height: 5rem;
 
   &__img {
     width: 100px;
@@ -43,5 +49,11 @@ a {
   &__title {
     font-weight: bold;
   }
+}
+
+.preview-container,
+.linkpreview {
+  display: flex;
+  max-height: 100%;
 }
 </style>

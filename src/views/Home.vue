@@ -139,7 +139,13 @@
           hidden: homeView !== 'chatbody'
         }"
       >
-        <div class="active-chat" v-if="currFriend">
+        <div
+          :class="{
+            'active-chat': true,
+            prominent: chatProminent
+          }"
+          v-if="currFriend"
+        >
           <header class="chat-header">
             <button class="chatBack" @click="$router.push('/home')">
               <svg
@@ -191,6 +197,22 @@
                 {{ currFriend.username }}
               </h1>
             </div>
+            <button
+              class="btn btn-success"
+              @click="
+                showVideo = true;
+                player.loadComponent = true;
+              "
+            >
+              watch
+            </button>
+            <button
+              class="btn btn-success"
+              v-if="chatProminent"
+              @click="makeChatBackdrop"
+            >
+              hide chat
+            </button>
           </header>
           <newModal
             :showModal="viewCurrentFriendProfile"
@@ -219,6 +241,9 @@
             <div></div>
             <div></div>
           </div>
+          <!-- for now we want to destroy it every time, but very possibly we may not want to in the future
+            hence both the v-if and display
+             -->
           <chat-text
             :highlighted="highlightedMessageId"
             @newMessage="handleNewMessage"
@@ -229,6 +254,15 @@
         <div class="empty-chat" v-if="!currFriend">
           Open a chat
         </div>
+        <TYPlayer
+          v-if="player.loadComponent"
+          :display="true"
+          :forwardedPendingRequest="player.pendingRequest"
+          @close="
+            player = { friendship_id: null, url: null, loadComponent: null }
+          "
+          @toggleChat="makeChatProminent"
+        />
       </div>
     </main>
   </div>
@@ -261,6 +295,7 @@ import store from "../store";
 import "notyf/notyf.min.css";
 import NewProfile from "@/components/newProfile.vue";
 import SmartProfile from "@/components/smartProfile.vue";
+import TYPlayer from "@/components/YTPlayer.vue";
 
 export default Vue.extend({
   name: "home",
@@ -277,9 +312,24 @@ export default Vue.extend({
       this.setCurrentChat("");
       this.setHomeView("chatlist");
     }
+    // the handler for this listener will run ONLY if the component is not loaded
+    // if the component is loaded then it will handle this itself
+    this.addOneTimeListener({
+      customName: "Home",
+      event: "watchSessRequest",
+      handler: data => {
+        console.log("from home");
+
+        if (!this.player.loadComponent) {
+          this.player.pendingRequest = data;
+          this.player.loadComponent = true;
+        }
+      }
+    });
   },
   data() {
     return {
+      chatProminent: false,
       sideMenuActive: false,
       profileImageOpen: false,
       modalData: { openProfile: false, visibleProfile: {} },
@@ -288,11 +338,18 @@ export default Vue.extend({
       highlightedMessageId: null,
       typing: {},
       viewCurrentFriendProfile: false,
-      loadingMore: false
+      loadingMore: false,
+      showVideo: false,
+      player: {
+        loadComponent: false,
+        url: null,
+        friendship_id: null
+      }
     };
   },
   methods: {
     ...mapActions([
+      "addOneTimeListener",
       "setNotifAudioFile",
       "setFriends",
       "setUpApp",
@@ -307,8 +364,18 @@ export default Vue.extend({
       "appendMessageToChat",
       "updateSentMessage",
       "setCurrentChat",
-      "setHomeView"
+      "setHomeView",
+      "enablePopupNotif",
+      "disablePopupNotif"
     ]),
+    makeChatProminent() {
+      this.chatProminent = true;
+      this.disablePopupNotif();
+    },
+    makeChatBackdrop() {
+      this.chatProminent = false;
+      this.enablePopupNotif();
+    },
     tabChanged(tabId) {
       if (tabId === "tab-requests") {
         // clear unread requests
@@ -651,7 +718,8 @@ export default Vue.extend({
     sideMenu,
     viewImageModal,
     NewProfile,
-    SmartProfile
+    SmartProfile,
+    TYPlayer
   }
 });
 </script>
@@ -675,46 +743,7 @@ export default Vue.extend({
   background: #646464;
   animation-timing-function: cubic-bezier(0, 1, 1, 0);
 }
-.lds-ellipsis div:nth-child(1) {
-  left: 8px;
-  animation: lds-ellipsis1 0.6s infinite;
-}
-.lds-ellipsis div:nth-child(2) {
-  left: 8px;
-  animation: lds-ellipsis2 0.6s infinite;
-}
-.lds-ellipsis div:nth-child(3) {
-  left: 32px;
-  animation: lds-ellipsis2 0.6s infinite;
-}
-.lds-ellipsis div:nth-child(4) {
-  left: 56px;
-  animation: lds-ellipsis3 0.6s infinite;
-}
-@keyframes lds-ellipsis1 {
-  0% {
-    transform: scale(0);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-@keyframes lds-ellipsis3 {
-  0% {
-    transform: scale(1);
-  }
-  100% {
-    transform: scale(0);
-  }
-}
-@keyframes lds-ellipsis2 {
-  0% {
-    transform: translate(0, 0);
-  }
-  100% {
-    transform: translate(24px, 0);
-  }
-}
+
 // END TYPING INDOCATOR
 .chat-header__name {
   cursor: pointer;
@@ -750,6 +779,18 @@ export default Vue.extend({
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.active-chat.prominent {
+  position: absolute;
+  /* width: 100%; */
+  background: rgba(4, 4, 4, 0.4);
+  z-index: 1000;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  opacity: 0.7;
 }
 
 .badge {
