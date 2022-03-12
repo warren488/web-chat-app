@@ -23,6 +23,9 @@ if (token) {
 }
 
 if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/worker.js", {
+    scope: "/"
+  });
   navigator.serviceWorker.addEventListener("message", event => {
     console.log(event.data, event.data);
     if (event.data.type === "openChat") {

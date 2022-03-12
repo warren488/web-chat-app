@@ -52,14 +52,12 @@ export default new Vuex.Store({
     events: [],
     friendshipIds: [],
     unreads: {},
-    homeView: "chatlist",
     checkinActive: false,
     showPopupNotif: false,
     playlists: new Map()
   },
   getters: {
     user: state => state.user,
-    homeView: state => state.homeView,
     unreads: state => state.unreads,
     messages: state => state.messages,
     events: state => state.events,
@@ -422,9 +420,6 @@ export default new Vuex.Store({
     },
     addPlaylist(state, playlist) {
       state.playlists.set(playlist.uuid, playlist);
-    },
-    setHomeView(state, view) {
-      state.homeView = view;
     },
     setFriendShips(state, friendShips) {
       state.friendShips = friendShips;

@@ -6,11 +6,13 @@ export default {
     network: window.navigator.onLine,
     focused: document.visibilityState === "visible",
     currChatFriendshipId: "",
+    homeView: "chatlist",
     dataLoadStarted: false
   },
   getters: {
     network: state => state.network,
     dataLoaded: state => state.dataLoaded,
+    homeView: state => state.homeView,
     isInChat: state =>
       state.focused && state.currChatFriendshipId
         ? state.currChatFriendshipId
@@ -41,6 +43,10 @@ export default {
     setBlurred(state) {
       eventBus.$emit("blurred");
       state.focused = false;
+    },
+    setHomeView(state, view) {
+      eventBus.$emit("homeViewChanged", view);
+      state.homeView = view;
     },
     setDataLoadSarted(state) {
       state.dataLoadStarted = true;
