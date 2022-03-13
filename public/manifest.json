@@ -58,6 +58,12 @@
       "src": "/test-512x512.webp",
       "sizes": "512x512",
       "type": "image/webp"
+    },
+    {
+      "src": "/maskable_icon_x512.png",
+      "sizes": "512x512",
+      "purpose": "any maskable",
+      "type": "image/png"
     }
   ]
 }

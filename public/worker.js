@@ -1,3 +1,20 @@
+function serveShareTarget(event) {
+  const dataPromise = event.request.formData();
+
+  // Redirect so the user can refresh the page without resending data.
+  event.respondWith(Response.redirect("/?share"));
+
+  event.waitUntil(
+    (async function() {
+      // The page sends this message to tell the service worker it's ready to receive the file.
+      await nextMessage("share-ready");
+      const client = await self.clients.get(event.resultingClientId);
+      const data = await dataPromise;
+      const file = data.get("file");
+      client.postMessage({ file, action: "load-file" });
+    })()
+  );
+}
 console.log("service worker loaded");
 // NB: because the tags allow us to replace notifications we use them to indicate a friend request
 // while at the same time we have a different one for each chat
@@ -125,13 +142,6 @@ self.addEventListener("fetch", event => {
   // If this is an incoming POST request for the
   // registered "action" URL, respond to it.
   if (event.request.method === "POST" && url.pathname === "/share-target") {
-    event.respondWith(
-      (async () => {
-        const formData = await event.request.formData();
-        const image = formData.get("image") || "";
-        console.log(image);
-        return Response.redirect("/home", 303);
-      })()
-    );
+    serveShareTarget(event);
   }
 });

@@ -7,6 +7,8 @@ export default {
     focused: document.visibilityState === "visible",
     currChatFriendshipId: "",
     homeView: "chatlist",
+    chatProminent: false,
+    showPopupNotif: false,
     dataLoadStarted: false
   },
   getters: {
@@ -17,7 +19,8 @@ export default {
       state.focused && state.currChatFriendshipId
         ? state.currChatFriendshipId
         : null,
-    currChatFriendshipId: state => state.currChatFriendshipId
+    currChatFriendshipId: state => state.currChatFriendshipId,
+    chatProminent: state => state.chatProminent
   },
   mutations: {
     setOffline(state) {
@@ -58,6 +61,20 @@ export default {
     },
     setCurrentChat(state, friendship_id) {
       state.currChatFriendshipId = friendship_id;
+    },
+    enablePopupNotif(state) {
+      state.showPopupNotif = true;
+    },
+    disablePopupNotif(state) {
+      state.showPopupNotif = false;
+    },
+    makeChatProminent() {
+      this.chatProminent = true;
+      this.disablePopupNotif();
+    },
+    makeChatBackdrop() {
+      this.chatProminent = false;
+      this.enablePopupNotif();
     }
   }
 };

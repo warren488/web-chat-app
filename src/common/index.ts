@@ -25,8 +25,8 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-export const baseURI = "http://localhost:3000";
+export const baseURI = "https://dry-savannah-78912.herokuapp.com";
+// export const baseURI = "http://localhost:3000";
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
@@ -139,6 +139,23 @@ export const updateDOMMessageStatus = (msgId, read) => {
     messageElement.classList.add(read ? "read" : "received");
   }
 };
+
+// from squoosh file sharing
+export function getSharedImage(): Promise<File> {
+  return new Promise(resolve => {
+    const onmessage = (event: MessageEvent) => {
+      if (event.data.action !== "load-file") return;
+      resolve(event.data.file);
+      navigator.serviceWorker.removeEventListener("message", onmessage);
+    };
+
+    navigator.serviceWorker.addEventListener("message", onmessage);
+
+    // This message is picked up by the service worker - it's how it knows we're ready to receive
+    // the file.
+    navigator.serviceWorker.controller!.postMessage("share-ready");
+  });
+}
 
 export const uploadToFireBase = (file, location?: string) => {
   // Create a root reference

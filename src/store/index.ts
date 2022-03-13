@@ -53,7 +53,6 @@ export default new Vuex.Store({
     friendshipIds: [],
     unreads: {},
     checkinActive: false,
-    showPopupNotif: false,
     playlists: new Map()
   },
   getters: {
@@ -366,12 +365,6 @@ export default new Vuex.Store({
       state.messages = null;
       state.socket = null;
       state.friendshipIds = [];
-    },
-    enablePopupNotif(state) {
-      state.showPopupNotif = true;
-    },
-    disablePopupNotif(state) {
-      state.showPopupNotif = false;
     },
     registerListener(state, { customName, event, handler }) {
       console.log("registerListener");

@@ -15,6 +15,14 @@
         <new-profile :details="modalData.visibleProfile" />
       </template>
     </newModal>
+    <newModal
+      :showModal="modalData.openProfile"
+      @close="modalData.openProfile = false"
+    >
+      <template v-slot:full-replace>
+        <img :src="sharedImage" />
+      </template>
+    </newModal>
     <main class="main-section">
       <div
         :class="{
@@ -285,7 +293,8 @@ import {
   disableSound,
   subscribeToNotif,
   unsubscribeToNotif,
-  signOutOfFirebase
+  signOutOfFirebase,
+  getSharedImage
 } from "@/common";
 
 import { mapGetters, mapActions, mapMutations } from "vuex";
@@ -300,8 +309,6 @@ export default Vue.extend({
   props: ["chat"],
   mounted() {
     if (this.$route.query.chat) {
-      console.log(this.$route.query.chat);
-
       /** if the data isnt loaded yet then there is a line in the setup that will do this for us */
       if (this.dataLoaded) {
         this.openChat({ _id: this.$route.query.chat });
@@ -310,7 +317,13 @@ export default Vue.extend({
       this.setCurrentChat("");
       this.setHomeView("chatlist");
     }
-    // the handler for this listener will run ONLY if the component is not loaded
+    if (this.$route.query.share) {
+      getSharedImage().then(image => {
+        this.sharedImage = image;
+        console.log(image);
+      });
+    }
+    // the handler for this listener will run ONLY if the YT component is not loaded
     // if the component is loaded then it will handle this itself
     this.addOneTimeListener({
       customName: "Home",
@@ -327,9 +340,9 @@ export default Vue.extend({
   },
   data() {
     return {
-      chatProminent: false,
       sideMenuActive: false,
       profileImageOpen: false,
+      sharedImage: null,
       modalData: { openProfile: false, visibleProfile: {} },
       currentMessages: [],
       searchResults: [],
@@ -364,16 +377,10 @@ export default Vue.extend({
       "updateSentMessage",
       "setHomeView",
       "enablePopupNotif",
-      "disablePopupNotif"
+      "disablePopupNotif",
+      "makeChatBackdrop",
+      "makeChatProminent"
     ]),
-    makeChatProminent() {
-      this.chatProminent = true;
-      this.disablePopupNotif();
-    },
-    makeChatBackdrop() {
-      this.chatProminent = false;
-      this.enablePopupNotif();
-    },
     tabChanged(tabId) {
       if (tabId === "tab-requests") {
         // clear unread requests
@@ -593,7 +600,6 @@ export default Vue.extend({
       } else {
         this.setCurrentChat(friendship_id);
       }
-      console.log("setting home view");
 
       this.setHomeView("chatbody");
     },
@@ -636,6 +642,7 @@ export default Vue.extend({
       "socketConnected",
       "events",
       "dataLoaded",
+      "chatProminent",
       "homeView"
     ]),
     sideMenuData() {
@@ -742,7 +749,46 @@ export default Vue.extend({
   background: #646464;
   animation-timing-function: cubic-bezier(0, 1, 1, 0);
 }
-
+.lds-ellipsis div:nth-child(1) {
+  left: 8px;
+  animation: lds-ellipsis1 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(2) {
+  left: 8px;
+  animation: lds-ellipsis2 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(3) {
+  left: 32px;
+  animation: lds-ellipsis2 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(4) {
+  left: 56px;
+  animation: lds-ellipsis3 0.6s infinite;
+}
+@keyframes lds-ellipsis1 {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes lds-ellipsis3 {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0);
+  }
+}
+@keyframes lds-ellipsis2 {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(24px, 0);
+  }
+}
 // END TYPING INDOCATOR
 .chat-header__name {
   cursor: pointer;
@@ -760,7 +806,7 @@ export default Vue.extend({
   background-color: var(--bs-green);
   width: 350px;
   min-width: 350px;
-  height: 100vh;
+  height: 100dvh;
   overflow-y: scroll;
 }
 .home {
@@ -852,7 +898,7 @@ export default Vue.extend({
 
 .main-section {
   display: flex;
-  height: 100vh;
+  height: 100dvh;
 }
 
 .chat-header {
@@ -911,7 +957,7 @@ export default Vue.extend({
     width: 100vw;
   }
   .active-chat {
-    height: 100vh;
+    height: 100dvh;
   }
   .chatBack {
     display: block;

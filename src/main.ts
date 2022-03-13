@@ -23,9 +23,14 @@ if (token) {
 }
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/worker.js", {
-    scope: "/"
-  });
+  navigator.serviceWorker
+    .register("/worker.js", {
+      scope: "/"
+    })
+    .then(registration => {
+      return registration.update();
+    });
+
   navigator.serviceWorker.addEventListener("message", event => {
     console.log(event.data, event.data);
     if (event.data.type === "openChat") {
