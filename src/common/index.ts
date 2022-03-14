@@ -25,8 +25,11 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-// export const baseURI = "http://localhost:3000";
+export const baseURI =
+  process.env.NODE_ENV === "production"
+    ? "https://dry-savannah-78912.herokuapp.com"
+    : "http://localhost:3000";
+export const defaultPageLimit = 50;
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
@@ -547,7 +550,7 @@ export const getMessages = async (
 
 export const getMessagePage = async ({
   friendship_id,
-  limit = 50,
+  limit = defaultPageLimit,
   timestamp,
   msgId
 }) => {
