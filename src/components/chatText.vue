@@ -264,7 +264,14 @@ export default Vue.extend({
   created() {
     this.scanForLinkDebounced = debounce(this.scanForLink, 300);
   },
+  mounted() {
+    if (this.sharedImage) {
+      this.fileInputHandler(this.sharedImage.image);
+      this.clearSharedImage();
+    }
+  },
   methods: {
+    ...mapMutations(["clearSharedImage"]),
     textInput(e) {
       this.messageText = e;
       this.scanForLinkDebounced(e);
@@ -348,8 +355,8 @@ export default Vue.extend({
     addFileHandler() {
       this.$refs.fileInput.click();
     },
-    fileInputHandler() {
-      this.file = this.$refs.fileInput.files[0];
+    fileInputHandler(file) {
+      this.file = file || this.$refs.fileInput.files[0];
       var imgpreview = this.$refs.imgpreview as HTMLImageElement;
       imgpreview.src = URL.createObjectURL(this.file);
       imgpreview.onload = function() {
@@ -463,7 +470,12 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapGetters(["currChatFriendshipId", "friendShips", "user"]),
+    ...mapGetters([
+      "currChatFriendshipId",
+      "friendShips",
+      "user",
+      "sharedImage"
+    ]),
     hasAudio() {
       return this.audioBlob !== null;
     },

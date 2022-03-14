@@ -15,12 +15,15 @@
         <new-profile :details="modalData.visibleProfile" />
       </template>
     </newModal>
-    <newModal
-      :showModal="modalData.openProfile"
-      @close="modalData.openProfile = false"
-    >
+    <newModal :showModal="sharedImage !== null" @close="clearSharedImage()">
       <template v-slot:full-replace>
-        <img :src="sharedImage" />
+        <img :src="sharedImage && sharedImage.url" style="width: 100%" />
+        <chatList
+          title="Chat"
+          :userList="friendShips"
+          :currentChat="currChatFriendshipId"
+          @open="({ _id }) => $router.push('/home?chat=' + _id)"
+        />
       </template>
     </newModal>
     <main class="main-section">
@@ -51,7 +54,7 @@
         </header>
 
         <ul class="nav nav-tabs" id="myTab" role="tablist">
-          <li class="nav-item " role="presentation">
+          <li class="nav-item" role="presentation">
             <button
               class="nav-link active fw-bold"
               id="chat-tab"
@@ -163,7 +166,7 @@
                 x="0px"
                 y="0px"
                 viewBox="0 0 64 64"
-                style="enable-background:new 0 0 64 64;"
+                style="enable-background: new 0 0 64 64"
                 xml:space="preserve"
               >
                 <path
@@ -257,9 +260,11 @@
             @typing="handleTyping"
           ></chat-text>
         </div>
-        <div class="empty-chat" v-if="!currFriend">
-          Open a chat
+        <div class="empty-chat" v-if="!currFriend">Open a chat</div>
+        <div v-if="sharedImage">
+          <img :src="sharedImage.url" />
         </div>
+
         <TYPlayer
           v-if="player.loadComponent"
           :display="true"
@@ -317,11 +322,13 @@ export default Vue.extend({
       this.setCurrentChat("");
       this.setHomeView("chatlist");
     }
-    if (this.$route.query.share) {
+    if ("share" in this.$route.query) {
       getSharedImage().then(image => {
-        this.sharedImage = image;
+        this.setSharedImage({ image, url: URL.createObjectURL(image) });
         console.log(image);
       });
+      // might be sketch
+      this.$router.replace("/");
     }
     // the handler for this listener will run ONLY if the YT component is not loaded
     // if the component is loaded then it will handle this itself
@@ -342,7 +349,6 @@ export default Vue.extend({
     return {
       sideMenuActive: false,
       profileImageOpen: false,
-      sharedImage: null,
       modalData: { openProfile: false, visibleProfile: {} },
       currentMessages: [],
       searchResults: [],
@@ -371,6 +377,7 @@ export default Vue.extend({
     ...mapMutations([
       "updateLastMessage",
       "hideTyping",
+      "clearSharedImage",
       "showTyping",
       "addGroupToChatSart",
       "appendMessageToChat",
@@ -379,7 +386,8 @@ export default Vue.extend({
       "enablePopupNotif",
       "disablePopupNotif",
       "makeChatBackdrop",
-      "makeChatProminent"
+      "makeChatProminent",
+      "setSharedImage"
     ]),
     tabChanged(tabId) {
       if (tabId === "tab-requests") {
@@ -641,6 +649,7 @@ export default Vue.extend({
       "currChatMessages",
       "socketConnected",
       "events",
+      "sharedImage",
       "dataLoaded",
       "chatProminent",
       "homeView"
@@ -806,7 +815,7 @@ export default Vue.extend({
   background-color: var(--bs-green);
   width: 350px;
   min-width: 350px;
-  height: 100dvh;
+  height: 100vh;
   overflow-y: scroll;
 }
 .home {
@@ -898,7 +907,7 @@ export default Vue.extend({
 
 .main-section {
   display: flex;
-  height: 100dvh;
+  height: 100vh;
 }
 
 .chat-header {
@@ -957,7 +966,7 @@ export default Vue.extend({
     width: 100vw;
   }
   .active-chat {
-    height: 100dvh;
+    height: 100vh;
   }
   .chatBack {
     display: block;

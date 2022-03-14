@@ -17,10 +17,20 @@ export default {
       duration: 5000,
       dismissible: true,
       position: { x: "right", y: "bottom" }
-    })
+    }),
+    sharedImage: null
   }),
-  getters: {},
-  mutations: {},
+  getters: {
+    sharedImage: state => state.sharedImage
+  },
+  mutations: {
+    setSharedImage(state, data) {
+      state.sharedImage = data;
+    },
+    clearSharedImage(state) {
+      state.sharedImage = null;
+    }
+  },
   actions: {
     attachListeners: context => {
       context.rootState.socket.on(

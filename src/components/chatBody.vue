@@ -328,7 +328,7 @@ export default Vue.extend({
   display: flex;
   flex-direction: column;
   max-height: 100vh;
-  max-height: 100dvh;
+  max-height: 100vh;
   overflow-y: scroll;
 }
 .chat__view-more {
