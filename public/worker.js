@@ -105,6 +105,7 @@ self.addEventListener("push", async function(e) {
            */
           data: notifData,
           vibrate: [400],
+          image: data.url,
           timestamp: data.createdAt
         }
       );
@@ -167,4 +168,50 @@ self.addEventListener("fetch", event => {
   if (event.request.method === "POST" && url.pathname === "/share-target") {
     serveShareTarget(event);
   }
+  if (isCachable(event.request)) {
+    let requestToFind = event.request;
+    if (isAppPage(url)) {
+      // there is the odd chance we may have this url in the chance but not /home
+      // that chance is very very low though
+      requestToFind = "/home";
+    }
+    event.respondWith(
+      caches.match(requestToFind).then(resp => {
+        // try the cache first, if not go to the network update the cache and then give us
+        return (
+          resp ||
+          fetch(event.request).then(response => {
+            return caches.open("v2").then(async cache => {
+              // TODO: do i need to await this?
+              await cache.put(event.request, response.clone());
+              return response;
+            });
+          })
+        );
+      })
+    );
+  }
 });
+
+function isCachable(request) {
+  const url = new URL(request.url);
+  return (
+    url.hostname === self.location.hostname &&
+    request.method !== "POST" &&
+    !(
+      url.pathname.startsWith("/io") ||
+      url.pathname.startsWith("/sockjs-node") ||
+      url.pathname.startsWith("/socket.io") ||
+      url.pathname.startsWith("/api") ||
+      url.pathname.startsWith("/versionuid.json")
+    )
+  );
+}
+
+function isAppPage(url) {
+  return (
+    url.pathname.startsWith("/profile") ||
+    url.pathname.startsWith("/home") ||
+    url.pathname == "/"
+  );
+}

@@ -13,11 +13,6 @@ import { Notyf } from "notyf";
 
 export default {
   state: () => ({
-    messageNotification: new Notyf({
-      duration: 5000,
-      dismissible: true,
-      position: { x: "right", y: "bottom" }
-    }),
     sharedImage: null
   }),
   getters: {
@@ -212,7 +207,9 @@ export default {
         return;
       }
       if (context.rootState.appState.showPopupNotif) {
-        context.state.messageNotification.success(`${data.from}: ${data.text}`);
+        context.rootState.messageNotification.success(
+          `${data.from}: ${data.text}`
+        );
       }
       if (context.rootState.enableSoundNotif) {
         context.getters.notifAudio.play();

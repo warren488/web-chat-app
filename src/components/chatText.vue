@@ -356,7 +356,8 @@ export default Vue.extend({
       this.$refs.fileInput.click();
     },
     fileInputHandler(file) {
-      this.file = file || this.$refs.fileInput.files[0];
+      this.file =
+        file && file instanceof File ? file : this.$refs.fileInput.files[0];
       var imgpreview = this.$refs.imgpreview as HTMLImageElement;
       imgpreview.src = URL.createObjectURL(this.file);
       imgpreview.onload = function() {

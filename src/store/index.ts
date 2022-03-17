@@ -39,6 +39,11 @@ export default new Vuex.Store({
     appData
   },
   state: {
+    messageNotification: new Notyf({
+      duration: 5000,
+      dismissible: true,
+      position: { x: "right", y: "bottom" }
+    }),
     notifAudioFile: getCookie("notifAudioFile") || "juntos.mp3",
     user: null,
     oneTimeListeners: new Map(),
@@ -106,6 +111,24 @@ export default new Vuex.Store({
         .catch(console.log);
     },
     setUpApp: async context => {
+      if (process.env.NODE_ENV == "production") {
+        fetch("/versionuid.json").then(async resp => {
+          let respJSON = await resp.json();
+          console.log(process.env.VUE_APP_VER, respJSON.uuid);
+          if (respJSON.uuid !== process.env.VUE_APP_VER) {
+            // we need to update app (cache)
+            caches.delete("v2").then(async () => {
+              context.state.messageNotification.success(
+                "New app version available refresh to see"
+              );
+              let v2Cache = await caches.open("v2");
+              // TODO: get list of assets here
+              v2Cache.addAll(["/home", "/profile"]);
+            });
+          }
+        });
+      }
+
       const url = new URL(window.location.href);
       const chat = url.searchParams.get("chat");
       context.commit("resetState");
