@@ -594,7 +594,6 @@ export default Vue.extend({
           this.setCurrentChat(friendship_id);
           this.socket.emit(
             "checkin",
-            // FIXME: THIS SHOULD BE THE FRIENDSHIP ID OF THE FRIEND WE ARE CURRENTLY CHATTING WITH
             {
               friendship_id: this.currChatFriendshipId,
               token: getCookie("token")
@@ -648,7 +647,6 @@ export default Vue.extend({
       "currChatFriendshipId",
       "currChatMessages",
       "socketConnected",
-      "events",
       "sharedImage",
       "dataLoaded",
       "chatProminent",

@@ -8,8 +8,6 @@ import {
   scrollBottom2,
   sortMessageArray
 } from "@/common";
-import { eventBus } from "@/common/eventBus";
-import { Notyf } from "notyf";
 
 export default {
   state: () => ({

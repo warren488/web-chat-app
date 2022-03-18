@@ -467,6 +467,24 @@ export const markAsReceived = async (friendship_id, range) => {
   });
 };
 
+export const checkAndLoadAppUpdate = () => {
+  fetch("/versionuid.json").then(async resp => {
+    let respJSON = await resp.json();
+    console.log(process.env.VUE_APP_VER, respJSON.uuid);
+    if (respJSON.uuid !== process.env.VUE_APP_VER) {
+      // we need to update app (cache)
+      caches.delete("v2").then(async () => {
+        store.state.messageNotification.success(
+          "New app version available refresh to see"
+        );
+        let v2Cache = await caches.open("v2");
+        // TODO: get list of assets here
+        v2Cache.addAll(["/home", "/profile"]);
+      });
+    }
+  });
+};
+
 export const countUnreads = ({ chat, user_id }) => {
   const unreadLimit = 50;
   let unreads = 0;
