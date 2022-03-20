@@ -77,10 +77,12 @@ export const subscribeToNotif = async () => {
       );
       await registration.update();
       await requestPermission();
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(pubKey)
-      });
+      const subscription =
+        registration.pushManager.getSubscription() ||
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(pubKey)
+        }));
       await fetch(`${baseURI}/api/users/${store.state.user.id}/subscribe`, {
         method: "POST",
         body: JSON.stringify(subscription),
@@ -616,6 +618,20 @@ export function uuid() {
   );
   return id;
 }
+
+export const sortByCreatedAt = (friendshipA, friendshipB) => {
+  console.log(friendshipA, friendshipB);
+  if (!friendshipB.lastMessage[0]) {
+    return -1;
+  }
+  if (!friendshipA.lastMessage[0]) {
+    return 1;
+  }
+  return (
+    (friendshipB.lastMessage[0].createdAt || 0) -
+    (friendshipA.lastMessage[0].createdAt || 0)
+  );
+};
 
 export const binaryCustomSearch = function(arr, x) {
   if (!arr || arr.length === 0) {

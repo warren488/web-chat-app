@@ -19,7 +19,8 @@ import {
   isInChat,
   markLocalChatMessagesAsRead,
   clearNotifications,
-  checkAndLoadAppUpdate
+  checkAndLoadAppUpdate,
+  sortByCreatedAt
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
@@ -27,7 +28,7 @@ import io from "socket.io-client";
 import { Notyf } from "notyf";
 import appState from "./modules/appState";
 import appData from "./modules/appData";
-
+import { openDB, deleteDB, wrap, unwrap } from "idb";
 /**
  * @fixme - update state to always hold the current friendship ID and a reference to that friend
  * so we dont have to constantly search
@@ -58,6 +59,22 @@ export default new Vuex.Store({
     events: {},
     friendshipIds: [],
     unreads: {},
+    // is top level await well supported?
+    db: openDB("app", 1, {
+      upgrade(db, oldVersion, newVersion, transaction) {
+        if (!db.objectStoreNames.contains("friendShips"))
+          db.createObjectStore("friendShips", { keyPath: "_id" });
+      },
+      blocked() {
+        console.log("blocked");
+      },
+      blocking() {
+        console.log("blocking");
+      },
+      terminated() {
+        console.log("terminated");
+      }
+    }),
     checkinActive: false,
     playlists: new Map()
   },
@@ -80,14 +97,19 @@ export default new Vuex.Store({
       context.state.notifAudioFile = file;
       setCookie("notifAudioFile", file, 1000000);
     },
-    setFriendShips: (context, data) => {
+    async setFriendShips(context, data) {
       return getFriendShips()
-        .then(({ data, friendshipIds }) => {
+        .then(async ({ data, friendshipIds }) => {
           context.commit("setFriendShips", data);
           context.commit("setfriendshipIds", friendshipIds);
           return true;
         })
-        .catch(err => {
+        .catch(async err => {
+          // what if it fails for non netwok reasons after commiting some/all of the data to the store
+          await context.state.db.getAll("friendShips").then((data: any[]) => {
+            context.commit("setFriendShips", data.sort(sortByCreatedAt));
+            context.commit("setfriendshipIds", data.map(({ _id }) => _id));
+          });
           return false;
         });
     },
@@ -115,6 +137,8 @@ export default new Vuex.Store({
       if (process.env.NODE_ENV == "production") {
         checkAndLoadAppUpdate();
       }
+      // NB: TODO: THIS IS ONE OF IF NOT THE ONLY PLACE WE SHOULD BE MUTATING STATE IN ACTIONS
+      context.state.db = await context.state.db;
 
       const url = new URL(window.location.href);
       const chat = url.searchParams.get("chat");
@@ -149,6 +173,7 @@ export default new Vuex.Store({
        */
 
       await getUserInfo().then(({ data }) => {
+        // context.state.db.put("users", data)
         context.state.user = data;
         console.log(data);
         // basically im trying to run this event as soon as it is safe to call socket.emit
@@ -212,11 +237,14 @@ export default new Vuex.Store({
       });
     },
     socketNewFriendHandler: (context, data) => {
-      context.state.friendShips.push({
+      context.commit("pushNewFriendship", {
         ...data.friendshipData,
         lastMessage: []
       });
-      context.state.messages[data.friendshipData._id] = [];
+      context.commit("setChat", {
+        friendship_id: data.friendshipData._id,
+        data: []
+      });
       context.state.socket.emit("checkin", {
         friendship_id: data.friendshipData._id,
         token: getCookie("token")
@@ -401,6 +429,10 @@ export default new Vuex.Store({
         [friendship_id]: state.unreads[friendship_id]++
       };
     },
+    pushNewFriendship(state, friendship) {
+      state.friendShips.push(friendship);
+      state.db.add("friendShips", friendship);
+    },
     addUnreads(state, { friendship_id, unreads }) {
       state.unreads = {
         ...state.unreads,
@@ -426,6 +458,11 @@ export default new Vuex.Store({
     },
     setFriendShips(state, friendShips) {
       state.friendShips = friendShips;
+      const tx = state.db.transaction("friendShips", "readwrite");
+      Promise.all([
+        ...friendShips.map(friendship => tx.store.put(friendship)),
+        tx.done
+      ]);
     },
     setfriendshipIds(state, friendshipIds) {
       state.friendshipIds = friendshipIds;
@@ -440,6 +477,7 @@ export default new Vuex.Store({
     },
     setChat(state, { friendship_id, data }) {
       state.messages[friendship_id] = data;
+      // state.db.put("messages" )
     },
     updateLastMessage(state, { friendship_id, lastMessage }) {
       let index = state.friendShips.findIndex(friend => {
@@ -451,6 +489,7 @@ export default new Vuex.Store({
        * */
       state.friendShips.unshift(state.friendShips[index]);
       state.friendShips.splice(index + 1, 1);
+      state.db.put("friendShips", state.friendShips[0]);
     },
     addEvent(state, event) {
       if (state.events[event.type]) {
