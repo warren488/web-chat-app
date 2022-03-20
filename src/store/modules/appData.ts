@@ -31,30 +31,33 @@ export default {
         eventWrapper("reconnect", (...args) => {
           context.rootState.checkinActive = true;
           let checkinData = {};
-          context.rootState.friendshipIds.forEach(id => {
-            if (context.rootState.messages[id]) {
-              checkinData[id] =
-                context.rootState.messages[id][
-                  context.rootState.messages[id].length - 1
-                ];
-              // we will need to ask for the updated status of messages that arent read, at this point i will
-              // assume that this is almost always going to be a small number so we can simply send all the msgIds
-              // in order to make the query simple
-              /** no */
-              // checkinData[id].unread = [];
-              // for (
-              //   let i = context.rootState.messages[id].length - 1;
-              //   i > context.rootState.messages[id].length - 50 && i <= 0;
-              //   i--
-              // ) {
-              //   if (context.rootState.messages[id][i].status !== "read") {
-              //     checkinData[id].unread.push(
-              //       context.rootState.messages[id][i].msgId
-              //     );
-              //   }
-              // }
-            }
-          });
+          // TODO: kickoff the checkin for the current chat first
+          context.rootState.friendShips
+            .map(({ _id }) => _id)
+            .forEach(id => {
+              if (context.rootState.messages[id]) {
+                checkinData[id] =
+                  context.rootState.messages[id][
+                    context.rootState.messages[id].length - 1
+                  ];
+                // we will need to ask for the updated status of messages that arent read, at this point i will
+                // assume that this is almost always going to be a small number so we can simply send all the msgIds
+                // in order to make the query simple
+                /** no */
+                // checkinData[id].unread = [];
+                // for (
+                //   let i = context.rootState.messages[id].length - 1;
+                //   i > context.rootState.messages[id].length - 50 && i <= 0;
+                //   i--
+                // ) {
+                //   if (context.rootState.messages[id][i].status !== "read") {
+                //     checkinData[id].unread.push(
+                //       context.rootState.messages[id][i].msgId
+                //     );
+                //   }
+                // }
+              }
+            });
           context
             .dispatch("emitEvent", {
               eventName: "masCheckin",

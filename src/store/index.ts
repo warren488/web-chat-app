@@ -57,7 +57,6 @@ export default new Vuex.Store({
     currChatMessages: [],
     updateQueue: [],
     events: {},
-    friendshipIds: [],
     unreads: {},
     // is top level await well supported?
     db: openDB("app", 1, {
@@ -99,16 +98,14 @@ export default new Vuex.Store({
     },
     async setFriendShips(context, data) {
       return getFriendShips()
-        .then(async ({ data, friendshipIds }) => {
+        .then(async data => {
           context.commit("setFriendShips", data);
-          context.commit("setfriendshipIds", friendshipIds);
           return true;
         })
         .catch(async err => {
           // what if it fails for non netwok reasons after commiting some/all of the data to the store
           await context.state.db.getAll("friendShips").then((data: any[]) => {
             context.commit("setFriendShips", data.sort(sortByCreatedAt));
-            context.commit("setfriendshipIds", data.map(({ _id }) => _id));
           });
           return false;
         });
@@ -402,7 +399,6 @@ export default new Vuex.Store({
       state.friendShips = null;
       state.messages = null;
       state.socket = null;
-      state.friendshipIds = [];
     },
     registerListener(state, { customName, event, handler }) {
       console.log("registerListener");
@@ -463,9 +459,6 @@ export default new Vuex.Store({
         ...friendShips.map(friendship => tx.store.put(friendship)),
         tx.done
       ]);
-    },
-    setfriendshipIds(state, friendshipIds) {
-      state.friendshipIds = friendshipIds;
     },
     markLocalChatMessagesAsRead(state, { friendship_id }) {
       /** @todo tell the server to mark all these as read  */

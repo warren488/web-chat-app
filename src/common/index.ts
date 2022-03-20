@@ -3,8 +3,7 @@ import {
   AuthResponse,
   RegisterResponse,
   UserInfo,
-  UpdatedUserInfo,
-  getFriendsResponse
+  UpdatedUserInfo
 } from "./interfaces";
 import * as firebase from "firebase/app";
 import "firebase/storage";
@@ -394,7 +393,7 @@ export function getCookie(name: string): string | null {
   return cookieValue !== "" ? cookieValue : null;
 }
 
-export const getFriendShips = async (): Promise<getFriendsResponse> => {
+export const getFriendShips = async () => {
   return await axios({
     method: "GET",
     headers: {
@@ -402,18 +401,11 @@ export const getFriendShips = async (): Promise<getFriendsResponse> => {
     },
     url: `${baseURI}/api/users/me/friends`
   }).then(({ data }) => {
-    let friendshipIds = [];
-    for (const friend of data) {
-      friendshipIds.push(friend._id);
-    }
-    return { data, friendshipIds };
+    return data;
   });
 };
 
-export const addFriend = async ({
-  username,
-  id
-}): Promise<getFriendsResponse> => {
+export const addFriend = async ({ username, id }) => {
   return await axios({
     method: "POST",
     headers: {
@@ -424,9 +416,7 @@ export const addFriend = async ({
     url: `${baseURI}/api/users/me/friends`
   });
 };
-export const sendRequest = async (
-  friendId: string
-): Promise<getFriendsResponse> => {
+export const sendRequest = async (friendId: string) => {
   return await axios({
     method: "POST",
     headers: {
