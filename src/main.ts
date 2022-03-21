@@ -16,14 +16,9 @@ import { Notyf } from "notyf";
 import MdField from "vue-material/dist/components/MdField";
 Vue.config.productionTip = false;
 
-/** @todo this should be on a route redirect to go straigh to the route */
 let token = getCookie("token");
 if (token) {
-  store.dispatch("setUpApp").then(() => {
-    if (router.currentRoute.fullPath == "/login") {
-      router.push("/home");
-    }
-  });
+  store.dispatch("setUpApp");
 }
 
 if ("serviceWorker" in navigator) {

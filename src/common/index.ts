@@ -698,6 +698,15 @@ export const authBeforeEnter = (to, from, next) => {
   next();
 };
 
+export const upgradeToAuth = (to, from, next) => {
+  let token = getCookie("token");
+  if (token) {
+    next("/");
+    return;
+  }
+  next();
+};
+
 export function enableNotifs() {
   notifyMe({ from: "notifications", message: "enabled" });
   setCookie("notifPref", "true", 1000000);
