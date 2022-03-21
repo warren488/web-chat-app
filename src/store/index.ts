@@ -99,24 +99,30 @@ export default new Vuex.Store({
     playlist: state => state.playlists
   },
   actions: {
-    setNotifAudioFile: (context, file) => {
-      context.state.notifAudioFile = file;
-      setCookie("notifAudioFile", file, 1000000);
-    },
+    /**
+     * get from db wait on network if db fails, let network fetch in bg if db succeeds
+     */
     async loadInitialFriendShips(context, data) {
-      return getFriendShips()
-        .then(async data => {
-          context.commit("setFriendShips", data);
-          return true;
-        })
-        .catch(async err => {
-          // what if it fails for non netwok reasons after commiting some/all of the data to the store
+      return (
+        context.state.db
           // @ts-ignore
-          await context.state.db.getAll("friendShips").then((data: any[]) => {
-            context.commit("setFriendShips", data.sort(sortByCreatedAt));
-          });
-          return false;
-        });
+          .getAll("friendShips")
+          .then(async (data: any[]) => {
+            if (data.length === 0) {
+              return getFriendShips().then(async data => {
+                return context.commit("setFriendShips", data);
+              });
+            } else {
+              getFriendShips().then(async data => {
+                context.commit("setFriendShips", data);
+              });
+              return context.commit(
+                "setFriendShips",
+                data.sort(sortByCreatedAt)
+              );
+            }
+          })
+      );
     },
     loadInitialMessages: async (context, { friendship_id, limit = 50 }) => {
       const messages = await getMessages(friendship_id, limit)
@@ -136,6 +142,18 @@ export default new Vuex.Store({
       });
       context.commit("addUnreads", { friendship_id, unreads });
     },
+    connectToLiveChat(context, chat) {
+      context.dispatch("runOnConnected", () => {
+        context.state.socket.emit("checkin", {
+          friendship_id: chat,
+          token: getCookie("token")
+        });
+      });
+    },
+    async initializeChat(context, { friendship_id, limit = 50 }) {
+      await context.dispatch("loadInitialMessages", { friendship_id, limit });
+      return context.dispatch("connectToLiveChat", friendship_id);
+    },
     loadNotifications: async context => {
       return getNotifications()
         .then(({ data }) => {
@@ -144,13 +162,38 @@ export default new Vuex.Store({
         })
         .catch(console.log);
     },
+    /**
+     * get the user from idb first, if there's no user then go to the network and wait on it
+     * if there is a user then return that user and let the network update idb in the background
+     */
     async loadInitialUser(context) {
-      const user = await getUserInfo()
-        .then(({ data }) => data)
-        // @ts-ignore
-        .catch(err => context.state.db.get("users", "currentUser"));
-      context.commit("setUser", { _id: "currentUser", ...user });
-      return user;
+      return (
+        context.state.db
+          // @ts-ignore
+          .get("users", "currentUser")
+          .then(user => {
+            if (!user) {
+              return getUserInfo().then(({ data }) => data);
+            } else {
+              // let the network fetch and update state whenever
+              getUserInfo().then(({ data: user }) =>
+                context.commit("setUser", { _id: "currentUser", ...user })
+              );
+              return user;
+            }
+          })
+          .then(user => {
+            context.commit("setUser", { _id: "currentUser", ...user });
+            return user;
+          })
+      );
+    },
+    runOnConnected: async (context, fn) => {
+      if (!context.state.socket.connected) {
+        context.state.socket.on("connect", eventWrapper("connect", fn));
+      } else {
+        fn();
+      }
     },
     setUpApp: async context => {
       if (process.env.NODE_ENV == "production") {
@@ -194,63 +237,44 @@ export default new Vuex.Store({
        */
 
       await context.dispatch("loadInitialUser").then(user => {
-        // basically im trying to run this event as soon as it is safe to call socket.emit
-        if (!context.state.socket.connected) {
-          context.state.socket.on(
-            "connect",
-            eventWrapper("connect", () => {
-              context.state.socket.emit("checkin", {
-                // @ts-ignore
-                userId: user.id,
-                token: getCookie("token")
-              });
-            })
-          );
-        } else {
+        context.dispatch("runOnConnected", () => {
           context.state.socket.emit("checkin", {
             // @ts-ignore
             userId: user.id,
             token: getCookie("token")
           });
-        }
-        context.state.friendShips &&
-          context.state.friendShips.forEach(friendShip => {
-            let friendship_id = friendShip._id;
+        });
+        if (context.state.friendShips) {
+          // if there is a chat to be opened load those messages first and open that chat
+          if (
+            chat &&
+            context.state.friendShips.find(
+              friendShip => friendShip._id === chat
+            )
+          ) {
             promiseArr.push(
               context
-                .dispatch("loadInitialMessages", { friendship_id, limit: 30 })
+                .dispatch("initializeChat", {
+                  friendship_id: chat,
+                  limit: 30
+                })
                 .then(() => {
-                  /** so these are so many listeners we are adding fot the connect event
-                   * althoughg it only fires once hmmmm....
-                   * maybe we dont need to attach these listeners after we get all messages (but i think we do)
-                   */
-                  if (!context.state.socket.connected) {
-                    context.state.socket.on(
-                      "connect",
-                      eventWrapper("connect", () => {
-                        context.state.socket.emit("checkin", {
-                          friendship_id,
-                          token: getCookie("token")
-                        });
-                      })
-                    );
-                  } else {
-                    context.state.socket.emit("checkin", {
-                      friendship_id,
-                      token: getCookie("token")
-                    });
-                  }
-                  return;
+                  context.dispatch("setCurrentChat", chat);
+                  context.commit("setHomeView", "chatbody");
                 })
             );
+          }
+          context.state.friendShips.forEach(friendShip => {
+            let friendship_id = friendShip._id;
+            if (chat === friendship_id) return;
+            promiseArr.push(
+              context.dispatch("initializeChat", { friendship_id, limit: 30 })
+            );
           });
+        }
       });
 
       await Promise.all(promiseArr).then(promises => {
-        if (chat) {
-          context.dispatch("setCurrentChat", chat);
-          context.commit("setHomeView", "chatbody");
-        }
         context.commit("setDataLoadedTrue");
       });
     },
@@ -413,6 +437,10 @@ export default new Vuex.Store({
   },
   // todo: check if this is returns a promise or is synchronous
   mutations: {
+    setNotifAudioFile: (state, file) => {
+      state.notifAudioFile = file;
+      setCookie("notifAudioFile", file, 1000000);
+    },
     resetState: (state, data) => {
       // TODO: FIXME WE NEED TO GET A REASON FOR RESETTING SO WE KNOW IF TO CLEAR INDEXED DB OR NOT
       if (state.socket) {

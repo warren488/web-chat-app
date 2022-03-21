@@ -367,7 +367,6 @@ export default Vue.extend({
   methods: {
     ...mapActions([
       "addOneTimeListener",
-      "setNotifAudioFile",
       "setFriends",
       "setUpApp",
       "loadMessages",
@@ -375,6 +374,7 @@ export default Vue.extend({
       "emitEvent"
     ]),
     ...mapMutations([
+      "setNotifAudioFile",
       "updateLastMessage",
       "hideTyping",
       "clearSharedImage",
