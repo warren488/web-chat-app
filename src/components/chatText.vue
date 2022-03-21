@@ -332,7 +332,6 @@ export default Vue.extend({
         /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
       );
       if (urlMatches) {
-        console.log("found url");
         if (!this.previewData || urlMatches[0] !== this.previewData.url) {
           this.loadingPreview = true;
           getPreviewData(urlMatches[0])
@@ -462,7 +461,6 @@ export default Vue.extend({
         });
       }
       this.messageText = "";
-      console.log(this.$refs);
       // @fixme potential cause of problems
       this.$refs.msgText.$el.focus();
       this.previewData = null;

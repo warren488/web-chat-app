@@ -173,7 +173,6 @@ export default new Vuex.Store({
       //       .get("messages", friendship_id)
       //       .then(({ messages }) => messages)
       //   );
-      // console.log(messages);
 
       // context.commit("setChat", { friendship_id, messages });
       // const unreads = countUnreads({
@@ -197,7 +196,6 @@ export default new Vuex.Store({
     loadNotifications: async context => {
       return getNotifications()
         .then(({ data }) => {
-          console.log(data);
           context.commit("storeEvents", data);
         })
         .catch(console.log);
@@ -241,8 +239,8 @@ export default new Vuex.Store({
       }
       // NB: TODO: THIS IS ONE OF IF NOT THE ONLY PLACE WE SHOULD BE MUTATING STATE IN ACTIONS
       // FIXME: IT SEEMS THIS CAN BLOCK THE MAIN THREAD WITH A PROMISE THAT NEVER RESOLVES
-      // @ts-ignore
       if (context.state.db instanceof Promise) {
+        // @ts-ignore
         context.state.db = await context.state.db.catch(console.log);
       }
 
@@ -383,8 +381,6 @@ export default new Vuex.Store({
      * will tell our other devices, hey this message was received/read on another device
      */
     socketReceivedHandler2(context, { friendship_id, msgId, createdAt, read }) {
-      console.log("received somewhere");
-
       let index = binaryCustomSearch(context.state.messages[friendship_id], {
         createdAt
       });
@@ -498,7 +494,6 @@ export default new Vuex.Store({
       state.db.put("users", { _id: "currentUser", ...state.user });
     },
     registerListener(state, { customName, event, handler }) {
-      console.log("registerListener");
       let existingListeners = state.oneTimeListeners.get(event);
       if (!existingListeners) {
         existingListeners = new Map();
@@ -507,7 +502,6 @@ export default new Vuex.Store({
       state.oneTimeListeners.set(event, existingListeners);
     },
     removeListener(state, { customName, event }) {
-      console.log("removeListener");
       let existingListeners = state.oneTimeListeners.get(event);
       if (!existingListeners) {
         return;
@@ -612,11 +606,9 @@ export default new Vuex.Store({
       if (state.events[event.type]) {
         state.events[event.type].push(event);
       }
-      console.log("events", state.events);
     },
     storeEvents(state, events) {
       state.events = { ...events };
-      console.log("events", state.events);
     },
     showTyping(state, friendship_id) {
       let index = state.friendShips.findIndex(friend => {

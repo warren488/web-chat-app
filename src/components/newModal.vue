@@ -72,7 +72,6 @@ export default {
       backdrop: "static",
       keyboard: false
     });
-    console.log(this.myModal);
     this.$refs.modalContainer.addEventListener(
       "hidePrevented.bs.modal",
       event => {
@@ -80,7 +79,6 @@ export default {
       }
     );
     if (this.showModal === true) {
-      console.log(this.showModal);
       this.open();
     }
   },

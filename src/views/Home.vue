@@ -325,7 +325,6 @@ export default Vue.extend({
     if ("share" in this.$route.query) {
       getSharedImage().then(image => {
         this.setSharedImage({ image, url: URL.createObjectURL(image) });
-        console.log(image);
       });
       // might be sketch
       this.$router.replace("/");
@@ -336,8 +335,6 @@ export default Vue.extend({
       customName: "Home",
       event: "watchSessRequest",
       handler: data => {
-        console.log("from home");
-
         if (!this.player.loadComponent) {
           this.player.pendingRequest = data;
           this.player.loadComponent = true;
@@ -393,7 +390,6 @@ export default Vue.extend({
       if (tabId === "tab-requests") {
         // clear unread requests
       }
-      console.log(tabId);
     },
     goToProfile() {
       this.$router.push("/profile");
@@ -461,7 +457,6 @@ export default Vue.extend({
       // massive performance issue
       if (message.hID) {
         for (const chatMessage of this.messages[this.currChatFriendshipId]) {
-          console.log(chatMessage);
           if (chatMessage.msgId === message.hID) {
             quoted = chatMessage;
             break;

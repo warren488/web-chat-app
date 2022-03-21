@@ -79,7 +79,6 @@ export default Vue.extend({
     },
 
     close() {
-      console.log("close");
       this.isOpen = false;
     },
     open() {

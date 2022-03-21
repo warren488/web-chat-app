@@ -63,7 +63,6 @@ export default Vue.extend({
   components: { Loader },
   methods: {
     sendRequest() {
-      console.log(this.details);
       if (!this.hasRequestFromMe && !this.sentRequestToMe) {
         sendRequest(this.details.id).then(data => {
           let notification = new Notyf({

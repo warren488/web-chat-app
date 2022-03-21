@@ -98,7 +98,6 @@ export default {
   mounted() {},
   methods: {
     selected(event) {
-      console.log(event.target.value);
       this.$emit("selected", event.target.value);
     }
   }

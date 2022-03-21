@@ -118,7 +118,6 @@ export default Vue.extend({
     //   i do this because after the first time we open the component it technically doesnt get destroyed so the
     // addLink value will be false and it wont show the modal
     this.addLink = true;
-    console.log("mounted");
     if (this.forwardedPendingRequest) {
       this.pendingRequest = this.forwardedPendingRequest;
       this.addLink = false;
@@ -139,7 +138,6 @@ export default Vue.extend({
       customName: "YT",
       event: "pauseVideo",
       handler: data => {
-        console.log("pauseVideo othandler");
         window.player.pauseVideo();
         window.player.seekTo(data.time);
       }
@@ -157,7 +155,6 @@ export default Vue.extend({
       customName: "YT",
       event: "playVideo",
       handler: data => {
-        console.log("playVideo othandler");
         window.player.playVideo();
       }
     });
@@ -194,14 +191,12 @@ export default Vue.extend({
     async newLinkInput(event) {
       try {
         this.loadingPreview = true;
-        console.log(event.target.value, this.newLinkUrl);
         // TODO: check the specs for the input event to see if there's a better way to do this
         this.newLinkUrl = event.target.value;
         let previewData = await getPreviewData(event.target.value);
         if (previewData.message == "error") {
           this.newLinkPreviewData = null;
         } else {
-          console.log(previewData);
           this.newLinkPreviewData = previewData;
         }
         this.loadingPreview = false;
@@ -212,7 +207,6 @@ export default Vue.extend({
       }
     },
     async addToCreatedList({ listId, url }) {
-      console.log(this.playlist);
       if (!this.newLinkUrl) {
         return;
       }
@@ -227,7 +221,6 @@ export default Vue.extend({
         }
       });
       this.playlist = newPlaylist;
-      console.log(newPlaylist);
     },
     selectedPlaylist(listId) {
       if (listId) {
@@ -249,7 +242,6 @@ export default Vue.extend({
     },
     async acceptedWatchRequestHandler(data) {
       // TODO: in the future we should add a way for us to confirm that we're ready?
-      console.log("acceptedWatchRequestHandler");
       if (data.userId === this.user.id) {
         return;
       }
@@ -262,7 +254,6 @@ export default Vue.extend({
       this.startPlayer(this.playlist.vids[0].url);
     },
     async watchSessRequestHandler(data) {
-      console.log(data);
       if (data.userId === this.user.id) {
         return;
       }
@@ -293,7 +284,6 @@ export default Vue.extend({
       if (data.userId === this.user.id) {
         return;
       }
-      console.log(this.friendShips);
       const accept = await confirm(
         `your friend ${
           this.friendShips.find(
@@ -316,7 +306,6 @@ export default Vue.extend({
       }
     },
     sendWatchRequest(data) {
-      console.log(data);
       if (this.vids.length === 0) {
         return;
       }
@@ -351,7 +340,6 @@ export default Vue.extend({
         } else {
           return;
         }
-        console.log(url);
       } catch (e) {
         console.log(e);
       }
@@ -376,11 +364,8 @@ export default Vue.extend({
               // NB: for whatever reason this is the only version of 'player' that has the function
               window.player = event.target;
               this.player = event.target;
-              console.log(event);
-              console.log(window.player);
             },
             onStateChange: ({ target, data }) => {
-              console.log("statechanged", data, target);
               if (data === 2) {
                 this.emitEvent({
                   eventName: "pauseVideo",

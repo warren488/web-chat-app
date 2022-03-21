@@ -126,7 +126,6 @@ export default Vue.extend({
   computed: {
     ...mapGetters(["user", "unreads"]),
     myUserList() {
-      console.log("here");
       if (this.filterString) {
         return this.filteredList;
       }
