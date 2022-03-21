@@ -77,7 +77,7 @@ export const subscribeToNotif = async () => {
       await registration.update();
       await requestPermission();
       const subscription =
-        registration.pushManager.getSubscription() ||
+        (await registration.pushManager.getSubscription()) ||
         (await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(pubKey)
