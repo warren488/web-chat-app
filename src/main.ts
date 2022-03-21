@@ -16,10 +16,14 @@ import { Notyf } from "notyf";
 import MdField from "vue-material/dist/components/MdField";
 Vue.config.productionTip = false;
 
-/** if we have a token then there's no possibility of running this a second time on login */
+/** @todo this should be on a route redirect to go straigh to the route */
 let token = getCookie("token");
 if (token) {
-  store.dispatch("setUpApp");
+  store.dispatch("setUpApp").then(() => {
+    if (router.currentRoute.fullPath == "/login") {
+      router.push("/home");
+    }
+  });
 }
 
 if ("serviceWorker" in navigator) {
@@ -32,7 +36,6 @@ if ("serviceWorker" in navigator) {
     });
 
   navigator.serviceWorker.addEventListener("message", event => {
-    console.log(event.data, event.data);
     if (event.data.type === "openChat") {
       router.push("/home?chat=" + event.data.chat);
       // store.commit("setCurrentChat", event.data.chat);

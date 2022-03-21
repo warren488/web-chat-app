@@ -109,8 +109,9 @@ export default Vue.extend({
       return false;
     },
     isFriend() {
-      return !!this.friendShips.find(
-        ({ friendId }) => friendId === this.details.id
+      return !!(
+        this.friendShips &&
+        this.friendShips.find(({ friendId }) => friendId === this.details.id)
       );
     },
     hasRequestFromMe() {

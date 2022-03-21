@@ -61,7 +61,6 @@ export const clearNotifications = async (searchOptions?: Object) => {
 };
 
 export const subscribeToNotif = async () => {
-  console.log("subscribing");
   let notification = new Notyf({
     duration: 7000,
     dismissible: true,
@@ -273,6 +272,7 @@ export const logout = async () => {
     await store.commit("resetState");
     setCookie("token", "", -1000);
     setCookie("username", "", -1000);
+    setCookie("io", "", -1000);
     return data;
   } catch (error) {
     console.log(error.response);
@@ -473,7 +473,6 @@ export const markAsReceived = async (friendship_id, range) => {
 export const checkAndLoadAppUpdate = () => {
   fetch("/versionuid.json").then(async resp => {
     let respJSON = await resp.json();
-    console.log(process.env.VUE_APP_VER, respJSON.uuid);
     if (respJSON.uuid !== process.env.VUE_APP_VER) {
       // we need to update app (cache)
       caches.delete("v2").then(async () => {
@@ -500,7 +499,6 @@ export const countUnreads = ({ chat, user_id }) => {
       }
     }
   }
-  console.log(unreads);
 
   return unreads;
 };
@@ -619,7 +617,6 @@ export function uuid() {
 }
 
 export const sortByCreatedAt = (friendshipA, friendshipB) => {
-  console.log(friendshipA, friendshipB);
   if (!friendshipB.lastMessage[0]) {
     return -1;
   }
@@ -679,11 +676,9 @@ export const getLastMessage = async (friendship_id: string) => {
 export const eventWrapper = (eventName, handler) => {
   return data => {
     if (data && data.eventData) {
-      console.log("addEvent");
       store.commit("addEvent", data.eventData);
     }
     let OThandlers = store.state.oneTimeListeners.get(eventName);
-    console.log(eventName, OThandlers);
     if (OThandlers) {
       for (const OThandler of OThandlers.values()) {
         OThandler(data);

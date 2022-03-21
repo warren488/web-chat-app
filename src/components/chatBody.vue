@@ -284,7 +284,6 @@ export default Vue.extend({
         }
       }
 
-      console.log(messageMap);
       return messageMap;
     }
   },

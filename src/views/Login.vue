@@ -119,7 +119,7 @@ export default Vue.extend({
         /** i dont think we necessarily need to wait on or keep track of this
          * it should complete before the user tries to send any images or audio,
          * remember this is required for only writes and not reads */
-        getFirebaseSigninToken().then(token => signInToFirebase(token));
+        getFirebaseSigninToken().then(({ token }) => signInToFirebase(token));
         await this.setUpApp();
         this.$router.push("/home");
         this.loading = false;

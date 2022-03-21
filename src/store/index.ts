@@ -59,7 +59,7 @@ export default new Vuex.Store({
     events: {},
     unreads: {},
     // is top level await well supported?
-    db: openDB("app", 4, {
+    db: openDB("app", 5, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (!db.objectStoreNames.contains("friendShips")) {
           db.createObjectStore("friendShips", { keyPath: "_id" });
@@ -137,20 +137,13 @@ export default new Vuex.Store({
           } else {
             // fetch and update in background
             /**
-             * so this is a little funny but we have an issue where the messages are loading from idb and they set the chat as one variable(reference)
-             * then the data comes in from the network and changes that reference meaning that any part of our app that happened to use the early reference
-             * from idb is now pointing at the wrong array of messages, this happens as well because they are accessed in the app as properties of the
-             * messages object
+             * had to update setchat so that this doesnt overwrite the previous reference and break the components
+             * using that reference
              */
-            const messages = dbMessages.messages;
             getMessages(friendship_id, limit).then(({ data }) => {
-              // see comment above for reasoning; dont know if this will be expensive
-              messages.splice(0, messages.length, ...data);
-              // technically we dont have to do this to update the state since the reference is the same but we do need
-              // it to update the idb and to run any other code we may have/add that runs on chat load
               context.commit("setChat", {
                 friendship_id,
-                messages
+                messages: data
               });
               const unreads = countUnreads({
                 chat: data,
@@ -159,7 +152,7 @@ export default new Vuex.Store({
               context.commit("addUnreads", { friendship_id, unreads });
             });
             // get db data now
-            return messages;
+            return dbMessages.messages;
           }
         });
       context.commit("setChat", {
@@ -249,7 +242,9 @@ export default new Vuex.Store({
       // NB: TODO: THIS IS ONE OF IF NOT THE ONLY PLACE WE SHOULD BE MUTATING STATE IN ACTIONS
       // FIXME: IT SEEMS THIS CAN BLOCK THE MAIN THREAD WITH A PROMISE THAT NEVER RESOLVES
       // @ts-ignore
-      context.state.db = await context.state.db.catch(console.log);
+      if (context.state.db instanceof Promise) {
+        context.state.db = await context.state.db.catch(console.log);
+      }
 
       const url = new URL(window.location.href);
       const chat = url.searchParams.get("chat");
@@ -585,7 +580,18 @@ export default new Vuex.Store({
         .catch(console.log);
     },
     setChat(state, { friendship_id, messages }) {
-      state.messages[friendship_id] = messages;
+      // do this so that components that use the messages for this chat wont have out of date references
+      // re-assigning would cause that issues
+      if (state.messages[friendship_id]) {
+        state.messages[friendship_id].splice(
+          0,
+          state.messages[friendship_id].length,
+          ...messages
+        );
+      } else {
+        state.messages[friendship_id] = messages;
+      }
+
       // @ts-ignore
       state.db.put("messages", { friendship_id, messages }).catch(console.log);
     },
