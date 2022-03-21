@@ -213,7 +213,10 @@ export default {
         );
       }
       if (context.rootState.enableSoundNotif) {
-        context.getters.notifAudio.play();
+        try {
+          context.getters.notifAudio.play();
+          // eslint-disable-next-line no-empty
+        } catch {}
       }
       if (context.rootState.enableVisualNotif) {
         notifyMe({ from: data.from, message: data.text });
@@ -302,11 +305,9 @@ export default {
       }
       if (getters.isInChat === friendship_id) {
         /** @todo tell the server to mark all these as read  */
-        rootState.messages[friendship_id] = markLocalChatMessagesAsRead(
-          rootState.messages[friendship_id],
-          rootState.user.id
-        );
-        rootState.unreads[friendship_id] = 0;
+        commit("markLocalChatMessagesAsRead", {
+          friendship_id
+        });
         if (rootState.messages[friendship_id].length > 0) {
           markAsReceived(friendship_id, [
             rootState.messages[friendship_id][0].createdAt,

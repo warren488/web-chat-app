@@ -125,22 +125,69 @@ export default new Vuex.Store({
       );
     },
     loadInitialMessages: async (context, { friendship_id, limit = 50 }) => {
-      const messages = await getMessages(friendship_id, limit)
-        .then(({ data }) => data)
-        .catch(err =>
-          context.state.db
-            // @ts-ignore
-            .get("messages", friendship_id)
-            .then(({ messages }) => messages)
-        );
-      console.log(messages);
-
-      context.commit("setChat", { friendship_id, messages });
+      // get db messages first
+      const messages = await context.state.db
+        // @ts-ignore
+        .get("messages", friendship_id)
+        .then(async dbMessages => {
+          if (!(dbMessages && dbMessages.messages)) {
+            // wait on network
+            const { data: messages } = await getMessages(friendship_id, limit);
+            return messages;
+          } else {
+            // fetch and update in background
+            /**
+             * so this is a little funny but we have an issue where the messages are loading from idb and they set the chat as one variable(reference)
+             * then the data comes in from the network and changes that reference meaning that any part of our app that happened to use the early reference
+             * from idb is now pointing at the wrong array of messages, this happens as well because they are accessed in the app as properties of the
+             * messages object
+             */
+            const messages = dbMessages.messages;
+            getMessages(friendship_id, limit).then(({ data }) => {
+              // see comment above for reasoning; dont know if this will be expensive
+              messages.splice(0, messages.length, ...data);
+              // technically we dont have to do this to update the state since the reference is the same but we do need
+              // it to update the idb and to run any other code we may have/add that runs on chat load
+              context.commit("setChat", {
+                friendship_id,
+                messages
+              });
+              const unreads = countUnreads({
+                chat: data,
+                user_id: context.state.user.id
+              });
+              context.commit("addUnreads", { friendship_id, unreads });
+            });
+            // get db data now
+            return messages;
+          }
+        });
+      context.commit("setChat", {
+        friendship_id,
+        messages
+      });
       const unreads = countUnreads({
         chat: messages,
         user_id: context.state.user.id
       });
       context.commit("addUnreads", { friendship_id, unreads });
+      // ------------------------------
+      // const messages = await getMessages(friendship_id, limit)
+      //   .then(({ data }) => data)
+      //   .catch(err =>
+      //     context.state.db
+      //       // @ts-ignore
+      //       .get("messages", friendship_id)
+      //       .then(({ messages }) => messages)
+      //   );
+      // console.log(messages);
+
+      // context.commit("setChat", { friendship_id, messages });
+      // const unreads = countUnreads({
+      //   chat: messages,
+      //   user_id: context.state.user.id
+      // });
+      // context.commit("addUnreads", { friendship_id, unreads });
     },
     connectToLiveChat(context, chat) {
       context.dispatch("runOnConnected", () => {
@@ -529,6 +576,13 @@ export default new Vuex.Store({
         state.user.id
       );
       state.unreads[friendship_id] = 0;
+      state.db
+        // @ts-ignore
+        .put("messages", {
+          friendship_id,
+          messages: state.messages[friendship_id]
+        })
+        .catch(console.log);
     },
     setChat(state, { friendship_id, messages }) {
       state.messages[friendship_id] = messages;

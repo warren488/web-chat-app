@@ -456,8 +456,6 @@ export default Vue.extend({
         });
         this.cancelFileSend();
       } else {
-        console.log("sdsd");
-
         this.$emit("newMessage", {
           text: msg,
           ...messageShell

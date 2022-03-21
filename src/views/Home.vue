@@ -580,34 +580,7 @@ export default Vue.extend({
     },
     openChat(friendShip) {
       let friendship_id = friendShip._id;
-
-      /** if we get this far and dont have any messages, will we ever?
-       * maybe just use the socket here directly to make absolutely surethat we dont have any
-       */
-      if (!this.messages[friendship_id]) {
-        return this.loadMessages({ friendship_id }).then(() => {
-          /**
-           * @todo this is a bit disconnected, we set the current messages using the
-           * argument, but then we set the currentMessages variable after
-           */
-          this.currentMessages = this.messages[friendship_id];
-          this.setCurrentChat(friendship_id);
-          this.socket.emit(
-            "checkin",
-            {
-              friendship_id: this.currChatFriendshipId,
-              token: getCookie("token")
-            },
-            (err, data) =>
-              !err
-                ? console.log("checking successful")
-                : console.log("checking unsuccessful")
-          );
-        });
-      } else {
-        this.setCurrentChat(friendship_id);
-      }
-
+      this.setCurrentChat(friendship_id);
       this.setHomeView("chatbody");
     },
     async filter(filterString: string) {
