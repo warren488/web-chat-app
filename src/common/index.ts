@@ -479,9 +479,10 @@ export const checkAndLoadAppUpdate = () => {
         store.state.messageNotification.success(
           "New app version available refresh to see"
         );
-        let v2Cache = await caches.open("v2");
-        // TODO: get list of assets here
-        v2Cache.addAll(["/home", "/profile"]);
+        // TODO: for now we wont do this because it causes sync issues when doing multiple updates
+        // we need to get list of assets here
+        // let v2Cache = await caches.open("v2");
+        // v2Cache.addAll(["/home", "/profile"]);
       });
     }
   });
