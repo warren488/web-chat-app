@@ -28,7 +28,7 @@ import io from "socket.io-client";
 import { Notyf } from "notyf";
 import appState from "./modules/appState";
 import appData from "./modules/appData";
-import { openDB, deleteDB, wrap, unwrap } from "idb";
+import { openDB } from "idb";
 /**
  * @fixme - update state to always hold the current friendship ID and a reference to that friend
  * so we dont have to constantly search
@@ -59,10 +59,17 @@ export default new Vuex.Store({
     events: {},
     unreads: {},
     // is top level await well supported?
-    db: openDB("app", 1, {
+    db: openDB("app", 4, {
       upgrade(db, oldVersion, newVersion, transaction) {
-        if (!db.objectStoreNames.contains("friendShips"))
+        if (!db.objectStoreNames.contains("friendShips")) {
           db.createObjectStore("friendShips", { keyPath: "_id" });
+        }
+        if (!db.objectStoreNames.contains("users")) {
+          db.createObjectStore("users", { keyPath: "_id" });
+        }
+        if (!db.objectStoreNames.contains("messages")) {
+          db.createObjectStore("messages", { keyPath: "friendship_id" });
+        }
       },
       blocked() {
         console.log("blocked");
@@ -96,7 +103,7 @@ export default new Vuex.Store({
       context.state.notifAudioFile = file;
       setCookie("notifAudioFile", file, 1000000);
     },
-    async setFriendShips(context, data) {
+    async loadInitialFriendShips(context, data) {
       return getFriendShips()
         .then(async data => {
           context.commit("setFriendShips", data);
@@ -104,23 +111,30 @@ export default new Vuex.Store({
         })
         .catch(async err => {
           // what if it fails for non netwok reasons after commiting some/all of the data to the store
+          // @ts-ignore
           await context.state.db.getAll("friendShips").then((data: any[]) => {
             context.commit("setFriendShips", data.sort(sortByCreatedAt));
           });
           return false;
         });
     },
-    loadMessages: async (context, { friendship_id, limit = 50 }) => {
-      return getMessages(friendship_id, limit)
-        .then(({ data }) => {
-          context.commit("setChat", { friendship_id, data });
-          const unreads = countUnreads({
-            chat: data,
-            user_id: context.state.user.id
-          });
-          context.commit("addUnreads", { friendship_id, unreads });
-        })
-        .catch(console.log);
+    loadInitialMessages: async (context, { friendship_id, limit = 50 }) => {
+      const messages = await getMessages(friendship_id, limit)
+        .then(({ data }) => data)
+        .catch(err =>
+          context.state.db
+            // @ts-ignore
+            .get("messages", friendship_id)
+            .then(({ messages }) => messages)
+        );
+      console.log(messages);
+
+      context.commit("setChat", { friendship_id, messages });
+      const unreads = countUnreads({
+        chat: messages,
+        user_id: context.state.user.id
+      });
+      context.commit("addUnreads", { friendship_id, unreads });
     },
     loadNotifications: async context => {
       return getNotifications()
@@ -130,12 +144,22 @@ export default new Vuex.Store({
         })
         .catch(console.log);
     },
+    async loadInitialUser(context) {
+      const user = await getUserInfo()
+        .then(({ data }) => data)
+        // @ts-ignore
+        .catch(err => context.state.db.get("users", "currentUser"));
+      context.commit("setUser", { _id: "currentUser", ...user });
+      return user;
+    },
     setUpApp: async context => {
       if (process.env.NODE_ENV == "production") {
         checkAndLoadAppUpdate();
       }
       // NB: TODO: THIS IS ONE OF IF NOT THE ONLY PLACE WE SHOULD BE MUTATING STATE IN ACTIONS
-      context.state.db = await context.state.db;
+      // FIXME: IT SEEMS THIS CAN BLOCK THE MAIN THREAD WITH A PROMISE THAT NEVER RESOLVES
+      // @ts-ignore
+      context.state.db = await context.state.db.catch(console.log);
 
       const url = new URL(window.location.href);
       const chat = url.searchParams.get("chat");
@@ -143,7 +167,7 @@ export default new Vuex.Store({
       context.commit("setDataLoadSarted");
       // await context.dispatch("loadNotifications");
       if (context.state.friendShips === null) {
-        await context.dispatch("setFriendShips");
+        await context.dispatch("loadInitialFriendShips");
       }
       if (context.state.messages === null) {
         context.state.messages = {};
@@ -169,10 +193,7 @@ export default new Vuex.Store({
        *  -
        */
 
-      await getUserInfo().then(({ data }) => {
-        // context.state.db.put("users", data)
-        context.state.user = data;
-        console.log(data);
+      await context.dispatch("loadInitialUser").then(user => {
         // basically im trying to run this event as soon as it is safe to call socket.emit
         if (!context.state.socket.connected) {
           context.state.socket.on(
@@ -180,7 +201,7 @@ export default new Vuex.Store({
             eventWrapper("connect", () => {
               context.state.socket.emit("checkin", {
                 // @ts-ignore
-                userId: data.id,
+                userId: user.id,
                 token: getCookie("token")
               });
             })
@@ -188,7 +209,7 @@ export default new Vuex.Store({
         } else {
           context.state.socket.emit("checkin", {
             // @ts-ignore
-            userId: data.id,
+            userId: user.id,
             token: getCookie("token")
           });
         }
@@ -197,7 +218,7 @@ export default new Vuex.Store({
             let friendship_id = friendShip._id;
             promiseArr.push(
               context
-                .dispatch("loadMessages", { friendship_id, limit: 30 })
+                .dispatch("loadInitialMessages", { friendship_id, limit: 30 })
                 .then(() => {
                   /** so these are so many listeners we are adding fot the connect event
                    * althoughg it only fires once hmmmm....
@@ -240,7 +261,7 @@ export default new Vuex.Store({
       });
       context.commit("setChat", {
         friendship_id: data.friendshipData._id,
-        data: []
+        messages: []
       });
       context.state.socket.emit("checkin", {
         friendship_id: data.friendshipData._id,
@@ -250,7 +271,7 @@ export default new Vuex.Store({
     },
     socketNewFriendRequestHandler: (context, data) => {
       eventBus.$emit("newFriendRequest", data);
-      context.state.user.interactions.receivedRequests.push(data);
+      context.commit("addNewFriendRequest", data);
     },
     socketSweepHandler2(
       context,
@@ -393,12 +414,18 @@ export default new Vuex.Store({
   // todo: check if this is returns a promise or is synchronous
   mutations: {
     resetState: (state, data) => {
+      // TODO: FIXME WE NEED TO GET A REASON FOR RESETTING SO WE KNOW IF TO CLEAR INDEXED DB OR NOT
       if (state.socket) {
         state.socket.close();
       }
       state.friendShips = null;
       state.messages = null;
       state.socket = null;
+    },
+    addNewFriendRequest(state, request) {
+      state.user.interactions.receivedRequests.push(request);
+      // @ts-ignore
+      state.db.put("users", { _id: "currentUser", ...state.user });
     },
     registerListener(state, { customName, event, handler }) {
       console.log("registerListener");
@@ -419,6 +446,11 @@ export default new Vuex.Store({
       // not sure if i need to do this
       state.oneTimeListeners.set(event, existingListeners);
     },
+    setUser(state, user) {
+      state.user = user;
+      // @ts-ignore
+      state.db.put("users", user);
+    },
     incUnread(state, { friendship_id }) {
       state.unreads = {
         ...state.unreads,
@@ -427,6 +459,7 @@ export default new Vuex.Store({
     },
     pushNewFriendship(state, friendship) {
       state.friendShips.push(friendship);
+      // @ts-ignore
       state.db.add("friendShips", friendship);
     },
     addUnreads(state, { friendship_id, unreads }) {
@@ -454,6 +487,7 @@ export default new Vuex.Store({
     },
     setFriendShips(state, friendShips) {
       state.friendShips = friendShips;
+      // @ts-ignore
       const tx = state.db.transaction("friendShips", "readwrite");
       Promise.all([
         ...friendShips.map(friendship => tx.store.put(friendship)),
@@ -468,9 +502,10 @@ export default new Vuex.Store({
       );
       state.unreads[friendship_id] = 0;
     },
-    setChat(state, { friendship_id, data }) {
-      state.messages[friendship_id] = data;
-      // state.db.put("messages" )
+    setChat(state, { friendship_id, messages }) {
+      state.messages[friendship_id] = messages;
+      // @ts-ignore
+      state.db.put("messages", { friendship_id, messages }).catch(console.log);
     },
     updateLastMessage(state, { friendship_id, lastMessage }) {
       let index = state.friendShips.findIndex(friend => {
@@ -482,6 +517,7 @@ export default new Vuex.Store({
        * */
       state.friendShips.unshift(state.friendShips[index]);
       state.friendShips.splice(index + 1, 1);
+      // @ts-ignore
       state.db.put("friendShips", state.friendShips[0]);
     },
     addEvent(state, event) {
@@ -530,19 +566,6 @@ export default new Vuex.Store({
        * */
       state.friendShips.splice(index, 1, state.friendShips[index]);
     },
-    setMessages(state, messages) {
-      state.messages = messages;
-      for (const friendship_id in messages) {
-        let chatUnreads = countUnreads({
-          chat: messages[friendship_id],
-          user_id: state.user.id
-        });
-        state.unreads = {
-          ...state.unreads,
-          [friendship_id]: chatUnreads
-        };
-      }
-    },
     addGroupToChatSart(state, data) {
       state.messages[data.friendship_id].unshift(...data.messages);
       let chatUnreads = countUnreads({
@@ -553,6 +576,11 @@ export default new Vuex.Store({
         ...state.unreads,
         [data.friendship_id]: chatUnreads
       };
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id: data.friendship_id,
+        messages: state.messages[data.friendship_id]
+      });
     },
     appendMessageToChat(state, { friendship_id, message }) {
       if (!isInChat(friendship_id) && message.fromId !== state.user.id) {
@@ -561,18 +589,12 @@ export default new Vuex.Store({
           [friendship_id]: state.unreads[friendship_id] + 1
         };
       }
-      return state.messages[friendship_id].push(message);
-    },
-    addMessage(state, { friendship_id, message }) {
-      if (!isInChat(friendship_id)) {
-        state.unreads = {
-          ...state.unreads,
-          [friendship_id]: state.unreads[friendship_id] + 1
-        };
-      }
-      if (state.messages !== null) {
-        state.messages[friendship_id].push(message);
-      }
+      state.messages[friendship_id].push(message);
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id,
+        messages: state.messages[friendship_id]
+      });
     },
     addBulkPreSortedMessages(state, { friendship_id, messages }) {
       state.messages[friendship_id].splice(
@@ -580,6 +602,7 @@ export default new Vuex.Store({
         0,
         ...messages
       );
+      // this will show unread messages from us that were sent from another device. good? bad?
       if (!isInChat(friendship_id)) {
         let chatUnreads = countUnreads({
           chat: state.messages[friendship_id],
@@ -590,6 +613,11 @@ export default new Vuex.Store({
           [friendship_id]: chatUnreads
         };
       }
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id,
+        messages: state.messages[friendship_id]
+      });
     },
     updateSentMessage(state, data) {
       state.messages[data.friendship_id][data.index]._id = data._id;
@@ -601,6 +629,11 @@ export default new Vuex.Store({
       state.messages[data.friendship_id][data.index].status = "sent";
       state.messages[data.friendship_id][data.index].createdAt = data.createdAt;
       state.messages[data.friendship_id].sort(sortMessageArray);
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id: data.friendship_id,
+        messages: state.messages[data.friendship_id]
+      });
     },
     updateMessageStatus(state, data) {
       let recountUnreads =
@@ -622,6 +655,11 @@ export default new Vuex.Store({
         state.messages[data.friendship_id][data.index].msgId,
         data.status === "read"
       );
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id: data.friendship_id,
+        messages: state.messages[data.friendship_id]
+      });
     }
   }
 });

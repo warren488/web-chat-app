@@ -204,7 +204,7 @@ import {
   sendRequest
 } from "@/common";
 import store from "../store/index";
-import { mapGetters } from "vuex";
+import { mapGetters, mapMutations } from "vuex";
 export default Vue.extend({
   created() {
     this.getUserInfo();
@@ -230,6 +230,7 @@ export default Vue.extend({
   },
   components: { Modal, Loader },
   methods: {
+    ...mapMutations(["setUser"]),
     async imgInput() {
       this.imgLoading = true;
       let imgFile = this.$refs.imgFile.files[0];
@@ -315,6 +316,7 @@ export default Vue.extend({
         setCookie("username", authData.user.username, 1000000);
         this.originalData = Object.assign({}, authData.user);
         this.userData = Object.assign({}, authData.user);
+        this.setUser(authData.user);
       } catch (error) {
         this.feedback = error.response.data.message;
       }

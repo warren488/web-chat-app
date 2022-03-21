@@ -10,6 +10,7 @@ import "firebase/storage";
 import "firebase/auth";
 import { Notyf } from "notyf";
 import store from "@/store/index";
+import { deleteDB } from "idb";
 
 // Your web app's Firebase configuration
 var firebaseConfig = {
@@ -251,7 +252,17 @@ export const login = async (userData: Object): Promise<AuthResponse> => {
 
 export const logout = async () => {
   try {
-    await Promise.all([unsubscribeToNotif(), signOutOfFirebase()]);
+    await Promise.all([
+      unsubscribeToNotif(),
+      signOutOfFirebase(),
+      // @ts-ignore
+      store.state.db.clear("users"),
+      // @ts-ignore
+      store.state.db.clear("messages"),
+      // @ts-ignore
+      store.state.db.clear("friendShips")
+      // deleteDB("app")
+    ]);
     let data = await axios({
       method: "POST",
       headers: {
