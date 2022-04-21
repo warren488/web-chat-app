@@ -246,6 +246,10 @@ export default new Vuex.Store({
 
       const url = new URL(window.location.href);
       const chat = url.searchParams.get("chat");
+      if (chat) {
+        // context.dispatch("setCurrentChat", chat);
+        context.commit("setHomeView", "chatbody");
+      }
       context.commit("resetState");
       context.commit("setDataLoadSarted");
       // await context.dispatch("loadNotifications");

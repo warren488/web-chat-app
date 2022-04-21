@@ -68,13 +68,13 @@ export default {
     disablePopupNotif(state) {
       state.showPopupNotif = false;
     },
-    makeChatProminent() {
-      this.chatProminent = true;
-      this.disablePopupNotif();
+    makeChatProminent(state) {
+      state.chatProminent = true;
+      state.showPopupNotif = false;
     },
-    makeChatBackdrop() {
-      this.chatProminent = false;
-      this.enablePopupNotif();
+    makeChatBackdrop(state) {
+      state.chatProminent = false;
+      state.showPopupNotif = true;
     }
   }
 };

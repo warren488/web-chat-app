@@ -753,14 +753,14 @@ export const notifyMe = data => {
      */
     else if (Notification.permission !== "denied") {
       // Potentially do something in the app to show we cant give them notifs
-      // Notification.requestPermission()
-      //   .then(function(permission) {
-      //     // If the user accepts, let's create a notification
-      //     if (permission === "granted") {
-      //       var notification = new Notification(text);
-      //     }
-      //   })
-      //   .catch(err => {});
+      Notification.requestPermission()
+        .then(function(permission) {
+          // If the user accepts, let's create a notification
+          if (permission === "granted") {
+            var notification = new Notification(text);
+          }
+        })
+        .catch(err => {});
     }
 
     // At last, if the user has denied notifications, and you
@@ -863,7 +863,12 @@ export const scrollBottom = function scrollBottom({ force, test }) {
 };
 
 /** @todo eventually refactor and let this replace the old one */
-export const scrollBottom2 = function scrollBottom({ element, force, test }) {
+export const scrollBottom2 = function scrollBottom({
+  element,
+  force,
+  test,
+  ...optionals
+}) {
   let newMessage: HTMLElement = element.querySelector(
     ".date__group:last-of-type li:last-of-type"
   );
@@ -886,7 +891,7 @@ export const scrollBottom2 = function scrollBottom({ element, force, test }) {
     if (doScroll && !test) {
       element.scrollTo({
         top: scrollHeight + newMessageHeight + newMessageHeight,
-        behavior: "smooth"
+        behavior: optionals.noAnim ? "instant" : "smooth"
       });
 
       return scrollHeight + newMessageHeight + newMessageHeight;

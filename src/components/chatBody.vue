@@ -225,7 +225,8 @@ export default Vue.extend({
     scrollBottom2({
       force: true,
       test: false,
-      element: this.$refs.messageScroll
+      element: this.$refs.messageScroll,
+      noAnim: true
     });
 
     const date = new Date(new Date().toLocaleDateString());

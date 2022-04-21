@@ -104,7 +104,8 @@ self.addEventListener("push", async function(e) {
            * notifications on opening the app
            */
           data: notifData,
-          vibrate: [400],
+          renotify: true,
+          vibrate: [400, 200, 400],
           image: data.url,
           timestamp: data.createdAt
         }
