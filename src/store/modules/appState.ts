@@ -9,7 +9,9 @@ export default {
     homeView: "chatlist",
     chatProminent: false,
     showPopupNotif: false,
-    dataLoadStarted: false
+    dataLoadStarted: false,
+    activeYTSession: false,
+    YTSessionFriendId: null
   },
   getters: {
     network: state => state.network,
@@ -20,7 +22,8 @@ export default {
         ? state.currChatFriendshipId
         : null,
     currChatFriendshipId: state => state.currChatFriendshipId,
-    chatProminent: state => state.chatProminent
+    chatProminent: state => state.chatProminent,
+    activeYTSession: state => state.activeYTSession
   },
   mutations: {
     setOffline(state) {
@@ -75,6 +78,14 @@ export default {
     makeChatBackdrop(state) {
       state.chatProminent = false;
       state.showPopupNotif = true;
+    },
+    enterYTSession(state, friendship_id) {
+      state.activeYTSession = true;
+      state.YTSessionFriendId = friendship_id;
+    },
+    leaveYTSession(state) {
+      state.activeYTSession = false;
+      state.YTSessionFriendId = null;
     }
   }
 };

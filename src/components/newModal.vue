@@ -55,7 +55,6 @@
   </div>
 </template>
 <script>
-import { FocusGrabber } from "@/common";
 export default {
   // NB!!! v-ifs dont work really well with this modal because the v-if destroys it before we can remove the
   // backdrop, i think this occurs because its created in js (maybe partially)
@@ -78,6 +77,9 @@ export default {
         this.$emit("close");
       }
     );
+    this.$refs.modalContainer.addEventListener("hidden.bs.modal", event => {
+      this.$emit("closed");
+    });
     if (this.showModal === true) {
       this.open();
     }

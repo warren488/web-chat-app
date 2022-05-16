@@ -11,7 +11,7 @@
         <img class="linkpreview__img" :src="previewData.image" alt />
         <div class="ms-1">
           <header class="linkpreview__title">{{ previewData.title }}</header>
-          <div class="linkpreview__description">
+          <div :class="{ linkpreview__description: true, nowrap: nowrap }">
             {{ previewData.description }}
           </div>
         </div>
@@ -24,7 +24,8 @@ import Vue from "vue";
 export default Vue.extend({
   props: {
     previewData: Object,
-    loading: Boolean
+    loading: Boolean,
+    nowrap: Boolean
   }
 });
 </script>
@@ -50,6 +51,10 @@ a {
   &__title {
     font-weight: bold;
   }
+}
+
+.nowrap {
+  white-space: nowrap;
 }
 
 .preview-container,

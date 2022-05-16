@@ -265,7 +265,8 @@
           <img :src="sharedImage.url" />
         </div>
 
-        <TYPlayer
+        <!-- we can cause problems here if we exit the session without exiting the session -->
+        <YTPlayer
           v-if="player.loadComponent"
           :display="true"
           :forwardedPendingRequest="player.pendingRequest"
@@ -307,7 +308,7 @@ import store from "../store/index";
 import "notyf/notyf.min.css";
 import NewProfile from "@/components/newProfile.vue";
 import SmartProfile from "@/components/smartProfile.vue";
-import TYPlayer from "@/components/YTPlayer.vue";
+import YTPlayer from "@/components/YTPlayer.vue";
 
 export default Vue.extend({
   name: "home",
@@ -700,7 +701,7 @@ export default Vue.extend({
     viewImageModal,
     NewProfile,
     SmartProfile,
-    TYPlayer
+    YTPlayer
   }
 });
 </script>

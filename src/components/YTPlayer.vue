@@ -1,8 +1,11 @@
 <template>
   <div v-if="display">
+    <!-- the reason for both close and closed is that the modal leaves residual elements if we 
+   dont wait for it to fully close, so we tell it to close first before running the rest of the important close stuff -->
     <create-session-modal
       :showModal="addLinkProp"
       @close="addLink = false"
+      @closed="!activeYTSession ? exit() : null"
       @sendRequest="sendWatchRequest"
       @addToList="addToList"
       :vids="vids"
@@ -28,14 +31,16 @@
       </template>
     </new-modal>
     <!-- </div> -->
-    <div class="in-chat-player" id="player-container" ref="player-container">
+    <div class="in-chat-player" id="player-container" ref="playerContainer">
       <header
         class="banner"
         style="display: flex; background: var(--bs-success)"
+        v-if="activeYTSession"
+        ref="YTHeader"
       >
-        <button class="btn btn-success" @click="$emit('close')">Close</button>
+        <button class="btn btn-success" @click="exit">Close</button>
         <button class="btn btn-success" @click="addLink = true">
-          New Video
+          New Session
         </button>
         <button class="btn btn-success" @click="fitPlayer">Fit Player</button>
         <button class="btn btn-success" @click="$emit('toggleChat')">
@@ -57,13 +62,14 @@
             aria-labelledby="playlist-dropdown"
           >
             <li
-              class="dropdown-item"
+              class="dropdown-item disabled"
+              style="min-width: 400px"
               v-for="vid of playlist.vids"
               :key="vid.url"
             >
               <link-preview :previewData="vid"></link-preview>
             </li>
-            <li class="dropdown-item">
+            <li class="dropdown-item-text">
               <div class="input-group mb-3">
                 <!-- <div class="form-control"> -->
                 <input
@@ -187,7 +193,13 @@ export default Vue.extend({
       "setCurrentChat",
       "removeOneTimeListener"
     ]),
-    ...mapMutations(["enablePopupNotif", "disablePopupNotif", "addPlaylist"]),
+    ...mapMutations([
+      "enablePopupNotif",
+      "disablePopupNotif",
+      "addPlaylist",
+      "enterYTSession",
+      "leaveYTSession"
+    ]),
     async newLinkInput(event) {
       try {
         this.loadingPreview = true;
@@ -245,6 +257,7 @@ export default Vue.extend({
       if (data.userId === this.user.id) {
         return;
       }
+      this.enterYTSession(data.friendship_id);
       this.playlist = data;
       this.currentIndex = 0;
       if (this.player) {
@@ -264,6 +277,7 @@ export default Vue.extend({
         this.player.destroy();
       }
       this.playlist = this.pendingRequest;
+      this.enterYTSession(this.playlist.friendship_id);
       this.pendingRequest = null;
       this.setCurrentChat(this.playlist.friendship_id);
       this.startPlayer(this.playlist.vids[0].url);
@@ -279,31 +293,6 @@ export default Vue.extend({
         data: { ...data, userId: this.user.id }
       });
       // this.exit();
-    },
-    async watchRequestHandler(data) {
-      if (data.userId === this.user.id) {
-        return;
-      }
-      const accept = await confirm(
-        `your friend ${
-          this.friendShips.find(
-            friendship => friendship._id === data.friendship_id
-          ).username
-        } wants to watch a video with you from link: ${data.url}`
-      );
-      if (accept) {
-        if (this.player) {
-          this.player.destroy();
-        }
-        this.setCurrentChat(data.friendship_id);
-        this.startPlayer(data.url);
-        this.emitEvent({
-          eventName: "acceptWatchRequest",
-          data: { ...data, userId: this.user.id }
-        });
-      } else {
-        this.exit();
-      }
     },
     sendWatchRequest(data) {
       if (this.vids.length === 0) {
@@ -364,6 +353,7 @@ export default Vue.extend({
               // NB: for whatever reason this is the only version of 'player' that has the function
               window.player = event.target;
               this.player = event.target;
+              this.fitPlayer();
             },
             onStateChange: ({ target, data }) => {
               if (data === 2) {
@@ -390,8 +380,10 @@ export default Vue.extend({
                 //     friendship_id: this.currChatFriendshipId
                 //   }
                 // });
-                this.player.destroy();
-                this.startPlayer(this.playlist.vids[++this.currentIndex].url);
+                if (this.playlist.vids[++this.currentIndex]) {
+                  this.player.destroy();
+                  this.startPlayer(this.playlist.vids[++this.currentIndex].url);
+                }
               }
             }
           }
@@ -399,27 +391,39 @@ export default Vue.extend({
       }, 500);
     },
     exit() {
-      this.$emit("close");
+      console.log("exiting");
       if (this.player) {
         this.player.destroy();
       }
+      // even though we destroy the whole container the modal still leaves residue if its not told explicitly to close
+      this.addLink = false;
       // the call to destroy also deletes the container element so
       // we need to restore it so we can watch videos again
       let newPlayerDiv = document.createElement("div");
       newPlayerDiv.id = "player";
-      this.$refs.playerContainer.$el.appendChild(newPlayerDiv);
+      this.$refs.playerContainer.appendChild(newPlayerDiv);
+      this.leaveYTSession(data.friendship_id);
+      this.$emit("close");
     },
     fitPlayer() {
+      const headerHeight = this.$refs.YTHeader
+        ? this.$refs.YTHeader.offsetHeight
+        : 0;
       document.getElementById("player").width =
         document.documentElement.clientWidth;
       document.getElementById("player").height = Math.min(
-        document.documentElement.clientHeight,
+        document.documentElement.clientHeight - headerHeight,
         document.documentElement.clientWidth / 2
       );
     }
   },
   computed: {
-    ...mapGetters(["currChatFriendshipId", "user", "friendShips"]),
+    ...mapGetters([
+      "currChatFriendshipId",
+      "user",
+      "friendShips",
+      "activeYTSession"
+    ]),
     addLinkProp() {
       return this.addLink;
     },

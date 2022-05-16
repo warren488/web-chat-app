@@ -1,5 +1,9 @@
 <template>
-  <new-modal :showModal="showModal" @close="$emit('close')">
+  <new-modal
+    :showModal="showModal"
+    @close="$emit('close')"
+    @closed="$emit('closed')"
+  >
     <template v-slot:full-replace>
       <div style="padding: 1rem">
         <h5 class="mb-3 h5">Select playlist</h5>
