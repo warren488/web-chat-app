@@ -435,6 +435,9 @@ export const sendRequest = async (friendId: string) => {
     },
     data: { friendId },
     url: `${baseURI}/api/users/me/friendRequests`
+  }).then(({ data }) => {
+    store.commit("updateInteractions", data.interactions);
+    return data;
   });
 };
 

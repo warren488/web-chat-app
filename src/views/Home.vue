@@ -41,11 +41,26 @@
             reconnecting: !socketConnected
           }"
         >
-          <button
-            class="mybt menubt notification-item"
-            @click="sideMenuActive = !sideMenuActive"
-          >
-            <img src="/assets/img/menu.svg" alt="notification icon" />
+          <button class="btn" @click="sideMenuActive = !sideMenuActive">
+            <img src="/assets/img/menu.svg" alt="menu icon" />
+          </button>
+          <button class="btn position-relative">
+            <img src="/assets/img/bell-fill.svg" alt="notification icon" />
+            <span
+              v-if="watchRequests && watchRequests.length > 0"
+              class="
+                position-absolute
+                top-0
+                start-100
+                translate-middle
+                badge
+                rounded-pill
+                bg-danger
+              "
+            >
+              {{ watchRequests.length }}
+              <span class="visually-hidden">unread messages</span>
+            </span>
           </button>
           <span v-if="!network">you are currently offline</span>
           <span v-if="!socketConnected && network"
@@ -92,8 +107,24 @@
               role="tab"
               aria-controls="requests"
               aria-selected="false"
+              style="position: relative"
             >
               requests
+              <span
+                v-if="friendRequests && friendRequests.length > 0"
+                class="
+                  position-absolute
+                  top-0
+                  start-100
+                  translate-middle
+                  badge
+                  rounded-pill
+                  bg-danger
+                "
+              >
+                {{ friendRequests.length }}
+                <span class="visually-hidden">unread messages</span>
+              </span>
             </button>
           </li>
         </ul>
@@ -134,7 +165,7 @@
             <chatList
               v-if="user"
               title="Friend Requests"
-              :userList="user.interactions.receivedRequests"
+              :userList="friendRequests"
               @open="viewFriendship"
               :currentChat="currChatFriendshipId"
             />
@@ -612,6 +643,8 @@ export default Vue.extend({
       "network",
       "user",
       "messages",
+      "watchRequests",
+      "friendRequests",
       "socket",
       "currChatFriendshipId",
       "currChatMessages",
@@ -852,6 +885,10 @@ export default Vue.extend({
   border-bottom: 1px solid white;
   font-weight: bold;
   height: var(--main-header-height);
+}
+
+.btn img {
+  width: 20px;
 }
 
 .menubt {

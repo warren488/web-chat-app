@@ -23,7 +23,8 @@ export default {
         : null,
     currChatFriendshipId: state => state.currChatFriendshipId,
     chatProminent: state => state.chatProminent,
-    activeYTSession: state => state.activeYTSession
+    activeYTSession: state => state.activeYTSession,
+    YTSessionFriendId: state => state.YTSessionFriendId
   },
   mutations: {
     setOffline(state) {

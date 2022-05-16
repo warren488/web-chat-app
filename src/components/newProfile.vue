@@ -44,7 +44,7 @@
 <script lang="ts">
 import Vue from "vue";
 import Loader from "@/components/loader.vue"; // @ is an alias to /src
-import { mapGetters } from "vuex";
+import { mapGetters, mapMutations } from "vuex";
 import { addFriend, sendRequest } from "@/common";
 import { Notyf } from "notyf";
 export default Vue.extend({
@@ -62,6 +62,7 @@ export default Vue.extend({
   },
   components: { Loader },
   methods: {
+    ...mapMutations(["removeFriendRequest"]),
     sendRequest() {
       if (!this.hasRequestFromMe && !this.sentRequestToMe) {
         sendRequest(this.details.id).then(data => {
@@ -70,7 +71,7 @@ export default Vue.extend({
             dismissible: true,
             position: { x: "center", y: "top" }
           });
-          notification.success(`request successfull sent`);
+          notification.success(`request successfully sent`);
           this.$emit("close");
         });
       }
@@ -81,6 +82,7 @@ export default Vue.extend({
         username: this.details.username,
         id: this.details.id
       }).then(data => {
+        this.removeFriendRequest(this.details.fromId);
         let notification = new Notyf({
           duration: 5000,
           dismissible: true,
@@ -92,15 +94,16 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapGetters(["user", "friendShips"]),
+    ...mapGetters(["user", "friendShips", "friendRequests"]),
 
     isImgLoading() {
       return this.imgLoading;
     },
 
     sentRequestToMe() {
-      if (this.user && this.user.interactions) {
-        let result = this.user.interactions.receivedRequests.find(
+      console.log(this.friendRequests);
+      if (this.friendRequests) {
+        let result = this.friendRequests.find(
           request => this.details.id === request.fromId
         );
         return !!result;

@@ -96,7 +96,15 @@ export default new Vuex.Store({
     friendShips: state => state.friendShips,
     initFriends: state => state.friendShips === null,
     initMessages: state => state.messages === null,
-    playlist: state => state.playlists
+    playlist: state => state.playlists,
+    friendRequests: state =>
+      state.user &&
+      state.user.interactions &&
+      state.user.interactions.receivedRequests,
+    watchRequests: state =>
+      state.user &&
+      state.user.interactions &&
+      state.user.interactions.watchRequests
   },
   actions: {
     /**
@@ -493,9 +501,22 @@ export default new Vuex.Store({
       state.socket = null;
     },
     addNewFriendRequest(state, request) {
-      state.user.interactions.receivedRequests.push(request);
+      state.user.interactions.receivedRequests = [
+        ...state.user.interactions.receivedRequests,
+        request
+      ];
       // @ts-ignore
       state.db.put("users", { _id: "currentUser", ...state.user });
+    },
+    updateInteractions(state, interactions) {
+      state.user.interactions = interactions;
+      // @ts-ignore
+      state.db.put("users", { _id: "currentUser", ...state.user });
+    },
+    removeFriendRequest(state, fromId) {
+      state.user.interactions.receivedRequests = state.user.interactions.receivedRequests.filter(
+        request => request.fromId !== fromId
+      );
     },
     registerListener(state, { customName, event, handler }) {
       let existingListeners = state.oneTimeListeners.get(event);
@@ -526,7 +547,7 @@ export default new Vuex.Store({
       };
     },
     pushNewFriendship(state, friendship) {
-      state.friendShips.push(friendship);
+      state.friendShips = [...state.friendShips, friendship];
       // @ts-ignore
       state.db.add("friendShips", friendship);
     },

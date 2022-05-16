@@ -402,7 +402,7 @@ export default Vue.extend({
       let newPlayerDiv = document.createElement("div");
       newPlayerDiv.id = "player";
       this.$refs.playerContainer.appendChild(newPlayerDiv);
-      this.leaveYTSession(data.friendship_id);
+      this.leaveYTSession(this.YTSessionFriendId);
       this.$emit("close");
     },
     fitPlayer() {
@@ -422,7 +422,8 @@ export default Vue.extend({
       "currChatFriendshipId",
       "user",
       "friendShips",
-      "activeYTSession"
+      "activeYTSession",
+      "YTSessionFriendId"
     ]),
     addLinkProp() {
       return this.addLink;
