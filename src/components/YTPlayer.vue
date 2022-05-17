@@ -17,6 +17,7 @@
       :confirm="true"
       :header="'Watch session request'"
       :text="modalText"
+      @closed="!activeYTSession ? exit() : null"
       @accept="acceptWatchRequest"
       @deny="denyWatchRequest"
     >
@@ -153,6 +154,15 @@ export default Vue.extend({
     });
     this.enablePopupNotif();
   },
+  beforeDestroy() {
+    // this is necessary because when we delete the parent component of a modal before it finishes
+    // closing then it leaves the backdrop behind. this now makes the stuff i did with the
+    // 'close' and 'closed' events now unnecessary but idk if i want to fully rely on this rn
+    const modalBackdrop = document.querySelector(".modal-backdrop.show");
+    if (modalBackdrop) {
+      modalBackdrop.remove();
+    }
+  },
   data() {
     return {
       addLink: false,
@@ -262,13 +272,14 @@ export default Vue.extend({
         data: { ...this.playlist, userId: this.user.id }
       });
     },
+    // after request is clear and the modal disappears it will auto close YT if there is no ongoing session
     async denyWatchRequest() {
       this.clearPendingWatchRequest();
       this.emitEvent({
         eventName: "denyWatchRequest",
         data: { ...this.pendingWatchRequest, userId: this.user.id }
       });
-      this.exit();
+      // this.exit();
     },
     sendWatchRequest(data) {
       if (this.vids.length === 0) {

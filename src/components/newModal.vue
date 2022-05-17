@@ -74,6 +74,7 @@ export default {
     this.$refs.modalContainer.addEventListener(
       "hidePrevented.bs.modal",
       event => {
+        // only emitted if the user tries to get away from the modal by esc or backdrop
         this.$emit("close");
       }
     );
