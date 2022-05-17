@@ -12,7 +12,9 @@ export default {
     dataLoadStarted: false,
     activeYTSession: false,
     YTSessionFriendId: null,
-    watchRequestsModal: false
+    watchRequestsModal: false,
+    pendingWatchRequest: null,
+    showYTComponent: false
   },
   getters: {
     network: state => state.network,
@@ -26,6 +28,8 @@ export default {
     chatProminent: state => state.chatProminent,
     activeYTSession: state => state.activeYTSession,
     watchRequestsModal: state => state.watchRequestsModal,
+    pendingWatchRequest: state => state.pendingWatchRequest,
+    showYTComponent: state => state.showYTComponent,
     YTSessionFriendId: state => state.YTSessionFriendId
   },
   mutations: {
@@ -92,6 +96,19 @@ export default {
     },
     toggleWatchRequestsModal(state) {
       state.watchRequestsModal = !state.watchRequestsModal;
+    },
+    loadWatchSessionRequest(state, data) {
+      state.pendingWatchRequest = data;
+      state.showYTComponent = true;
+    },
+    unloadYTComponent(state) {
+      state.showYTComponent = false;
+    },
+    loadYTComponent(state) {
+      state.showYTComponent = true;
+    },
+    clearPendingWatchRequest(state) {
+      state.pendingWatchRequest = null;
     }
   }
 };

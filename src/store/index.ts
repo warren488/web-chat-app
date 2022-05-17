@@ -327,7 +327,16 @@ export default new Vuex.Store({
         }
       });
       context.dispatch("getPlaylists");
-
+      context.dispatch("addOneTimeListener", {
+        customName: "startup",
+        event: "watchSessRequest",
+        handler: data => {
+          if (data.fromId === context.state.user.id) {
+            return;
+          }
+          context.commit("loadWatchSessionRequest", data);
+        }
+      });
       await Promise.all(promiseArr).then(promises => {
         context.commit("setDataLoadedTrue");
       });
@@ -529,6 +538,8 @@ export default new Vuex.Store({
         request => request.fromId !== fromId
       );
     },
+    // this allows me to add a listener only once for a specific part of my code without
+    // having to worry about how many time that code runs (e.g a component mounted event)
     registerListener(state, { customName, event, handler }) {
       let existingListeners = state.oneTimeListeners.get(event);
       if (!existingListeners) {

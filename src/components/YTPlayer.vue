@@ -12,18 +12,17 @@
       :playlists="playlists"
       @selected="selectedPlaylist"
     ></create-session-modal>
-    <!-- <div v-if="pendingRequest"> -->
     <new-modal
-      :showModal="!!pendingRequest"
+      :showModal="!!pendingWatchRequest"
       :confirm="true"
       :header="'Watch session request'"
       :text="modalText"
       @accept="acceptWatchRequest"
       @deny="denyWatchRequest"
     >
-      <template v-if="pendingRequest" v-slot:body>
+      <template v-if="pendingWatchRequest" v-slot:body>
         <link-preview
-          v-for="vid of pendingRequest.vids"
+          v-for="vid of pendingWatchRequest.vids"
           :key="vid.url"
           :previewData="vid"
         >
@@ -114,8 +113,7 @@ export default Vue.extend({
   props: {
     display: Boolean,
     CreateSessionModal,
-    type: String,
-    forwardedPendingRequest: Object
+    type: String
   },
   created() {
     this.newLinkInputDebounced = debounce(this.newLinkInput, 500);
@@ -124,17 +122,6 @@ export default Vue.extend({
     //   i do this because after the first time we open the component it technically doesnt get destroyed so the
     // addLink value will be false and it wont show the modal
     this.addLink = true;
-    if (this.forwardedPendingRequest) {
-      this.pendingRequest = this.forwardedPendingRequest;
-      this.addLink = false;
-      // TODO: will have to eventually change this to watch sess handler too
-      this.watchSessRequestHandler(this.pendingRequest);
-    }
-    this.addOneTimeListener({
-      customName: "YT",
-      event: "watchSessRequest",
-      handler: this.watchSessRequestHandler
-    });
     this.addOneTimeListener({
       customName: "YT",
       event: "acceptedWatchRequest",
@@ -168,14 +155,12 @@ export default Vue.extend({
   },
   data() {
     return {
-      //   showVideo: false,
       addLink: false,
       newLinkPreviewData: null,
       loadingPreview: false,
       player: null,
       vids: [],
       playlistName: "",
-      pendingRequest: null,
       playlist: null,
       currentIndex: 0,
       selectedPlaylistId: "",
@@ -191,6 +176,7 @@ export default Vue.extend({
     ]),
     ...mapMutations([
       "enablePopupNotif",
+      "clearPendingWatchRequest",
       "disablePopupNotif",
       "addPlaylist",
       "enterYTSession",
@@ -262,19 +248,13 @@ export default Vue.extend({
       this.setCurrentChat(data.friendship_id);
       this.startPlayer(this.playlist.vids[0].url);
     },
-    async watchSessRequestHandler(data) {
-      if (data.fromId === this.user.id) {
-        return;
-      }
-      this.pendingRequest = data;
-    },
     async acceptWatchRequest() {
       if (this.player) {
         this.player.destroy();
       }
-      this.playlist = this.pendingRequest;
+      this.playlist = this.pendingWatchRequest;
       this.enterYTSession(this.playlist.friendship_id);
-      this.pendingRequest = null;
+      this.clearPendingWatchRequest();
       this.setCurrentChat(this.playlist.friendship_id);
       this.startPlayer(this.playlist.vids[0].url);
       this.emitEvent({
@@ -283,12 +263,12 @@ export default Vue.extend({
       });
     },
     async denyWatchRequest() {
-      this.pendingRequest = null;
+      this.clearPendingWatchRequest();
       this.emitEvent({
         eventName: "denyWatchRequest",
-        data: { ...data, userId: this.user.id }
+        data: { ...this.pendingWatchRequest, userId: this.user.id }
       });
-      // this.exit();
+      this.exit();
     },
     sendWatchRequest(data) {
       if (this.vids.length === 0) {
@@ -332,7 +312,6 @@ export default Vue.extend({
       if (!vidId) {
         return;
       }
-      //   this.showVideo = true;
       this.addLink = false;
       setTimeout(() => {
         // @ts-ignore
@@ -391,14 +370,14 @@ export default Vue.extend({
       if (this.player) {
         this.player.destroy();
       }
-      // even though we destroy the whole container the modal still leaves residue if its not told explicitly to close
-      this.addLink = false;
       // the call to destroy also deletes the container element so
       // we need to restore it so we can watch videos again
       let newPlayerDiv = document.createElement("div");
       newPlayerDiv.id = "player";
       this.$refs.playerContainer.appendChild(newPlayerDiv);
       this.leaveYTSession(this.YTSessionFriendId);
+      // even though we destroy the whole container the modal still leaves residue if its not told explicitly to close
+      this.addLink = false;
       this.$emit("close");
     },
     fitPlayer() {
@@ -420,16 +399,18 @@ export default Vue.extend({
       "friendShips",
       "activeYTSession",
       "YTSessionFriendId",
-      "playlists"
+      "playlists",
+      "pendingWatchRequest"
     ]),
     addLinkProp() {
       return this.addLink;
     },
     modalText() {
-      return this.pendingRequest
+      return this.pendingWatchRequest
         ? `your friend ${
             this.friendShips.find(
-              friendship => friendship._id === this.pendingRequest.friendship_id
+              friendship =>
+                friendship._id === this.pendingWatchRequest.friendship_id
             ).username
           }  wants to watch YouTube with you`
         : "";

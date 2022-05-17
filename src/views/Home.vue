@@ -247,10 +247,7 @@
             <button
               v-if="!activeYTSession"
               class="btn btn-success"
-              @click="
-                showVideo = true;
-                player.loadComponent = true;
-              "
+              @click="loadYTComponent"
             >
               watch
             </button>
@@ -306,12 +303,9 @@
 
         <!-- we can cause problems here if we remove the component without exiting the session -->
         <YTPlayer
-          v-if="player.loadComponent"
+          v-if="showYTComponent"
           :display="true"
-          :forwardedPendingRequest="player.pendingRequest"
-          @close="
-            player = { friendship_id: null, url: null, loadComponent: null }
-          "
+          @close="unloadYTComponent"
           @toggleChat="makeChatProminent"
         />
       </div>
@@ -370,18 +364,6 @@ export default Vue.extend({
       // might be sketch
       this.$router.replace("/");
     }
-    // the handler for this listener will run ONLY if the YT component is not loaded
-    // if the component is loaded then it will handle this itself
-    this.addOneTimeListener({
-      customName: "Home",
-      event: "watchSessRequest",
-      handler: data => {
-        if (!this.player.loadComponent) {
-          this.player.pendingRequest = data;
-          this.player.loadComponent = true;
-        }
-      }
-    });
   },
   data() {
     return {
@@ -394,7 +376,6 @@ export default Vue.extend({
       typing: {},
       viewCurrentFriendProfile: false,
       loadingMore: false,
-      showVideo: false,
       player: {
         loadComponent: false,
         friendship_id: null
@@ -412,6 +393,8 @@ export default Vue.extend({
     ]),
     ...mapMutations([
       "setNotifAudioFile",
+      "unloadYTComponent",
+      "loadYTComponent",
       "toggleWatchRequestsModal",
       "updateLastMessage",
       "hideTyping",
@@ -663,7 +646,8 @@ export default Vue.extend({
       "dataLoaded",
       "chatProminent",
       "homeView",
-      "activeYTSession"
+      "activeYTSession",
+      "showYTComponent"
     ]),
     sideMenuData() {
       return [
