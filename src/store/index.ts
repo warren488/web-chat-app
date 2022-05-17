@@ -533,6 +533,9 @@ export default new Vuex.Store({
       // @ts-ignore
       state.db.put("users", { _id: "currentUser", ...state.user });
     },
+    updateWatchRequests(state, requests) {
+      state.user.interactions.watchRequests = requests;
+    },
     removeFriendRequest(state, fromId) {
       state.user.interactions.receivedRequests = state.user.interactions.receivedRequests.filter(
         request => request.fromId !== fromId

@@ -3,7 +3,9 @@
     <template v-slot:full-replace>
       <header class="d-flex justify-content-between p-3">
         <h1>Watch Requests</h1>
-        <button class="btn btn-danger">clear all</button>
+        <button class="btn btn-danger" @click="clearWatchRequests">
+          clear all
+        </button>
       </header>
       <section>
         <ul class="list-group">
@@ -36,7 +38,7 @@
 </template>
 
 <script lang="ts">
-import { mapGetters } from "vuex";
+import { mapActions, mapGetters, mapMutations } from "vuex";
 import newModal from "./newModal.vue";
 import { relativeDays } from "@/common";
 export default {
@@ -50,7 +52,13 @@ export default {
     // console.log(this.watchRequests);
   },
   methods: {
-    relativeDays
+    ...mapActions(["emitEvent"]),
+    ...mapMutations(["updateWatchRequests"]),
+    relativeDays,
+    async clearWatchRequests() {
+      await this.emitEvent({ eventName: "clearWatchRequests" });
+      this.updateWatchRequests([]);
+    }
   },
   computed: {
     ...mapGetters(["watchRequests", "friendShips", "playlists"]),
