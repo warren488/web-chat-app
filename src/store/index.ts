@@ -20,7 +20,8 @@ import {
   markLocalChatMessagesAsRead,
   clearNotifications,
   checkAndLoadAppUpdate,
-  sortByCreatedAt
+  sortByCreatedAt,
+  getPlaylists
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
@@ -96,7 +97,7 @@ export default new Vuex.Store({
     friendShips: state => state.friendShips,
     initFriends: state => state.friendShips === null,
     initMessages: state => state.messages === null,
-    playlist: state => state.playlists,
+    playlists: state => state.playlists,
     friendRequests: state =>
       state.user &&
       state.user.interactions &&
@@ -325,9 +326,19 @@ export default new Vuex.Store({
           });
         }
       });
+      context.dispatch("getPlaylists");
 
       await Promise.all(promiseArr).then(promises => {
         context.commit("setDataLoadedTrue");
+      });
+    },
+    getPlaylists: async context => {
+      return getPlaylists().then(playlists => {
+        context.state.playlists = new Map(
+          playlists.map(pl => {
+            return [pl._id, pl];
+          })
+        );
       });
     },
     socketNewFriendHandler: (context, data) => {

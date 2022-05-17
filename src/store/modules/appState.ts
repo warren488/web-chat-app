@@ -11,7 +11,8 @@ export default {
     showPopupNotif: false,
     dataLoadStarted: false,
     activeYTSession: false,
-    YTSessionFriendId: null
+    YTSessionFriendId: null,
+    watchRequestsModal: false
   },
   getters: {
     network: state => state.network,
@@ -24,6 +25,7 @@ export default {
     currChatFriendshipId: state => state.currChatFriendshipId,
     chatProminent: state => state.chatProminent,
     activeYTSession: state => state.activeYTSession,
+    watchRequestsModal: state => state.watchRequestsModal,
     YTSessionFriendId: state => state.YTSessionFriendId
   },
   mutations: {
@@ -87,6 +89,9 @@ export default {
     leaveYTSession(state) {
       state.activeYTSession = false;
       state.YTSessionFriendId = null;
+    },
+    toggleWatchRequestsModal(state) {
+      state.watchRequestsModal = !state.watchRequestsModal;
     }
   }
 };

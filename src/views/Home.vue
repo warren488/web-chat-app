@@ -26,6 +26,10 @@
         />
       </template>
     </newModal>
+    <watch-request-list
+      :showModal="watchRequestsModal"
+      @close="toggleWatchRequestsModal"
+    ></watch-request-list>
     <main class="main-section">
       <div
         :class="{
@@ -44,7 +48,10 @@
           <button class="btn" @click="sideMenuActive = !sideMenuActive">
             <img src="/assets/img/menu.svg" alt="menu icon" />
           </button>
-          <button class="btn position-relative">
+          <button
+            class="btn position-relative"
+            @click="toggleWatchRequestsModal"
+          >
             <img src="/assets/img/bell-fill.svg" alt="notification icon" />
             <span
               v-if="watchRequests && watchRequests.length > 0"
@@ -238,6 +245,7 @@
               </h1>
             </div>
             <button
+              v-if="!activeYTSession"
               class="btn btn-success"
               @click="
                 showVideo = true;
@@ -296,7 +304,7 @@
           <img :src="sharedImage.url" />
         </div>
 
-        <!-- we can cause problems here if we exit the session without exiting the session -->
+        <!-- we can cause problems here if we remove the component without exiting the session -->
         <YTPlayer
           v-if="player.loadComponent"
           :display="true"
@@ -319,6 +327,7 @@ import chatBody from "@/components/chatBody.vue";
 import sideMenu from "@/components/sideMenu.vue";
 import viewImageModal from "@/components/viewImageModal.vue";
 import newModal from "@/components/newModal.vue";
+import watchRequestList from "@/components/watchRequestList.vue";
 import {
   getCookie,
   getMessagePage,
@@ -388,7 +397,6 @@ export default Vue.extend({
       showVideo: false,
       player: {
         loadComponent: false,
-        url: null,
         friendship_id: null
       }
     };
@@ -404,6 +412,7 @@ export default Vue.extend({
     ]),
     ...mapMutations([
       "setNotifAudioFile",
+      "toggleWatchRequestsModal",
       "updateLastMessage",
       "hideTyping",
       "clearSharedImage",
@@ -642,6 +651,7 @@ export default Vue.extend({
       "friendShips",
       "network",
       "user",
+      "watchRequestsModal",
       "messages",
       "watchRequests",
       "friendRequests",
@@ -652,7 +662,8 @@ export default Vue.extend({
       "sharedImage",
       "dataLoaded",
       "chatProminent",
-      "homeView"
+      "homeView",
+      "activeYTSession"
     ]),
     sideMenuData() {
       return [
@@ -732,6 +743,7 @@ export default Vue.extend({
     newModal,
     sideMenu,
     viewImageModal,
+    watchRequestList,
     NewProfile,
     SmartProfile,
     YTPlayer

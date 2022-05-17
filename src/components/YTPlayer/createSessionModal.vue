@@ -36,7 +36,7 @@
         >
           <option selected :value="null">Choose Playlist</option>
           <option
-            v-for="playlist of playlists"
+            v-for="playlist of playlists.values()"
             :key="playlist._id"
             :value="playlist._id"
           >
@@ -90,7 +90,6 @@
 </template>
 
 <script>
-import { getPlaylists } from "@/common";
 import LinkPreview from "../linkPreview.vue";
 import newModal from "../newModal.vue";
 export default {

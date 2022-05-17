@@ -165,9 +165,6 @@ export default Vue.extend({
       }
     });
     this.enablePopupNotif();
-    getPlaylists()
-      .then(playlists => (this.playlists = playlists))
-      .catch(console.log);
   },
   data() {
     return {
@@ -180,7 +177,6 @@ export default Vue.extend({
       playlistName: "",
       pendingRequest: null,
       playlist: null,
-      playlists: [],
       currentIndex: 0,
       selectedPlaylistId: "",
       newLinkUrl: ""
@@ -236,7 +232,7 @@ export default Vue.extend({
     },
     selectedPlaylist(listId) {
       if (listId) {
-        this.vids = this.playlists.find(({ _id }) => _id === listId).vids;
+        this.vids = this.playlists.get(listId).vids;
         this.selectedPlaylistId = listId;
       } else {
         this.vids = [];
@@ -267,7 +263,7 @@ export default Vue.extend({
       this.startPlayer(this.playlist.vids[0].url);
     },
     async watchSessRequestHandler(data) {
-      if (data.userId === this.user.id) {
+      if (data.fromId === this.user.id) {
         return;
       }
       this.pendingRequest = data;
@@ -423,7 +419,8 @@ export default Vue.extend({
       "user",
       "friendShips",
       "activeYTSession",
-      "YTSessionFriendId"
+      "YTSessionFriendId",
+      "playlists"
     ]),
     addLinkProp() {
       return this.addLink;

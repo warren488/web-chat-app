@@ -398,6 +398,41 @@ export const updateInfo = async (
   });
 };
 
+// adapted from https://bobbyhadz.com/blog/javascript-convert-timestamp-to-time-ago
+export function relativeDays(timestamp) {
+  if (!timestamp) {
+    return "n/a";
+  }
+  const rtf = new Intl.RelativeTimeFormat("en", {
+    numeric: "auto"
+  });
+  const oneDayInMs = 1000 * 60 * 60 * 24;
+  const oneHourInMs = 1000 * 60 * 60;
+  const oneMinuteInMs = 1000 * 60;
+  const oneSecondInMs = 1000;
+  const daysDifference = Math.round(
+    (timestamp - new Date().getTime()) / oneDayInMs
+  );
+  const hoursDifference = Math.round(
+    (timestamp - new Date().getTime()) / oneHourInMs
+  );
+  const minutesDifference = Math.round(
+    (timestamp - new Date().getTime()) / oneMinuteInMs
+  );
+  const secondsDifference = Math.round(
+    (timestamp - new Date().getTime()) / oneSecondInMs
+  );
+  if (daysDifference < 0) {
+    return rtf.format(daysDifference, "day");
+  } else if (hoursDifference < 0) {
+    return rtf.format(hoursDifference, "hour");
+  } else if (minutesDifference < 0) {
+    return rtf.format(minutesDifference, "minute");
+  } else if (secondsDifference < 0) {
+    return rtf.format(secondsDifference, "second");
+  }
+}
+
 export function getCookie(name: string): string | null {
   let exp = new RegExp(`(?:(?:^|.*;\\s*)${name}\\s*\\=\\s*([^;]*).*$)|^.*$`);
   let cookieValue = document.cookie.replace(exp, "$1");
