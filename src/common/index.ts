@@ -403,6 +403,7 @@ export function relativeDays(timestamp) {
   if (!timestamp) {
     return "n/a";
   }
+  // @ts-ignore
   const rtf = new Intl.RelativeTimeFormat("en", {
     numeric: "auto"
   });
