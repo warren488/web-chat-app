@@ -140,8 +140,9 @@ export default Vue.extend({
       customName: "YT",
       event: "playListUpdated",
       handler: data => {
-        if (this.playlist._id === data._id) {
-          this.playlist = data;
+        // here we
+        if (this.playlist.playlistId === data._id) {
+          this.playlist.vids = data.vids;
         }
       }
     });
@@ -218,7 +219,7 @@ export default Vue.extend({
       let newPlaylist = await this.emitEvent({
         eventName: "addVideoToPlaylist",
         data: {
-          listId: this.playlist._id,
+          listId: this.playlist.playlistId,
           // NB: this (for now) will serve to tell the server that we are watching this playlist with someone so update their list as well
           friendship_id: this.currChatFriendshipId,
           vid: previewData
