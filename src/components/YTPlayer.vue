@@ -23,7 +23,7 @@
     >
       <template v-if="pendingWatchRequest" v-slot:body>
         <link-preview
-          v-for="vid of pendingWatchRequest.vids"
+          v-for="vid of pendingRequestVidList"
           :key="vid.url"
           :previewData="vid"
         >
@@ -64,7 +64,7 @@
             <li
               class="dropdown-item disabled"
               style="min-width: 400px"
-              v-for="vid of playlist.vids"
+              v-for="vid of sessionVidList"
               :key="vid.url"
             >
               <link-preview :previewData="vid"></link-preview>
@@ -245,6 +245,7 @@ export default Vue.extend({
       });
     },
     async acceptedWatchRequestHandler(data) {
+      console.log(data);
       // TODO: in the future we should add a way for us to confirm that we're ready?
       if (data.userId === this.user.id) {
         return;
@@ -256,7 +257,7 @@ export default Vue.extend({
         this.player.destroy();
       }
       this.setCurrentChat(data.friendship_id);
-      this.startPlayer(this.playlist.vids[0].url);
+      this.startPlayer(this.sessionVidList[0].url);
     },
     async acceptWatchRequest() {
       if (this.player) {
@@ -266,7 +267,7 @@ export default Vue.extend({
       this.enterYTSession(this.playlist.friendship_id);
       this.clearPendingWatchRequest();
       this.setCurrentChat(this.playlist.friendship_id);
-      this.startPlayer(this.playlist.vids[0].url);
+      this.startPlayer(this.sessionVidList[0].url);
       this.emitEvent({
         eventName: "acceptWatchRequest",
         data: { ...this.playlist, userId: this.user.id }
@@ -366,9 +367,11 @@ export default Vue.extend({
                 //     friendship_id: this.currChatFriendshipId
                 //   }
                 // });
-                if (this.playlist.vids[++this.currentIndex]) {
+                if (this.sessionVidList[++this.currentIndex]) {
                   this.player.destroy();
-                  this.startPlayer(this.playlist.vids[++this.currentIndex].url);
+                  this.startPlayer(
+                    this.sessionVidList[++this.currentIndex].url
+                  );
                 }
               }
             }
@@ -415,6 +418,19 @@ export default Vue.extend({
     ]),
     addLinkProp() {
       return this.addLink;
+    },
+    // because we treat the request and the playlist as the same thing then sometimes a playlist has a list
+    // of vids and other times it has a playlistId, which is confusion and needs to be fixed (rename to sessoin instead)
+    pendingRequestVidList() {
+      return (
+        this.pendingWatchRequest.vids ||
+        this.playlists.get(this.pendingWatchRequest.playlistId).vids
+      );
+    },
+    sessionVidList() {
+      return (
+        this.playlist.vids || this.playlists.get(this.playlist.playlistId).vids
+      );
     },
     modalText() {
       return this.pendingWatchRequest

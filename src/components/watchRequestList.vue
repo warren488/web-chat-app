@@ -13,6 +13,8 @@
             v-for="(req, index) in sortedWatchRequests"
             :key="index + req.playlistId"
             class="list-group-item list-group-item-action"
+            :data-key="index"
+            @click="() => loadWatchSessionRequestHandler(req)"
           >
             <div class="d-flex w-100 justify-content-between">
               <h5 class="mb-1">
@@ -53,8 +55,12 @@ export default {
   },
   methods: {
     ...mapActions(["emitEvent"]),
-    ...mapMutations(["updateWatchRequests"]),
+    ...mapMutations(["updateWatchRequests", "loadWatchSessionRequest"]),
     relativeDays,
+    loadWatchSessionRequestHandler(request) {
+      this.$emit("close");
+      this.loadWatchSessionRequest(request);
+    },
     async clearWatchRequests() {
       await this.emitEvent({ eventName: "clearWatchRequests" });
       this.updateWatchRequests([]);
