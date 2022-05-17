@@ -287,25 +287,25 @@ export default Vue.extend({
       if (this.vids.length === 0) {
         return;
       }
-      let playlist = {
-        from: this.user.id,
+      let watchRequest = {
         friendship_id: this.currChatFriendshipId,
         uuid: uuid(),
         to: this.friendShips.find(
           friendship => friendship._id === this.currChatFriendshipId
         ).friendId
       };
+      // if it exists send the id if not the server will create it and attach the id for us
       if (this.selectedPlaylistId) {
-        playlist.playlistId = this.selectedPlaylistId;
+        watchRequest.playlistId = this.selectedPlaylistId;
       } else {
-        playlist.vids = this.vids;
-        playlist.name = data.name;
+        watchRequest.vids = this.vids;
+        watchRequest.name = data.name;
       }
       this.emitEvent({
         eventName: "watchSessRequest",
-        data: playlist
+        data: watchRequest
       });
-      this.addPlaylist(playlist);
+      this.addPlaylist(watchRequest);
     },
     startPlayer(link) {
       let vidId;
