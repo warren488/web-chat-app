@@ -8,7 +8,7 @@
       @closed="!activeYTSession ? exit() : null"
       @sendRequest="sendWatchRequest"
       @addToList="addToList"
-      :vids="vids"
+      :vids="requestVids"
       :playlists="playlists"
       @selected="selectedPlaylist"
     ></create-session-modal>
@@ -188,6 +188,7 @@ export default Vue.extend({
       "clearPendingWatchRequest",
       "disablePopupNotif",
       "addVidPlaylist",
+      "updateCurrentYTSession",
       "addPlaylist",
       "enterYTSession",
       "leaveYTSession"
@@ -218,7 +219,7 @@ export default Vue.extend({
       let newPlaylist = await this.emitEvent({
         eventName: "addVideoToPlaylist",
         data: {
-          listId: this.session.playlistId,
+          listId: this.currentYTSession.playlistId,
           // NB: this (for now) will serve to tell the server that we are watching this playlist with someone so update their list as well
           friendship_id: this.currChatFriendshipId,
           vid: previewData
@@ -227,7 +228,7 @@ export default Vue.extend({
       // for now we will rely on the playlist updated event that happens as a result of this to update the
       // playlist, this will also allow it to be up to date on multiple devices
       // this.addVidPlaylist({
-      //   playlistId: this.session.playlistId,
+      //   playlistId: this.currentYTSession.playlistId,
       //   vid: previewData
       // });
     },
@@ -256,7 +257,8 @@ export default Vue.extend({
         return;
       }
       this.enterYTSession(data.friendship_id);
-      this.session = data;
+      // this.session = data;
+      this.updateCurrentYTSession(data);
       this.currentIndex = 0;
       if (this.player) {
         this.player.destroy();
@@ -268,14 +270,15 @@ export default Vue.extend({
       if (this.player) {
         this.player.destroy();
       }
-      this.session = this.pendingWatchRequest;
-      this.enterYTSession(this.session.friendship_id);
+      // this.session = this.pendingWatchRequest;
+      this.updateCurrentYTSession(this.pendingWatchRequest);
+      this.enterYTSession(this.currentYTSession.friendship_id);
       this.clearPendingWatchRequest();
-      this.setCurrentChat(this.session.friendship_id);
+      this.setCurrentChat(this.currentYTSession.friendship_id);
       this.startPlayer(this.sessionVidList[0].url);
       this.emitEvent({
         eventName: "acceptWatchRequest",
-        data: { ...this.session, userId: this.user.id }
+        data: { ...this.currentYTSession, userId: this.user.id }
       });
     },
     // after request is clear and the modal disappears it will auto close YT if there is no ongoing session
@@ -422,6 +425,7 @@ export default Vue.extend({
       "activeYTSession",
       "YTSessionFriendId",
       "playlists",
+      "currentYTSession",
       "pendingWatchRequest"
     ]),
     addLinkProp() {
@@ -437,7 +441,7 @@ export default Vue.extend({
     },
     sessionVidList() {
       // move to state
-      return this.playlists[this.session.playlistId].vids;
+      return this.playlists[this.currentYTSession.playlistId].vids;
     },
     modalText() {
       return this.pendingWatchRequest

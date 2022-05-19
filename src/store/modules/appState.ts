@@ -14,7 +14,8 @@ export default {
     YTSessionFriendId: null,
     watchRequestsModal: false,
     pendingWatchRequest: null,
-    showYTComponent: false
+    showYTComponent: false,
+    currentYTSession: null
   },
   getters: {
     network: state => state.network,
@@ -30,7 +31,8 @@ export default {
     watchRequestsModal: state => state.watchRequestsModal,
     pendingWatchRequest: state => state.pendingWatchRequest,
     showYTComponent: state => state.showYTComponent,
-    YTSessionFriendId: state => state.YTSessionFriendId
+    YTSessionFriendId: state => state.YTSessionFriendId,
+    currentYTSession: state => state.currentYTSession
   },
   mutations: {
     setOffline(state) {
@@ -93,6 +95,9 @@ export default {
     leaveYTSession(state) {
       state.activeYTSession = false;
       state.YTSessionFriendId = null;
+    },
+    updateCurrentYTSession(state, session) {
+      state.currentYTSession = session;
     },
     toggleWatchRequestsModal(state) {
       state.watchRequestsModal = !state.watchRequestsModal;
