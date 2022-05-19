@@ -718,6 +718,7 @@ export const eventWrapper = (eventName, handler) => {
     if (data && data.eventData) {
       store.commit("addEvent", data.eventData);
     }
+    // FIXME:  doing this here defeats the entire purpose of having one time listeners
     let OThandlers = store.state.oneTimeListeners.get(eventName);
     if (OThandlers) {
       for (const OThandler of OThandlers.values()) {

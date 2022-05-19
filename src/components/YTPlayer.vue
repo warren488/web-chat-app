@@ -46,7 +46,7 @@
         <button class="btn btn-success" @click="$emit('toggleChat')">
           Show chat
         </button>
-        <div class="btn-group dropdown" v-if="session">
+        <div class="btn-group dropdown" v-if="currentYTSession">
           <button
             class="btn btn-success dropdown-toggle"
             type="button"
@@ -102,6 +102,7 @@ import { debounce } from "debounce";
 import newModal from "@/components/newModal.vue";
 import { mapActions, mapGetters, mapMutations } from "vuex";
 import { getPlaylists, getPreviewData, uuid } from "@/common";
+import { eventBus } from "@/common/eventBus";
 import LinkPreview from "./linkPreview.vue";
 import CreateSessionModal from "./YTPlayer/createSessionModal.vue";
 const states = {
@@ -120,14 +121,14 @@ export default Vue.extend({
     this.newLinkInputDebounced = debounce(this.newLinkInput, 500);
   },
   mounted() {
-    //   i do this because after the first time we open the component it technically doesnt get destroyed so the
-    // addLink value will be false and it wont show the modal
-    this.addLink = true;
-    this.addOneTimeListener({
-      customName: "YT",
-      event: "acceptedWatchRequest",
-      handler: this.acceptedWatchRequestHandler
-    });
+    if (this.activeYTSession) {
+      this.startPlayer(this.sessionVidList[0].url);
+    } else {
+      //   i do this because after the first time we open the component it technically doesnt get destroyed so the
+      // addLink value will be false and it wont show the modal
+      this.addLink = true;
+    }
+    eventBus.$on("newWatchSession", this.newWatchSession);
     this.addOneTimeListener({
       customName: "YT",
       event: "pauseVideo",
@@ -250,20 +251,12 @@ export default Vue.extend({
         this.requestVids.splice(index, 1, data);
       });
     },
-    async acceptedWatchRequestHandler(data) {
-      console.log(data);
+    async newWatchSession(data) {
       // TODO: in the future we should add a way for us to confirm that we're ready?
-      if (data.userId === this.user.id) {
-        return;
-      }
-      this.enterYTSession(data.friendship_id);
-      // this.session = data;
-      this.updateCurrentYTSession(data);
       this.currentIndex = 0;
       if (this.player) {
         this.player.destroy();
       }
-      this.setCurrentChat(data.friendship_id);
       this.startPlayer(this.sessionVidList[0].url);
     },
     async acceptWatchRequest() {

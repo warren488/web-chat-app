@@ -8,6 +8,7 @@ import {
   scrollBottom2,
   sortMessageArray
 } from "@/common";
+import { eventBus } from "@/common/eventBus";
 
 export default {
   state: () => ({
@@ -25,6 +26,17 @@ export default {
     }
   },
   actions: {
+    acceptedWatchRequestHandler(context, data) {
+      // TODO: in the future we should add a way for us to confirm that we're ready?
+      if (data.userId === context.rootState.user.id) {
+        return;
+      }
+      context.commit("loadYTComponent", data.friendship_id);
+      context.commit("enterYTSession", data.friendship_id);
+      context.commit("updateCurrentYTSession", data);
+      context.commit("setCurrentChat", data.friendship_id);
+      eventBus.$emit("newWatchSession");
+    },
     attachListeners: context => {
       context.rootState.socket.on(
         "reconnect",
@@ -179,6 +191,11 @@ export default {
         "watchSessRequest",
         eventWrapper("watchSessRequest", null)
       );
+      context.dispatch("addOneTimeListener", {
+        customName: "attachListeners",
+        event: "acceptedWatchRequest",
+        handler: data => context.dispatch("acceptedWatchRequestHandler", data)
+      });
     },
     socketNewMessageHandler: (context, { token, data }) => {
       if (token === getCookie("token")) {
