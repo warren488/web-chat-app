@@ -83,7 +83,7 @@ export default new Vuex.Store({
       }
     }),
     checkinActive: false,
-    playlists: new Map()
+    playlists: {}
   },
   getters: {
     user: state => state.user,
@@ -105,7 +105,9 @@ export default new Vuex.Store({
     watchRequests: state =>
       state.user &&
       state.user.interactions &&
-      state.user.interactions.watchRequests
+      state.user.interactions.watchRequests.filter(
+        req => req.fromId !== state.user.id
+      )
   },
   actions: {
     /**
@@ -343,11 +345,9 @@ export default new Vuex.Store({
     },
     getPlaylists: async context => {
       return getPlaylists().then(playlists => {
-        context.state.playlists = new Map(
-          playlists.map(pl => {
-            return [pl._id, pl];
-          })
-        );
+        playlists.forEach(pl => {
+          Vue.set(context.state.playlists, pl._id, pl);
+        });
       });
     },
     socketNewFriendHandler: (context, data) => {
@@ -596,8 +596,14 @@ export default new Vuex.Store({
         targetFriend.notificationCount = 1;
       }
     },
-    addPlaylist(state, playlist) {
-      state.playlists.set(playlist.uuid, playlist);
+    addPlaylist(state, { playlist, id }) {
+      // this may cause reactivity problems
+      state.playlists[id] = playlist;
+    },
+    addVidPlaylist(state, { playlistId, vid }) {
+      const playlist = state.playlists[playlistId];
+      playlist.vids = [...playlist.vids, vid];
+      state.playlists[playlistId] = playlist;
     },
     setFriendShips(state, friendShips) {
       state.friendShips = friendShips;

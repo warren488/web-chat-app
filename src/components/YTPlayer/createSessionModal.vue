@@ -36,7 +36,7 @@
         >
           <option selected :value="null">Choose Playlist</option>
           <option
-            v-for="playlist of playlists.values()"
+            v-for="playlist of Object.values(playlists)"
             :key="playlist._id"
             :value="playlist._id"
           >

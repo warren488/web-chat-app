@@ -141,9 +141,7 @@ export default Vue.extend({
       event: "playListUpdated",
       handler: data => {
         // here we
-        if (this.session.playlistId === data._id) {
-          this.session.vids = data.vids;
-        }
+        this.addPlaylist({ playlist: data, id: data._id });
       }
     });
     this.addOneTimeListener({
@@ -170,7 +168,7 @@ export default Vue.extend({
       newLinkPreviewData: null,
       loadingPreview: false,
       player: null,
-      vids: [],
+      requestVids: [],
       playlistName: "",
       session: null,
       currentIndex: 0,
@@ -189,6 +187,7 @@ export default Vue.extend({
       "enablePopupNotif",
       "clearPendingWatchRequest",
       "disablePopupNotif",
+      "addVidPlaylist",
       "addPlaylist",
       "enterYTSession",
       "leaveYTSession"
@@ -225,14 +224,19 @@ export default Vue.extend({
           vid: previewData
         }
       });
-      this.session.vids = newPlaylist.vids;
+      // for now we will rely on the playlist updated event that happens as a result of this to update the
+      // playlist, this will also allow it to be up to date on multiple devices
+      // this.addVidPlaylist({
+      //   playlistId: this.session.playlistId,
+      //   vid: previewData
+      // });
     },
     selectedPlaylist(listId) {
       if (listId) {
-        this.vids = this.playlists.get(listId).vids;
+        this.requestVids = this.playlists[listId].vids;
         this.selectedPlaylistId = listId;
       } else {
-        this.vids = [];
+        this.requestVids = [];
         this.selectedPlaylistId = "";
       }
     },
@@ -240,9 +244,9 @@ export default Vue.extend({
       if (!link) {
         return;
       }
-      let index = this.vids.push({ url: link }) - 1;
+      let index = this.requestVids.push({ url: link }) - 1;
       getPreviewData(link).then(data => {
-        this.vids.splice(index, 1, data);
+        this.requestVids.splice(index, 1, data);
       });
     },
     async acceptedWatchRequestHandler(data) {
@@ -284,7 +288,10 @@ export default Vue.extend({
       // this.exit();
     },
     sendWatchRequest(data) {
-      if (this.vids.length === 0) {
+      if (
+        !this.selectedPlaylistId &&
+        (this.requestVids.length === 0 || !data.name)
+      ) {
         return;
       }
       let watchRequest = {
@@ -298,14 +305,14 @@ export default Vue.extend({
       if (this.selectedPlaylistId) {
         watchRequest.playlistId = this.selectedPlaylistId;
       } else {
-        watchRequest.vids = this.vids;
+        watchRequest.vids = this.requestVids;
         watchRequest.name = data.name;
       }
       this.emitEvent({
         eventName: "watchSessRequest",
         data: watchRequest
       });
-      this.addPlaylist(watchRequest);
+      this.addPlaylist({ playlist: watchRequest, id: watchRequest.uuid });
     },
     startPlayer(link) {
       let vidId;
@@ -425,13 +432,12 @@ export default Vue.extend({
     pendingRequestVidList() {
       return (
         this.pendingWatchRequest.vids ||
-        this.playlists.get(this.pendingWatchRequest.playlistId).vids
+        this.playlists[this.pendingWatchRequest.playlistId].vids
       );
     },
     sessionVidList() {
-      return (
-        this.session.vids || this.playlists.get(this.session.playlistId).vids
-      );
+      // move to state
+      return this.playlists[this.session.playlistId].vids;
     },
     modalText() {
       return this.pendingWatchRequest

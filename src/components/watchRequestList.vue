@@ -27,8 +27,8 @@
             <p class="mb-1">
               {{
                 playlists &&
-                  playlists.get(req.playlistId) &&
-                  playlists.get(req.playlistId).name
+                  playlists[req.playlistId] &&
+                  playlists[req.playlistId].name
               }}
             </p>
             <!-- <small>And some small print.</small> -->
@@ -67,7 +67,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(["watchRequests", "friendShips", "playlists"]),
+    ...mapGetters(["watchRequests", "friendShips", "playlists", "user"]),
     sortedWatchRequests() {
       const sorted = this.watchRequests;
       return (
