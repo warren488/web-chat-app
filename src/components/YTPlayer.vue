@@ -101,7 +101,12 @@ import Vue from "vue";
 import { debounce } from "debounce";
 import newModal from "@/components/newModal.vue";
 import { mapActions, mapGetters, mapMutations } from "vuex";
-import { getPlaylists, getPreviewData, uuid } from "@/common";
+import {
+  getPlaylists,
+  getPreviewData,
+  getYouTubeVideoID,
+  uuid
+} from "@/common";
 import { eventBus } from "@/common/eventBus";
 import LinkPreview from "./linkPreview.vue";
 import CreateSessionModal from "./YTPlayer/createSessionModal.vue";
@@ -133,8 +138,9 @@ export default Vue.extend({
       customName: "YT",
       event: "pauseVideo",
       handler: data => {
-        window.player.pauseVideo();
-        window.player.seekTo(data.time);
+        if (data.sessionUid === this.sessionUid) return;
+        this.player.pauseVideo();
+        this.player.seekTo(data.time);
       }
     });
     this.addOneTimeListener({
@@ -149,7 +155,11 @@ export default Vue.extend({
       customName: "YT",
       event: "playVideo",
       handler: data => {
-        window.player.playVideo();
+        if (data.sessionUid === this.sessionUid) return;
+        console.log("play");
+        // this will help us get synced up while seeking but causes bouncing back and forth of events
+        // this.player.seekTo(data.time);
+        this.player.playVideo();
       }
     });
     this.enablePopupNotif();
@@ -255,20 +265,27 @@ export default Vue.extend({
       // TODO: in the future we should add a way for us to confirm that we're ready?
       this.currentIndex = 0;
       if (this.player) {
-        this.player.destroy();
+        // this.player.destroy();
+        this.player.cueVideoById(
+          getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
+        );
+      } else {
+        this.startPlayer(this.sessionVidList[0].url);
       }
-      this.startPlayer(this.sessionVidList[0].url);
     },
     async acceptWatchRequest() {
-      if (this.player) {
-        this.player.destroy();
-      }
-      // this.session = this.pendingWatchRequest;
       this.updateCurrentYTSession(this.pendingWatchRequest);
       this.enterYTSession(this.currentYTSession.friendship_id);
       this.clearPendingWatchRequest();
       this.setCurrentChat(this.currentYTSession.friendship_id);
-      this.startPlayer(this.sessionVidList[0].url);
+      if (this.player) {
+        // this.player.destroy();
+        this.player.cueVideoById(
+          getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
+        );
+      } else {
+        this.startPlayer(this.sessionVidList[0].url);
+      }
       this.emitEvent({
         eventName: "acceptWatchRequest",
         data: { ...this.currentYTSession, userId: this.user.id }
@@ -283,7 +300,7 @@ export default Vue.extend({
       });
       // this.exit();
     },
-    sendWatchRequest(data) {
+    async sendWatchRequest(data) {
       if (
         !this.selectedPlaylistId &&
         (this.requestVids.length === 0 || !data.name)
@@ -304,26 +321,19 @@ export default Vue.extend({
         watchRequest.vids = this.requestVids;
         watchRequest.name = data.name;
       }
-      this.emitEvent({
+      const request = await this.emitEvent({
         eventName: "watchSessRequest",
         data: watchRequest
       });
-      this.addPlaylist({ playlist: watchRequest, id: watchRequest.uuid });
+      if (request.newPlaylist) {
+        this.addPlaylist({
+          playlist: request.newPlaylist,
+          id: request.newPlaylist._id
+        });
+      }
     },
     startPlayer(link) {
-      let vidId;
-      try {
-        let url = new URL(link);
-        if (url.hostname === "www.youtube.com") {
-          vidId = url.searchParams.get("v");
-        } else if (url.hostname === "youtu.be") {
-          vidId = url.pathname.substr(1);
-        } else {
-          return;
-        }
-      } catch (e) {
-        console.log(e);
-      }
+      let vidId = getYouTubeVideoID(link);
 
       if (!vidId) {
         return;
@@ -347,6 +357,7 @@ export default Vue.extend({
               this.fitPlayer();
             },
             onStateChange: ({ target, data }) => {
+              console.log("state", data);
               if (data === 2) {
                 this.emitEvent({
                   eventName: "pauseVideo",
@@ -372,10 +383,13 @@ export default Vue.extend({
                 //   }
                 // });
                 if (this.sessionVidList[++this.currentIndex]) {
-                  this.player.destroy();
-                  this.startPlayer(
-                    this.sessionVidList[++this.currentIndex].url
+                  this.player.cueVideoById(
+                    getYouTubeVideoID(
+                      this.sessionVidList[this.currentIndex].url
+                    )
                   );
+                  // this.player.destroy();
+                  // this.startPlayer(this.sessionVidList[this.currentIndex].url);
                 }
               }
             }
@@ -417,6 +431,7 @@ export default Vue.extend({
       "friendShips",
       "activeYTSession",
       "YTSessionFriendId",
+      "sessionUid",
       "playlists",
       "currentYTSession",
       "pendingWatchRequest"

@@ -21,7 +21,8 @@ import {
   clearNotifications,
   checkAndLoadAppUpdate,
   sortByCreatedAt,
-  getPlaylists
+  getPlaylists,
+  uuid
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
@@ -49,6 +50,7 @@ export default new Vuex.Store({
     }),
     notifAudioFile: getCookie("notifAudioFile") || "juntos.mp3",
     user: null,
+    sessionUid: uuid(),
     oneTimeListeners: new Map(),
     friendShips: null,
     messages: null,
@@ -98,6 +100,7 @@ export default new Vuex.Store({
     initFriends: state => state.friendShips === null,
     initMessages: state => state.messages === null,
     playlists: state => state.playlists,
+    sessionUid: state => state.sessionUid,
     friendRequests: state =>
       state.user &&
       state.user.interactions &&
@@ -336,6 +339,13 @@ export default new Vuex.Store({
           if (data.fromId === context.state.user.id) {
             return;
           }
+          if (data.newPlaylist) {
+            context.commit("addPlaylist", {
+              playlist: data.newPlaylist,
+              id: data.newPlaylist._id
+            });
+          }
+          context.commit("addNewWatchRequest", data);
           context.commit("loadWatchSessionRequest", data);
         }
       });
@@ -350,6 +360,7 @@ export default new Vuex.Store({
         });
       });
     },
+
     socketNewFriendHandler: (context, data) => {
       context.commit("pushNewFriendship", {
         ...data.friendshipData,
@@ -473,6 +484,7 @@ export default new Vuex.Store({
               context.state.socket.emit(
                 eventName,
                 {
+                  sessionUid: context.state.sessionUid,
                   token: getCookie("token"),
                   data
                 },
@@ -528,6 +540,15 @@ export default new Vuex.Store({
       // @ts-ignore
       state.db.put("users", { _id: "currentUser", ...state.user });
     },
+    addNewWatchRequest(state, request) {
+      state.user.interactions.watchRequests = [
+        ...state.user.interactions.watchRequests,
+        request
+      ];
+      // @ts-ignore
+      state.db.put("users", { _id: "currentUser", ...state.user });
+    },
+
     updateInteractions(state, interactions) {
       state.user.interactions = interactions;
       // @ts-ignore
@@ -598,7 +619,7 @@ export default new Vuex.Store({
     },
     addPlaylist(state, { playlist, id }) {
       // this may cause reactivity problems
-      state.playlists[id] = playlist;
+      Vue.set(state.playlists, id, playlist);
     },
     addVidPlaylist(state, { playlistId, vid }) {
       const playlist = state.playlists[playlistId];

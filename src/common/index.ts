@@ -509,9 +509,28 @@ export const markAsReceived = async (friendship_id, range) => {
   });
 };
 
+export const getYouTubeVideoID = link => {
+  let vidId;
+  try {
+    let url = new URL(link);
+    if (url.hostname === "www.youtube.com") {
+      vidId = url.searchParams.get("v");
+    } else if (url.hostname === "youtu.be") {
+      vidId = url.pathname.substr(1);
+    } else {
+      return;
+    }
+  } catch (e) {
+    console.log(e);
+  }
+  return vidId;
+};
+
 export const checkAndLoadAppUpdate = () => {
   fetch("/versionuid.json").then(async resp => {
     let respJSON = await resp.json();
+    console.log(respJSON.uuid, process.env.VUE_APP_VER);
+
     if (respJSON.uuid !== process.env.VUE_APP_VER) {
       // we need to update app (cache)
       caches.delete("v2").then(async () => {

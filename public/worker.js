@@ -197,7 +197,7 @@ self.addEventListener("fetch", event => {
 function isCachable(request) {
   const url = new URL(request.url);
   return (
-    // !url.hostname.includes("localhost") &&
+    !url.hostname.includes("localhost") &&
     url.hostname === self.location.hostname &&
     request.method !== "POST" &&
     !(
