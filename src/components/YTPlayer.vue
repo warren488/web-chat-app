@@ -138,6 +138,7 @@ export default Vue.extend({
       customName: "YT",
       event: "pauseVideo",
       handler: data => {
+        console.log(data.sessionUid, this.sessionUid);
         if (data.sessionUid === this.sessionUid) return;
         this.player.pauseVideo();
         this.player.seekTo(data.time);
@@ -266,11 +267,15 @@ export default Vue.extend({
       this.currentIndex = 0;
       if (this.player) {
         // this.player.destroy();
-        this.player.cueVideoById(
-          getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
+        console.log(
+          this.player.cueVideoById({
+            videoId: getYouTubeVideoID(
+              this.sessionVidList[this.currentIndex].url
+            )
+          })
         );
       } else {
-        this.startPlayer(this.sessionVidList[0].url);
+        this.startPlayer(this.sessionVidList[this.currentIndex].url);
       }
     },
     async acceptWatchRequest() {
@@ -278,10 +283,15 @@ export default Vue.extend({
       this.enterYTSession(this.currentYTSession.friendship_id);
       this.clearPendingWatchRequest();
       this.setCurrentChat(this.currentYTSession.friendship_id);
+      this.currentIndex = 0;
       if (this.player) {
         // this.player.destroy();
-        this.player.cueVideoById(
-          getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
+        console.log(
+          this.player.cueVideoById({
+            videoId: getYouTubeVideoID(
+              this.sessionVidList[this.currentIndex].url
+            )
+          })
         );
       } else {
         this.startPlayer(this.sessionVidList[0].url);
@@ -383,10 +393,12 @@ export default Vue.extend({
                 //   }
                 // });
                 if (this.sessionVidList[++this.currentIndex]) {
-                  this.player.cueVideoById(
-                    getYouTubeVideoID(
-                      this.sessionVidList[this.currentIndex].url
-                    )
+                  console.log(
+                    this.player.cueVideoById({
+                      videoId: getYouTubeVideoID(
+                        this.sessionVidList[this.currentIndex].url
+                      )
+                    })
                   );
                   // this.player.destroy();
                   // this.startPlayer(this.sessionVidList[this.currentIndex].url);
