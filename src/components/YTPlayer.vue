@@ -179,6 +179,7 @@ export default Vue.extend({
       addLink: false,
       newLinkPreviewData: null,
       loadingPreview: false,
+      runningPreview: false,
       player: null,
       requestVids: [],
       playlistName: "",
@@ -258,7 +259,9 @@ export default Vue.extend({
         return;
       }
       let index = this.requestVids.push({ url: link }) - 1;
-      getPreviewData(link).then(data => {
+      // this allows us to wait on this promise to complete in multiple places
+      this.runningPreview = getPreviewData(link);
+      this.runningPreview.then(data => {
         this.requestVids.splice(index, 1, data);
       });
     },
@@ -317,6 +320,7 @@ export default Vue.extend({
       ) {
         return;
       }
+      await this.runningPreview;
       let watchRequest = {
         friendship_id: this.currChatFriendshipId,
         uuid: uuid(),
