@@ -516,6 +516,35 @@ export default new Vuex.Store({
     },
     removeOneTimeListener(context, data) {
       context.commit("removeListener", data);
+    },
+    acceptWatchRequest(context, id) {
+      const request = context.getters.watchRequests.find(req => req._id === id);
+      console.log(request);
+      context.commit("updateCurrentYTSession", request);
+      context.commit(
+        "enterYTSession",
+        context.getters.currentYTSession.friendship_id
+      );
+      context.commit("clearPendingWatchRequest");
+      context.commit(
+        "setCurrentChat",
+        context.getters.currentYTSession.friendship_id
+      );
+      context.dispatch("emitEvent", {
+        eventName: "acceptWatchRequest",
+        data: {
+          ...context.getters.currentYTSession,
+          userId: context.getters.user.id
+        }
+      });
+    },
+    async denyWatchRequest(context, id) {
+      const request = context.getters.watchRequests.find(req => req._id === id);
+      context.commit("clearPendingWatchRequest");
+      context.dispatch("emitEvent", {
+        eventName: "denyWatchRequest",
+        data: { ...request, userId: context.getters.user.id }
+      });
     }
   },
   // todo: check if this is returns a promise or is synchronous

@@ -18,8 +18,8 @@
       :header="'Watch session request'"
       :text="modalText"
       @closed="!activeYTSession ? exit() : null"
-      @accept="acceptWatchRequest"
-      @deny="denyWatchRequest"
+      @accept="acceptWatchRequestHandler"
+      @deny="denyWatchRequestHandler"
     >
       <template v-if="pendingWatchRequest" v-slot:body>
         <link-preview
@@ -196,7 +196,9 @@ export default Vue.extend({
       "emitEvent",
       "addOneTimeListener",
       "setCurrentChat",
-      "removeOneTimeListener"
+      "removeOneTimeListener",
+      "acceptWatchRequest",
+      "denyWatchRequest"
     ]),
     ...mapMutations([
       "enablePopupNotif",
@@ -280,11 +282,8 @@ export default Vue.extend({
         this.startPlayer(this.sessionVidList[this.currentIndex].url);
       }
     },
-    async acceptWatchRequest() {
-      this.updateCurrentYTSession(this.pendingWatchRequest);
-      this.enterYTSession(this.currentYTSession.friendship_id);
-      this.clearPendingWatchRequest();
-      this.setCurrentChat(this.currentYTSession.friendship_id);
+    async acceptWatchRequestHandler() {
+      this.acceptWatchRequest(this.pendingWatchRequest._id);
       this.currentIndex = 0;
       if (this.player) {
         // this.player.destroy();
@@ -294,19 +293,10 @@ export default Vue.extend({
       } else {
         this.startPlayer(this.sessionVidList[0].url);
       }
-      this.emitEvent({
-        eventName: "acceptWatchRequest",
-        data: { ...this.currentYTSession, userId: this.user.id }
-      });
     },
     // after request is clear and the modal disappears it will auto close YT if there is no ongoing session
-    async denyWatchRequest() {
-      this.clearPendingWatchRequest();
-      this.emitEvent({
-        eventName: "denyWatchRequest",
-        data: { ...this.pendingWatchRequest, userId: this.user.id }
-      });
-      // this.exit();
+    async denyWatchRequestHandler() {
+      this.denyWatchRequest(this.pendingWatchRequest._id);
     },
     async sendWatchRequest(data) {
       if (
