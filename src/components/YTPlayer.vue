@@ -128,7 +128,7 @@ export default Vue.extend({
   mounted() {
     if (this.activeYTSession) {
       this.startPlayer(this.sessionVidList[0].url);
-    } else {
+    } else if (!this.activeYTSession && !this.pendingWatchRequest) {
       //   i do this because after the first time we open the component it technically doesnt get destroyed so the
       // addLink value will be false and it wont show the modal
       this.addLink = true;
@@ -239,7 +239,8 @@ export default Vue.extend({
         }
       });
       // for now we will rely on the playlist updated event that happens as a result of this to update the
-      // playlist, this will also allow it to be up to date on multiple devices
+      // playlist, this will also allow it to be up to date on multiple devices, thi s will not work when we start
+      // using this functions in other areas where there may not be an active session
       // this.addVidPlaylist({
       //   playlistId: this.currentYTSession.playlistId,
       //   vid: previewData

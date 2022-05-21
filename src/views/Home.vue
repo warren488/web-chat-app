@@ -310,6 +310,7 @@
         />
       </div>
     </main>
+    <center-toast> </center-toast>
   </div>
 </template>
 
@@ -321,6 +322,7 @@ import chatBody from "@/components/chatBody.vue";
 import sideMenu from "@/components/sideMenu.vue";
 import viewImageModal from "@/components/viewImageModal.vue";
 import newModal from "@/components/newModal.vue";
+import centerToast from "@/components/centerToast.vue";
 import watchRequestList from "@/components/watchRequestList.vue";
 import {
   getCookie,
@@ -343,6 +345,7 @@ import "notyf/notyf.min.css";
 import NewProfile from "@/components/newProfile.vue";
 import SmartProfile from "@/components/smartProfile.vue";
 import YTPlayer from "@/components/YTPlayer.vue";
+import { eventBus } from "@/common/eventBus";
 
 export default Vue.extend({
   name: "home",
@@ -364,6 +367,10 @@ export default Vue.extend({
       // might be sketch
       this.$router.replace("/");
     }
+    var myToastEl = document.getElementById("center-toast");
+    // @ts-ignore
+    this.myToast = window.bootstrap.Toast.getOrCreateInstance(myToastEl);
+    eventBus.$on("pendingWatchRequest", () => this.myToast.show());
   },
   data() {
     return {
@@ -376,6 +383,7 @@ export default Vue.extend({
       typing: {},
       viewCurrentFriendProfile: false,
       loadingMore: false,
+      myToast: null,
       player: {
         loadComponent: false,
         friendship_id: null
@@ -723,6 +731,7 @@ export default Vue.extend({
   components: {
     chatBody,
     chatList,
+    centerToast,
     chatText,
     newModal,
     sideMenu,

@@ -346,7 +346,8 @@ export default new Vuex.Store({
             });
           }
           context.commit("addNewWatchRequest", data);
-          context.commit("loadWatchSessionRequest", data);
+          context.commit("updatePendingWatchRequest", data);
+          eventBus.$emit("pendingWatchRequest");
         }
       });
       await Promise.all(promiseArr).then(promises => {

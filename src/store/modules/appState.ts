@@ -106,6 +106,9 @@ export default {
       state.pendingWatchRequest = data;
       state.showYTComponent = true;
     },
+    updatePendingWatchRequest(state, data) {
+      state.pendingWatchRequest = data;
+    },
     unloadYTComponent(state) {
       state.showYTComponent = false;
     },
