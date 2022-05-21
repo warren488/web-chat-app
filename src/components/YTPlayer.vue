@@ -140,8 +140,10 @@ export default Vue.extend({
       handler: data => {
         console.log(data.sessionUid, this.sessionUid);
         if (data.sessionUid === this.sessionUid) return;
-        this.player.pauseVideo();
-        this.player.seekTo(data.time);
+        if (this.player) {
+          this.player.pauseVideo();
+          this.player.seekTo(data.time);
+        }
       }
     });
     this.addOneTimeListener({
@@ -160,7 +162,7 @@ export default Vue.extend({
         console.log("play");
         // this will help us get synced up while seeking but causes bouncing back and forth of events
         // this.player.seekTo(data.time);
-        this.player.playVideo();
+        if (this.player) this.player.playVideo();
       }
     });
     this.enablePopupNotif();
@@ -271,13 +273,9 @@ export default Vue.extend({
       this.currentIndex = 0;
       if (this.player) {
         // this.player.destroy();
-        console.log(
-          this.player.cueVideoById({
-            videoId: getYouTubeVideoID(
-              this.sessionVidList[this.currentIndex].url
-            )
-          })
-        );
+        this.player = this.player.cueVideoById({
+          videoId: getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
+        });
       } else {
         this.startPlayer(this.sessionVidList[this.currentIndex].url);
       }
@@ -290,13 +288,9 @@ export default Vue.extend({
       this.currentIndex = 0;
       if (this.player) {
         // this.player.destroy();
-        console.log(
-          this.player.cueVideoById({
-            videoId: getYouTubeVideoID(
-              this.sessionVidList[this.currentIndex].url
-            )
-          })
-        );
+        this.player = this.player.cueVideoById({
+          videoId: getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
+        });
       } else {
         this.startPlayer(this.sessionVidList[0].url);
       }
@@ -398,13 +392,11 @@ export default Vue.extend({
                 //   }
                 // });
                 if (this.sessionVidList[++this.currentIndex]) {
-                  console.log(
-                    this.player.cueVideoById({
-                      videoId: getYouTubeVideoID(
-                        this.sessionVidList[this.currentIndex].url
-                      )
-                    })
-                  );
+                  this.player = this.player.cueVideoById({
+                    videoId: getYouTubeVideoID(
+                      this.sessionVidList[this.currentIndex].url
+                    )
+                  });
                   // this.player.destroy();
                   // this.startPlayer(this.sessionVidList[this.currentIndex].url);
                 }
