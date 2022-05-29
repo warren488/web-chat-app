@@ -18,13 +18,19 @@ import {
   countUnreads,
   isInChat,
   markLocalChatMessagesAsRead,
-  clearNotifications
+  clearNotifications,
+  checkAndLoadAppUpdate,
+  sortByCreatedAt,
+  getPlaylists,
+  uuid
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
 import io from "socket.io-client";
 import { Notyf } from "notyf";
-
+import appState from "./modules/appState";
+import appData from "./modules/appData";
+import { openDB } from "idb";
 /**
  * @fixme - update state to always hold the current friendship ID and a reference to that friend
  * so we dont have to constantly search
@@ -32,92 +38,237 @@ import { Notyf } from "notyf";
 Vue.use(Vuex);
 
 export default new Vuex.Store({
+  modules: {
+    appState,
+    appData
+  },
   state: {
+    messageNotification: new Notyf({
+      duration: 5000,
+      dismissible: true,
+      position: { x: "right", y: "bottom" }
+    }),
     notifAudioFile: getCookie("notifAudioFile") || "juntos.mp3",
     user: null,
+    sessionUid: uuid(),
     oneTimeListeners: new Map(),
     friendShips: null,
-    network: window.navigator.onLine,
-    focused: document.visibilityState === "visible",
     messages: null,
-    dataLoaded: false,
     enableSoundNotif: ["true", null].includes(getCookie("soundNotifPref")),
     enableVisualNotif: ["true", null].includes(getCookie("notifPref")),
-    dataLoadStarted: false,
     socket: null,
-    currChatFriendshipId: "",
     currChatMessages: [],
     updateQueue: [],
-    events: [],
-    friendshipIds: [],
+    events: {},
     unreads: {},
-    homeView: "chatlist",
+    // is top level await well supported?
+    db: openDB("app", 5, {
+      upgrade(db, oldVersion, newVersion, transaction) {
+        if (!db.objectStoreNames.contains("friendShips")) {
+          db.createObjectStore("friendShips", { keyPath: "_id" });
+        }
+        if (!db.objectStoreNames.contains("users")) {
+          db.createObjectStore("users", { keyPath: "_id" });
+        }
+        if (!db.objectStoreNames.contains("messages")) {
+          db.createObjectStore("messages", { keyPath: "friendship_id" });
+        }
+      },
+      blocked() {
+        console.log("blocked");
+      },
+      blocking() {
+        console.log("blocking");
+      },
+      terminated() {
+        console.log("terminated");
+      }
+    }),
     checkinActive: false,
-    showPopupNotif: false,
-    playlists: new Map()
+    playlists: {}
   },
   getters: {
     user: state => state.user,
-    homeView: state => state.homeView,
-    dataLoaded: state => state.dataLoaded,
     unreads: state => state.unreads,
     messages: state => state.messages,
     events: state => state.events,
-    network: state => state.network,
     socketConnected: state => (state.socket ? state.socket.connected : false),
     socket: state => state.socket,
-    currChatFriendshipId: state => state.currChatFriendshipId,
     currChatMessages: state => state.currChatMessages,
     notifAudio: state => new Audio(`/${state.notifAudioFile}`),
     friendShips: state => state.friendShips,
     initFriends: state => state.friendShips === null,
     initMessages: state => state.messages === null,
-    playlist: state => state.playlists
+    playlists: state => state.playlists,
+    sessionUid: state => state.sessionUid,
+    friendRequests: state =>
+      state.user &&
+      state.user.interactions &&
+      state.user.interactions.receivedRequests,
+    watchRequests: state =>
+      state.user &&
+      state.user.interactions &&
+      state.user.interactions.watchRequests.filter(
+        req => req.fromId !== state.user.id
+      )
   },
   actions: {
-    setNotifAudioFile: (context, file) => {
-      context.state.notifAudioFile = file;
-      setCookie("notifAudioFile", file, 1000000);
+    /**
+     * get from db wait on network if db fails, let network fetch in bg if db succeeds
+     */
+    async loadInitialFriendShips(context, data) {
+      return (
+        context.state.db
+          // @ts-ignore
+          .getAll("friendShips")
+          .then(async (data: any[]) => {
+            if (data.length === 0) {
+              return getFriendShips().then(async data => {
+                return context.commit("setFriendShips", data);
+              });
+            } else {
+              getFriendShips().then(async data => {
+                context.commit("setFriendShips", data);
+              });
+              return context.commit(
+                "setFriendShips",
+                data.sort(sortByCreatedAt)
+              );
+            }
+          })
+      );
     },
-    setFriendShips: (context, data) => {
-      return getFriendShips()
-        .then(({ data, friendshipIds }) => {
-          context.commit("setFriendShips", data);
-          context.commit("setfriendshipIds", friendshipIds);
-          return true;
-        })
-        .catch(err => {
-          return false;
+    loadInitialMessages: async (context, { friendship_id, limit = 50 }) => {
+      // get db messages first
+      const messages = await context.state.db
+        // @ts-ignore
+        .get("messages", friendship_id)
+        .then(async dbMessages => {
+          if (!(dbMessages && dbMessages.messages)) {
+            // wait on network
+            const { data: messages } = await getMessages(friendship_id, limit);
+            return messages;
+          } else {
+            // fetch and update in background
+            /**
+             * had to update setchat so that this doesnt overwrite the previous reference and break the components
+             * using that reference
+             */
+            getMessages(friendship_id, limit).then(({ data }) => {
+              context.commit("setChat", {
+                friendship_id,
+                messages: data
+              });
+              const unreads = countUnreads({
+                chat: data,
+                user_id: context.state.user.id
+              });
+              context.commit("addUnreads", { friendship_id, unreads });
+            });
+            // get db data now
+            return dbMessages.messages;
+          }
         });
+      context.commit("setChat", {
+        friendship_id,
+        messages
+      });
+      const unreads = countUnreads({
+        chat: messages,
+        user_id: context.state.user.id
+      });
+      context.commit("addUnreads", { friendship_id, unreads });
+      // ------------------------------
+      // const messages = await getMessages(friendship_id, limit)
+      //   .then(({ data }) => data)
+      //   .catch(err =>
+      //     context.state.db
+      //       // @ts-ignore
+      //       .get("messages", friendship_id)
+      //       .then(({ messages }) => messages)
+      //   );
+
+      // context.commit("setChat", { friendship_id, messages });
+      // const unreads = countUnreads({
+      //   chat: messages,
+      //   user_id: context.state.user.id
+      // });
+      // context.commit("addUnreads", { friendship_id, unreads });
     },
-    loadMessages: async (context, { friendship_id, limit = 50 }) => {
-      return getMessages(friendship_id, limit)
-        .then(({ data }) => {
-          context.commit("setChat", { friendship_id, data });
-          const unreads = countUnreads({
-            chat: data,
-            user_id: context.state.user.id
-          });
-          context.commit("addUnreads", { friendship_id, unreads });
-        })
-        .catch(console.log);
+    connectToLiveChat(context, chat) {
+      context.dispatch("runOnConnected", () => {
+        context.state.socket.emit("checkin", {
+          friendship_id: chat,
+          token: getCookie("token")
+        });
+      });
+    },
+    async initializeChat(context, { friendship_id, limit = 50 }) {
+      await context.dispatch("loadInitialMessages", { friendship_id, limit });
+      return context.dispatch("connectToLiveChat", friendship_id);
     },
     loadNotifications: async context => {
       return getNotifications()
         .then(({ data }) => {
-          console.log(data);
           context.commit("storeEvents", data);
         })
         .catch(console.log);
     },
+    /**
+     * get the user from idb first, if there's no user then go to the network and wait on it
+     * if there is a user then return that user and let the network update idb in the background
+     */
+    async loadInitialUser(context) {
+      return (
+        context.state.db
+          // @ts-ignore
+          .get("users", "currentUser")
+          .then(user => {
+            if (!user) {
+              return getUserInfo().then(({ data }) => data);
+            } else {
+              // let the network fetch and update state whenever
+              getUserInfo().then(({ data: user }) =>
+                context.commit("setUser", { _id: "currentUser", ...user })
+              );
+              return user;
+            }
+          })
+          .then(user => {
+            context.commit("setUser", { _id: "currentUser", ...user });
+            return user;
+          })
+      );
+    },
+    runOnConnected: async (context, fn) => {
+      if (!context.state.socket.connected) {
+        context.state.socket.on("connect", eventWrapper("connect", fn));
+      } else {
+        fn();
+      }
+    },
     setUpApp: async context => {
+      if (process.env.NODE_ENV == "production") {
+        checkAndLoadAppUpdate();
+      }
+      // NB: TODO: THIS IS ONE OF IF NOT THE ONLY PLACE WE SHOULD BE MUTATING STATE IN ACTIONS
+      // FIXME: IT SEEMS THIS CAN BLOCK THE MAIN THREAD WITH A PROMISE THAT NEVER RESOLVES
+      if (context.state.db instanceof Promise) {
+        // @ts-ignore
+        context.state.db = await context.state.db.catch(console.log);
+      }
+
       const url = new URL(window.location.href);
       const chat = url.searchParams.get("chat");
+      if (chat) {
+        // context.dispatch("setCurrentChat", chat);
+        context.commit("setHomeView", "chatbody");
+      }
       context.commit("resetState");
-      context.state.dataLoadStarted = true;
-      await context.dispatch("loadNotifications");
+      context.commit("setDataLoadSarted");
+      // await context.dispatch("loadNotifications");
       if (context.state.friendShips === null) {
-        await context.dispatch("setFriendShips");
+        await context.dispatch("loadInitialFriendShips");
       }
       if (context.state.messages === null) {
         context.state.messages = {};
@@ -143,228 +294,83 @@ export default new Vuex.Store({
        *  -
        */
 
-      await getUserInfo().then(({ data }) => {
-        context.state.user = data;
-        console.log(data);
-        // basically im trying to run this event as soon as it is safe to call socket.emit
-        if (!context.state.socket.connected) {
-          context.state.socket.on(
-            "connect",
-            eventWrapper("connect", () => {
-              context.state.socket.emit("checkin", {
-                // @ts-ignore
-                userId: data.id,
-                token: getCookie("token")
-              });
-            })
-          );
-        } else {
+      await context.dispatch("loadInitialUser").then(user => {
+        context.dispatch("runOnConnected", () => {
           context.state.socket.emit("checkin", {
             // @ts-ignore
-            userId: data.id,
+            userId: user.id,
             token: getCookie("token")
           });
-        }
-        context.state.friendShips &&
-          context.state.friendShips.forEach(friendShip => {
-            let friendship_id = friendShip._id;
+        });
+        if (context.state.friendShips) {
+          // if there is a chat to be opened load those messages first and open that chat
+          if (
+            chat &&
+            context.state.friendShips.find(
+              friendShip => friendShip._id === chat
+            )
+          ) {
             promiseArr.push(
               context
-                .dispatch("loadMessages", { friendship_id, limit: 30 })
+                .dispatch("initializeChat", {
+                  friendship_id: chat,
+                  limit: 30
+                })
                 .then(() => {
-                  /** so these are so many listeners we are adding fot the connect event
-                   * althoughg it only fires once hmmmm....
-                   * maybe we dont need to attach these listeners after we get all messages (but i think we do)
-                   */
-                  if (!context.state.socket.connected) {
-                    context.state.socket.on(
-                      "connect",
-                      eventWrapper("connect", () => {
-                        context.state.socket.emit("checkin", {
-                          friendship_id,
-                          token: getCookie("token")
-                        });
-                      })
-                    );
-                  } else {
-                    context.state.socket.emit("checkin", {
-                      friendship_id,
-                      token: getCookie("token")
-                    });
-                  }
-                  return;
+                  context.dispatch("setCurrentChat", chat);
+                  context.commit("setHomeView", "chatbody");
                 })
             );
+          }
+          context.state.friendShips.forEach(friendShip => {
+            let friendship_id = friendShip._id;
+            if (chat === friendship_id) return;
+            promiseArr.push(
+              context.dispatch("initializeChat", { friendship_id, limit: 30 })
+            );
           });
-      });
-
-      await Promise.all(promiseArr).then(promises => {
-        if (chat) {
-          context.commit("setCurrentChat", chat);
-          context.commit("setHomeView", "chatbody");
         }
-        context.state.dataLoaded = true;
-        eventBus.dataLoaded();
+      });
+      context.dispatch("getPlaylists");
+      context.dispatch("addOneTimeListener", {
+        customName: "startup",
+        event: "watchSessRequest",
+        handler: data => {
+          if (data.fromId === context.state.user.id) {
+            return;
+          }
+          if (data.newPlaylist) {
+            context.commit("addPlaylist", {
+              playlist: data.newPlaylist,
+              id: data.newPlaylist._id
+            });
+          }
+          context.commit("addNewWatchRequest", data);
+          context.commit("updatePendingWatchRequest", data);
+          eventBus.$emit("pendingWatchRequest");
+        }
+      });
+      await Promise.all(promiseArr).then(promises => {
+        context.commit("setDataLoadedTrue");
       });
     },
-    attachListeners: context => {
-      context.state.socket.on(
-        "reconnect",
-        eventWrapper("reconnect", (...args) => {
-          context.state.checkinActive = true;
-          let checkinData = {};
-          context.state.friendshipIds.forEach(id => {
-            if (context.state.messages[id]) {
-              checkinData[id] =
-                context.state.messages[id][
-                  context.state.messages[id].length - 1
-                ];
-              // we will need to ask for the updated status of messages that arent read, at this point i will
-              // assume that this is almost always going to be a small number so we can simply send all the msgIds
-              // in order to make the query simple
-              /** no */
-              // checkinData[id].unread = [];
-              // for (
-              //   let i = context.state.messages[id].length - 1;
-              //   i > context.state.messages[id].length - 50 && i <= 0;
-              //   i--
-              // ) {
-              //   if (context.state.messages[id][i].status !== "read") {
-              //     checkinData[id].unread.push(
-              //       context.state.messages[id][i].msgId
-              //     );
-              //   }
-              // }
-            }
-          });
-          context
-            .dispatch("emitEvent", {
-              eventName: "masCheckin",
-              data: checkinData
-            })
-            .then(newMessages => {
-              /** @todo scrolling behaviour doesnt feel like it should be here */
-              let shouldScroll;
-              let chatBody = document.querySelector(`.chat__main`);
-              /** figure out if we should scroll to force it later since
-               *  our function wont work well with multiple new messages */
-              if (chatBody) {
-                shouldScroll = scrollBottom2({
-                  element: chatBody,
-                  force: false,
-                  test: true
-                });
-              }
-              for (let friendship_id in newMessages) {
-                newMessages[friendship_id].sort(sortMessageArray);
-                newMessages[friendship_id] = newMessages[friendship_id].map(
-                  message => {
-                    if (message.fromId !== context.state.user.id) {
-                      if (
-                        context.state.focused &&
-                        friendship_id === context.state.currChatFriendshipId
-                      ) {
-                        /**
-                         * no need to update the dom nodes because these are messages
-                         * received by me so we dont show the status this is mainly
-                         * for the unread count
-                         */
-                        message.status = "read";
-                      } else {
-                        context.commit("incUnread", { friendship_id });
-                      }
-                    }
-                    return message;
-                  }
-                );
-                context.commit("addBulkPreSortedMessages", {
-                  friendship_id,
-                  messages: newMessages[friendship_id]
-                });
-                markAsReceived(friendship_id, [
-                  newMessages[friendship_id][0].createdAt,
-                  newMessages[friendship_id][
-                    newMessages[friendship_id].length - 1
-                  ].createdAt
-                ]);
-                context.commit("updateLastMessage", {
-                  friendship_id,
-                  lastMessage:
-                    newMessages[friendship_id][
-                      newMessages[friendship_id].length - 1
-                    ]
-                });
-              }
-              if (shouldScroll)
-                scrollBottom2({
-                  element: chatBody,
-                  force: true,
-                  test: false
-                });
-              context.state.checkinActive = false;
-            })
-            .catch(err => {
-              console.log;
-              context.state.checkinActive = false;
-            });
-        })
-      );
-      context.state.socket.on(
-        "newMessage",
-        eventWrapper("newMessage", async data => {
-          await context.dispatch("socketNewMessageHandler", data);
-        })
-      );
-      context.state.socket.on(
-        "received",
-        eventWrapper(
-          "received",
-          async data => await context.dispatch("socketReceivedHandler2", data)
-        )
-      );
-      context.state.socket.on(
-        "sweep",
-        eventWrapper(
-          "sweep",
-          async data => await context.dispatch("socketSweepHandler2", data)
-        )
-      );
-      context.state.socket.on(
-        "newFriend",
-        eventWrapper(
-          "newFriend",
-          async data => await context.dispatch("socketNewFriendHandler", data)
-        )
-      );
-      context.state.socket.on(
-        "newFriendRequest",
-        eventWrapper(
-          "newFriendRequest",
-          async data =>
-            await context.dispatch("socketNewFriendRequestHandler", data)
-        )
-      );
-      context.state.socket.on("pauseVideo", eventWrapper("pauseVideo", null));
-      context.state.socket.on("playVideo", eventWrapper("playVideo", null));
-      context.state.socket.on(
-        "playListUpdated",
-        eventWrapper("playListUpdated", null)
-      );
-      context.state.socket.on(
-        "acceptedWatchRequest",
-        eventWrapper("acceptedWatchRequest", null)
-      );
-      context.state.socket.on(
-        "watchSessRequest",
-        eventWrapper("watchSessRequest", null)
-      );
+    getPlaylists: async context => {
+      return getPlaylists().then(playlists => {
+        playlists.forEach(pl => {
+          Vue.set(context.state.playlists, pl._id, pl);
+        });
+      });
     },
+
     socketNewFriendHandler: (context, data) => {
-      context.state.friendShips.push({
+      context.commit("pushNewFriendship", {
         ...data.friendshipData,
         lastMessage: []
       });
-      context.state.messages[data.friendshipData._id] = [];
+      context.commit("setChat", {
+        friendship_id: data.friendshipData._id,
+        messages: []
+      });
       context.state.socket.emit("checkin", {
         friendship_id: data.friendshipData._id,
         token: getCookie("token")
@@ -373,103 +379,7 @@ export default new Vuex.Store({
     },
     socketNewFriendRequestHandler: (context, data) => {
       eventBus.$emit("newFriendRequest", data);
-      context.state.user.interactions.receivedRequests.push(data);
-    },
-    socketNewMessageHandler: (context, { token, data }) => {
-      if (token === getCookie("token")) {
-        return;
-      }
-      /** if we get a message about the other persons typing */
-      if (data.type === "typing") {
-        // if its saying the person has started typing
-        if (data.status === "start") {
-          context.commit("showTyping", data.friendship_id);
-          if (data.friendship_id === context.state.currChatFriendshipId) {
-            document.querySelector(".typing").classList.remove("op");
-          }
-          // if its saying the person has stopped typing
-        } else if (data.status === "stop") {
-          context.commit("hideTyping", data.friendship_id);
-          if (data.friendship_id === context.state.currChatFriendshipId) {
-            document.querySelector(".typing").classList.add("op");
-          }
-        }
-        return;
-      }
-      if (context.state.showPopupNotif) {
-        let notification = new Notyf({
-          duration: 5000,
-          dismissible: true,
-          position: { x: "right", y: "bottom" }
-        });
-        notification.success(`${data.from}: ${data.text}`);
-      }
-      if (context.state.enableSoundNotif) {
-        context.getters.notifAudio.play();
-      }
-      if (context.state.enableVisualNotif) {
-        notifyMe({ from: data.from, message: data.text });
-      }
-      const read =
-        context.state.focused &&
-        data.friendship_id === context.state.currChatFriendshipId;
-
-      let messageStatus;
-      /**
-       * @todo have a queue where we can store events that are to update the message
-       * status, where these events come in before the actual message
-       */
-      if (data.fromId === context.state.user.id) {
-        messageStatus = "sent";
-      } else {
-        messageStatus = read ? "read" : "receieved";
-      }
-      const newMessage = {
-        friendship_id: data.friendship_id,
-        message: {
-          createdAt: data.createdAt,
-          from: data.from,
-          text: data.text,
-          msgId: data.msgId,
-          _id:
-            data.fromId === context.state.user.id
-              ? data.Ids.senderId
-              : data.Ids.receiverId,
-          quoted: data.quoted,
-          fromId: data.fromId,
-          type: data.type,
-          media: data.media,
-          meta: data.meta,
-          linkPreview: data.linkPreview,
-          url: data.url,
-          /** @todo this does not go with the typical schema values for status */
-          status: messageStatus
-        }
-      };
-      context.state.updateQueue.forEach(event => {
-        if (
-          event.msgId === newMessage.message.msgId &&
-          newMessage.message.status !== "read"
-        ) {
-          newMessage.message.status = event.read ? "read" : "received";
-        }
-      });
-      context.commit("appendMessageToChat", newMessage);
-      context.commit("updateLastMessage", {
-        friendship_id: data.friendship_id,
-        lastMessage: data
-      });
-      /** let the next user know that this message is green ticked */
-      /** if we are signed in on multiple devices only tick if the message isnt coming from us */
-      if (data.fromId !== context.state.user.id) {
-        context.state.socket.emit("gotMessage", {
-          friendship_id: data.friendship_id,
-          token: getCookie("token"),
-          msgId: data.msgId,
-          createdAt: data.createdAt,
-          read
-        });
-      }
+      context.commit("addNewFriendRequest", data);
     },
     socketSweepHandler2(
       context,
@@ -515,8 +425,6 @@ export default new Vuex.Store({
      * will tell our other devices, hey this message was received/read on another device
      */
     socketReceivedHandler2(context, { friendship_id, msgId, createdAt, read }) {
-      console.log("received somewhere");
-
       let index = binaryCustomSearch(context.state.messages[friendship_id], {
         createdAt
       });
@@ -577,6 +485,7 @@ export default new Vuex.Store({
               context.state.socket.emit(
                 eventName,
                 {
+                  sessionUid: context.state.sessionUid,
                   token: getCookie("token"),
                   data
                 },
@@ -607,30 +516,85 @@ export default new Vuex.Store({
     },
     removeOneTimeListener(context, data) {
       context.commit("removeListener", data);
+    },
+    acceptWatchRequest(context, id) {
+      const request = context.getters.watchRequests.find(req => req._id === id);
+      console.log(request);
+      context.commit("updateCurrentYTSession", request);
+      context.commit(
+        "enterYTSession",
+        context.getters.currentYTSession.friendship_id
+      );
+      context.commit("clearPendingWatchRequest");
+      context.commit(
+        "setCurrentChat",
+        context.getters.currentYTSession.friendship_id
+      );
+      context.dispatch("emitEvent", {
+        eventName: "acceptWatchRequest",
+        data: {
+          ...context.getters.currentYTSession,
+          userId: context.getters.user.id
+        }
+      });
+    },
+    async denyWatchRequest(context, id) {
+      const request = context.getters.watchRequests.find(req => req._id === id);
+      context.commit("clearPendingWatchRequest");
+      context.dispatch("emitEvent", {
+        eventName: "denyWatchRequest",
+        data: { ...request, userId: context.getters.user.id }
+      });
     }
   },
   // todo: check if this is returns a promise or is synchronous
   mutations: {
+    setNotifAudioFile: (state, file) => {
+      state.notifAudioFile = file;
+      setCookie("notifAudioFile", file, 1000000);
+    },
     resetState: (state, data) => {
+      // TODO: FIXME WE NEED TO GET A REASON FOR RESETTING SO WE KNOW IF TO CLEAR INDEXED DB OR NOT
       if (state.socket) {
         state.socket.close();
       }
       state.friendShips = null;
       state.messages = null;
-      state.dataLoaded = false;
-      state.dataLoadStarted = false;
       state.socket = null;
-      state.currChatFriendshipId = "";
-      state.friendshipIds = [];
     },
-    enablePopupNotif(state) {
-      state.showPopupNotif = true;
+    addNewFriendRequest(state, request) {
+      state.user.interactions.receivedRequests = [
+        ...state.user.interactions.receivedRequests,
+        request
+      ];
+      // @ts-ignore
+      state.db.put("users", { _id: "currentUser", ...state.user });
     },
-    disablePopupNotif(state) {
-      state.showPopupNotif = false;
+    addNewWatchRequest(state, request) {
+      state.user.interactions.watchRequests = [
+        ...state.user.interactions.watchRequests,
+        request
+      ];
+      // @ts-ignore
+      state.db.put("users", { _id: "currentUser", ...state.user });
     },
+
+    updateInteractions(state, interactions) {
+      state.user.interactions = interactions;
+      // @ts-ignore
+      state.db.put("users", { _id: "currentUser", ...state.user });
+    },
+    updateWatchRequests(state, requests) {
+      state.user.interactions.watchRequests = requests;
+    },
+    removeFriendRequest(state, fromId) {
+      state.user.interactions.receivedRequests = state.user.interactions.receivedRequests.filter(
+        request => request.fromId !== fromId
+      );
+    },
+    // this allows me to add a listener only once for a specific part of my code without
+    // having to worry about how many time that code runs (e.g a component mounted event)
     registerListener(state, { customName, event, handler }) {
-      console.log("registerListener");
       let existingListeners = state.oneTimeListeners.get(event);
       if (!existingListeners) {
         existingListeners = new Map();
@@ -639,7 +603,6 @@ export default new Vuex.Store({
       state.oneTimeListeners.set(event, existingListeners);
     },
     removeListener(state, { customName, event }) {
-      console.log("removeListener");
       let existingListeners = state.oneTimeListeners.get(event);
       if (!existingListeners) {
         return;
@@ -648,11 +611,21 @@ export default new Vuex.Store({
       // not sure if i need to do this
       state.oneTimeListeners.set(event, existingListeners);
     },
+    setUser(state, user) {
+      state.user = user;
+      // @ts-ignore
+      state.db.put("users", user);
+    },
     incUnread(state, { friendship_id }) {
       state.unreads = {
         ...state.unreads,
         [friendship_id]: state.unreads[friendship_id]++
       };
+    },
+    pushNewFriendship(state, friendship) {
+      state.friendShips = [...state.friendShips, friendship];
+      // @ts-ignore
+      state.db.add("friendShips", friendship);
     },
     addUnreads(state, { friendship_id, unreads }) {
       state.unreads = {
@@ -674,17 +647,23 @@ export default new Vuex.Store({
         targetFriend.notificationCount = 1;
       }
     },
-    addPlaylist(state, playlist) {
-      state.playlists.set(playlist.uuid, playlist);
+    addPlaylist(state, { playlist, id }) {
+      // this may cause reactivity problems
+      Vue.set(state.playlists, id, playlist);
     },
-    setHomeView(state, view) {
-      state.homeView = view;
+    addVidPlaylist(state, { playlistId, vid }) {
+      const playlist = state.playlists[playlistId];
+      playlist.vids = [...playlist.vids, vid];
+      state.playlists[playlistId] = playlist;
     },
     setFriendShips(state, friendShips) {
       state.friendShips = friendShips;
-    },
-    setfriendshipIds(state, friendshipIds) {
-      state.friendshipIds = friendshipIds;
+      // @ts-ignore
+      const tx = state.db.transaction("friendShips", "readwrite");
+      Promise.all([
+        ...friendShips.map(friendship => tx.store.put(friendship)),
+        tx.done
+      ]);
     },
     markLocalChatMessagesAsRead(state, { friendship_id }) {
       /** @todo tell the server to mark all these as read  */
@@ -693,35 +672,29 @@ export default new Vuex.Store({
         state.user.id
       );
       state.unreads[friendship_id] = 0;
+      state.db
+        // @ts-ignore
+        .put("messages", {
+          friendship_id,
+          messages: state.messages[friendship_id]
+        })
+        .catch(console.log);
     },
-    setCurrentChat(state, friendship_id) {
-      state.currChatFriendshipId = friendship_id;
-      if (friendship_id === "") {
-        state.currChatMessages = [];
-        return;
-      }
-      if (isInChat(friendship_id)) {
-        /** @todo tell the server to mark all these as read  */
-        state.messages[friendship_id] = markLocalChatMessagesAsRead(
-          state.messages[friendship_id],
-          state.user.id
+    setChat(state, { friendship_id, messages }) {
+      // do this so that components that use the messages for this chat wont have out of date references
+      // re-assigning would cause that issues
+      if (state.messages[friendship_id]) {
+        state.messages[friendship_id].splice(
+          0,
+          state.messages[friendship_id].length,
+          ...messages
         );
-        state.unreads[friendship_id] = 0;
-        if (state.messages[friendship_id].length > 0) {
-          markAsReceived(friendship_id, [
-            state.messages[friendship_id][0].createdAt,
-            state.messages[friendship_id][
-              state.messages[friendship_id].length - 1
-            ].createdAt
-          ]);
-        }
-        clearNotifications({ tag: friendship_id });
+      } else {
+        state.messages[friendship_id] = messages;
       }
-      console.log("storeeeeeeeeee", state.messages[friendship_id]);
-      state.currChatMessages = state.messages[friendship_id];
-    },
-    setChat(state, { friendship_id, data }) {
-      state.messages[friendship_id] = data;
+
+      // @ts-ignore
+      state.db.put("messages", { friendship_id, messages }).catch(console.log);
     },
     updateLastMessage(state, { friendship_id, lastMessage }) {
       let index = state.friendShips.findIndex(friend => {
@@ -733,16 +706,16 @@ export default new Vuex.Store({
        * */
       state.friendShips.unshift(state.friendShips[index]);
       state.friendShips.splice(index + 1, 1);
+      // @ts-ignore
+      state.db.put("friendShips", state.friendShips[0]);
     },
     addEvent(state, event) {
       if (state.events[event.type]) {
         state.events[event.type].push(event);
       }
-      console.log("events", state.events);
     },
     storeEvents(state, events) {
       state.events = { ...events };
-      console.log("events", state.events);
     },
     showTyping(state, friendship_id) {
       let index = state.friendShips.findIndex(friend => {
@@ -780,19 +753,6 @@ export default new Vuex.Store({
        * */
       state.friendShips.splice(index, 1, state.friendShips[index]);
     },
-    setMessages(state, messages) {
-      state.messages = messages;
-      for (const friendship_id in messages) {
-        let chatUnreads = countUnreads({
-          chat: messages[friendship_id],
-          user_id: state.user.id
-        });
-        state.unreads = {
-          ...state.unreads,
-          [friendship_id]: chatUnreads
-        };
-      }
-    },
     addGroupToChatSart(state, data) {
       state.messages[data.friendship_id].unshift(...data.messages);
       let chatUnreads = countUnreads({
@@ -803,6 +763,11 @@ export default new Vuex.Store({
         ...state.unreads,
         [data.friendship_id]: chatUnreads
       };
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id: data.friendship_id,
+        messages: state.messages[data.friendship_id]
+      });
     },
     appendMessageToChat(state, { friendship_id, message }) {
       if (!isInChat(friendship_id) && message.fromId !== state.user.id) {
@@ -811,18 +776,12 @@ export default new Vuex.Store({
           [friendship_id]: state.unreads[friendship_id] + 1
         };
       }
-      return state.messages[friendship_id].push(message);
-    },
-    addMessage(state, { friendship_id, message }) {
-      if (!isInChat(friendship_id)) {
-        state.unreads = {
-          ...state.unreads,
-          [friendship_id]: state.unreads[friendship_id] + 1
-        };
-      }
-      if (state.messages !== null) {
-        state.messages[friendship_id].push(message);
-      }
+      state.messages[friendship_id].push(message);
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id,
+        messages: state.messages[friendship_id]
+      });
     },
     addBulkPreSortedMessages(state, { friendship_id, messages }) {
       state.messages[friendship_id].splice(
@@ -830,7 +789,8 @@ export default new Vuex.Store({
         0,
         ...messages
       );
-      if (!isInChat) {
+      // this will show unread messages from us that were sent from another device. good? bad?
+      if (!isInChat(friendship_id)) {
         let chatUnreads = countUnreads({
           chat: state.messages[friendship_id],
           user_id: state.user.id
@@ -840,6 +800,11 @@ export default new Vuex.Store({
           [friendship_id]: chatUnreads
         };
       }
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id,
+        messages: state.messages[friendship_id]
+      });
     },
     updateSentMessage(state, data) {
       state.messages[data.friendship_id][data.index]._id = data._id;
@@ -851,6 +816,11 @@ export default new Vuex.Store({
       state.messages[data.friendship_id][data.index].status = "sent";
       state.messages[data.friendship_id][data.index].createdAt = data.createdAt;
       state.messages[data.friendship_id].sort(sortMessageArray);
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id: data.friendship_id,
+        messages: state.messages[data.friendship_id]
+      });
     },
     updateMessageStatus(state, data) {
       let recountUnreads =
@@ -872,6 +842,11 @@ export default new Vuex.Store({
         state.messages[data.friendship_id][data.index].msgId,
         data.status === "read"
       );
+      // @ts-ignore
+      state.db.put("messages", {
+        friendship_id: data.friendship_id,
+        messages: state.messages[data.friendship_id]
+      });
     }
   }
 });

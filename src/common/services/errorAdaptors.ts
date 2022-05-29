@@ -15,6 +15,7 @@ export default new Map([
             message: "please enter the correct username and password"
           };
         } else if (
+          err.response &&
           err.response.status === 404 &&
           err.response.data.message === "user not found"
         ) {

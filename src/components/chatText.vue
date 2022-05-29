@@ -264,7 +264,14 @@ export default Vue.extend({
   created() {
     this.scanForLinkDebounced = debounce(this.scanForLink, 300);
   },
+  mounted() {
+    if (this.sharedImage) {
+      this.fileInputHandler(this.sharedImage.image);
+      this.clearSharedImage();
+    }
+  },
   methods: {
+    ...mapMutations(["clearSharedImage"]),
     textInput(e) {
       this.messageText = e;
       this.scanForLinkDebounced(e);
@@ -325,7 +332,6 @@ export default Vue.extend({
         /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
       );
       if (urlMatches) {
-        console.log("found url");
         if (!this.previewData || urlMatches[0] !== this.previewData.url) {
           this.loadingPreview = true;
           getPreviewData(urlMatches[0])
@@ -348,8 +354,9 @@ export default Vue.extend({
     addFileHandler() {
       this.$refs.fileInput.click();
     },
-    fileInputHandler() {
-      this.file = this.$refs.fileInput.files[0];
+    fileInputHandler(file) {
+      this.file =
+        file && file instanceof File ? file : this.$refs.fileInput.files[0];
       var imgpreview = this.$refs.imgpreview as HTMLImageElement;
       imgpreview.src = URL.createObjectURL(this.file);
       imgpreview.onload = function() {
@@ -448,22 +455,24 @@ export default Vue.extend({
         });
         this.cancelFileSend();
       } else {
-        console.log("sdsd");
-
         this.$emit("newMessage", {
           text: msg,
           ...messageShell
         });
       }
       this.messageText = "";
-      console.log(this.$refs);
       // @fixme potential cause of problems
       this.$refs.msgText.$el.focus();
       this.previewData = null;
     }
   },
   computed: {
-    ...mapGetters(["currChatFriendshipId", "friendShips", "user"]),
+    ...mapGetters([
+      "currChatFriendshipId",
+      "friendShips",
+      "user",
+      "sharedImage"
+    ]),
     hasAudio() {
       return this.audioBlob !== null;
     },

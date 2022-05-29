@@ -1,26 +1,29 @@
 <template>
   <div v-if="display">
+    <!-- the reason for both close and closed is that the modal leaves residual elements if we 
+   dont wait for it to fully close, so we tell it to close first before running the rest of the important close stuff -->
     <create-session-modal
       :showModal="addLinkProp"
       @close="addLink = false"
+      @closed="!activeYTSession ? exit() : null"
       @sendRequest="sendWatchRequest"
       @addToList="addToList"
-      :vids="vids"
+      :vids="requestVids"
       :playlists="playlists"
       @selected="selectedPlaylist"
     ></create-session-modal>
-    <!-- <div v-if="pendingRequest"> -->
     <new-modal
-      :showModal="!!pendingRequest"
+      :showModal="!!pendingWatchRequest"
       :confirm="true"
       :header="'Watch session request'"
       :text="modalText"
-      @accept="acceptWatchRequest"
-      @deny="denyWatchRequest"
+      @closed="!activeYTSession ? exit() : null"
+      @accept="acceptWatchRequestHandler"
+      @deny="denyWatchRequestHandler"
     >
-      <template v-if="pendingRequest" v-slot:body>
+      <template v-if="pendingWatchRequest" v-slot:body>
         <link-preview
-          v-for="vid of pendingRequest.vids"
+          v-for="vid of pendingRequestVidList"
           :key="vid.url"
           :previewData="vid"
         >
@@ -28,20 +31,22 @@
       </template>
     </new-modal>
     <!-- </div> -->
-    <div class="in-chat-player" id="player-container" ref="player-container">
+    <div class="in-chat-player" id="player-container" ref="playerContainer">
       <header
         class="banner"
         style="display: flex; background: var(--bs-success)"
+        v-if="activeYTSession"
+        ref="YTHeader"
       >
-        <button class="btn btn-success" @click="$emit('close')">Close</button>
+        <button class="btn btn-success" @click="exit">Close</button>
         <button class="btn btn-success" @click="addLink = true">
-          New Video
+          New Session
         </button>
         <button class="btn btn-success" @click="fitPlayer">Fit Player</button>
         <button class="btn btn-success" @click="$emit('toggleChat')">
           Show chat
         </button>
-        <div class="btn-group dropdown" v-if="playlist">
+        <div class="btn-group dropdown" v-if="currentYTSession">
           <button
             class="btn btn-success dropdown-toggle"
             type="button"
@@ -57,13 +62,14 @@
             aria-labelledby="playlist-dropdown"
           >
             <li
-              class="dropdown-item"
-              v-for="vid of playlist.vids"
+              class="dropdown-item disabled"
+              style="min-width: 400px"
+              v-for="vid of sessionVidList"
               :key="vid.url"
             >
               <link-preview :previewData="vid"></link-preview>
             </li>
-            <li class="dropdown-item">
+            <li class="dropdown-item-text">
               <div class="input-group mb-3">
                 <!-- <div class="form-control"> -->
                 <input
@@ -79,7 +85,7 @@
                 <!-- </div> -->
               </div>
               <link-preview
-                v-if="newLinkPreviewData"
+                :loading="loadingPreview"
                 :previewData="newLinkPreviewData"
               ></link-preview>
             </li>
@@ -95,7 +101,13 @@ import Vue from "vue";
 import { debounce } from "debounce";
 import newModal from "@/components/newModal.vue";
 import { mapActions, mapGetters, mapMutations } from "vuex";
-import { getPlaylists, getPreviewData, uuid } from "@/common";
+import {
+  getPlaylists,
+  getPreviewData,
+  getYouTubeVideoID,
+  uuid
+} from "@/common";
+import { eventBus } from "@/common/eventBus";
 import LinkPreview from "./linkPreview.vue";
 import CreateSessionModal from "./YTPlayer/createSessionModal.vue";
 const states = {
@@ -108,98 +120,115 @@ export default Vue.extend({
   props: {
     display: Boolean,
     CreateSessionModal,
-    type: String,
-    forwardedPendingRequest: Object
+    type: String
   },
   created() {
     this.newLinkInputDebounced = debounce(this.newLinkInput, 500);
   },
   mounted() {
-    //   i do this because after the first time we open the component it technically doesnt get destroyed so the
-    // addLink value will be false and it wont show the modal
-    this.addLink = true;
-    console.log("mounted");
-    if (this.forwardedPendingRequest) {
-      this.pendingRequest = this.forwardedPendingRequest;
-      this.addLink = false;
-      // TODO: will have to eventually change this to watch sess handler too
-      this.watchSessRequestHandler(this.pendingRequest);
+    if (this.activeYTSession) {
+      this.startPlayer(this.sessionVidList[0].url);
+    } else if (!this.activeYTSession && !this.pendingWatchRequest) {
+      //   i do this because after the first time we open the component it technically doesnt get destroyed so the
+      // addLink value will be false and it wont show the modal
+      this.addLink = true;
     }
-    this.addOneTimeListener({
-      customName: "YT",
-      event: "watchSessRequest",
-      handler: this.watchSessRequestHandler
-    });
-    this.addOneTimeListener({
-      customName: "YT",
-      event: "acceptedWatchRequest",
-      handler: this.acceptedWatchRequestHandler
-    });
+    eventBus.$on("newWatchSession", this.newWatchSession);
     this.addOneTimeListener({
       customName: "YT",
       event: "pauseVideo",
       handler: data => {
-        console.log("pauseVideo othandler");
-        window.player.pauseVideo();
-        window.player.seekTo(data.time);
+        console.log(data.sessionUid, this.sessionUid);
+        if (data.sessionUid === this.sessionUid) return;
+        if (this.player) {
+          this.player.pauseVideo();
+          this.player.seekTo(data.time);
+        }
       }
     });
     this.addOneTimeListener({
       customName: "YT",
       event: "playListUpdated",
       handler: data => {
-        if (this.playlist._id === data._id) {
-          this.playlist = data;
-        }
+        // here we
+        this.addPlaylist({ playlist: data, id: data._id });
       }
     });
     this.addOneTimeListener({
       customName: "YT",
       event: "playVideo",
       handler: data => {
-        console.log("playVideo othandler");
-        window.player.playVideo();
+        if (data.sessionUid === this.sessionUid) return;
+        console.log("play");
+        // this will help us get synced up while seeking but causes bouncing back and forth of events
+        // this.player.seekTo(data.time);
+        if (this.player) this.player.playVideo();
       }
     });
     this.enablePopupNotif();
-    getPlaylists()
-      .then(playlists => (this.playlists = playlists))
-      .catch(console.log);
+  },
+  beforeDestroy() {
+    // this is necessary because when we delete the parent component of a modal before it finishes
+    // closing then it leaves the backdrop behind. this now makes the stuff i did with the
+    // 'close' and 'closed' events now unnecessary but idk if i want to fully rely on this rn
+    const modalBackdrop = document.querySelector(".modal-backdrop.show");
+    if (modalBackdrop) {
+      modalBackdrop.remove();
+    }
   },
   data() {
     return {
-      //   showVideo: false,
       addLink: false,
       newLinkPreviewData: null,
+      loadingPreview: false,
+      runningPreview: false,
       player: null,
-      vids: [],
+      requestVids: [],
       playlistName: "",
-      pendingRequest: null,
-      playlist: null,
-      playlists: [],
+      session: null,
       currentIndex: 0,
       selectedPlaylistId: "",
       newLinkUrl: ""
     };
   },
   methods: {
-    ...mapActions(["emitEvent", "addOneTimeListener", "removeOneTimeListener"]),
-    ...mapMutations([
+    ...mapActions([
+      "emitEvent",
+      "addOneTimeListener",
       "setCurrentChat",
+      "removeOneTimeListener",
+      "acceptWatchRequest",
+      "denyWatchRequest"
+    ]),
+    ...mapMutations([
       "enablePopupNotif",
+      "clearPendingWatchRequest",
       "disablePopupNotif",
-      "addPlaylist"
+      "addVidPlaylist",
+      "updateCurrentYTSession",
+      "addPlaylist",
+      "enterYTSession",
+      "leaveYTSession"
     ]),
     async newLinkInput(event) {
-      console.log(event.target.value, this.newLinkUrl);
-      // TODO: check the specs for the input event to see if there's a better way to do this
-      this.newLinkUrl = event.target.value;
-      let previewData = await getPreviewData(event.target.value);
-      this.newLinkPreviewData = previewData;
-      return true;
+      try {
+        this.loadingPreview = true;
+        // TODO: check the specs for the input event to see if there's a better way to do this
+        this.newLinkUrl = event.target.value;
+        let previewData = await getPreviewData(event.target.value);
+        if (previewData.message == "error") {
+          this.newLinkPreviewData = null;
+        } else {
+          this.newLinkPreviewData = previewData;
+        }
+        this.loadingPreview = false;
+        return true;
+      } catch (error) {
+        this.loadingPreview = false;
+        return true;
+      }
     },
     async addToCreatedList({ listId, url }) {
-      console.log(this.playlist);
       if (!this.newLinkUrl) {
         return;
       }
@@ -207,21 +236,26 @@ export default Vue.extend({
       let newPlaylist = await this.emitEvent({
         eventName: "addVideoToPlaylist",
         data: {
-          listId: this.playlist._id,
+          listId: this.currentYTSession.playlistId,
           // NB: this (for now) will serve to tell the server that we are watching this playlist with someone so update their list as well
           friendship_id: this.currChatFriendshipId,
           vid: previewData
         }
       });
-      this.playlist = newPlaylist;
-      console.log(newPlaylist);
+      // for now we will rely on the playlist updated event that happens as a result of this to update the
+      // playlist, this will also allow it to be up to date on multiple devices, thi s will not work when we start
+      // using this functions in other areas where there may not be an active session
+      // this.addVidPlaylist({
+      //   playlistId: this.currentYTSession.playlistId,
+      //   vid: previewData
+      // });
     },
     selectedPlaylist(listId) {
       if (listId) {
-        this.vids = this.playlists.find(({ _id }) => _id === listId).vids;
+        this.requestVids = this.playlists[listId].vids;
         this.selectedPlaylistId = listId;
       } else {
-        this.vids = [];
+        this.requestVids = [];
         this.selectedPlaylistId = "";
       }
     },
@@ -229,124 +263,80 @@ export default Vue.extend({
       if (!link) {
         return;
       }
-      let index = this.vids.push({ url: link }) - 1;
-      getPreviewData(link).then(data => {
-        this.vids.splice(index, 1, data);
+      let index = this.requestVids.push({ url: link }) - 1;
+      // this allows us to wait on this promise to complete in multiple places
+      this.runningPreview = getPreviewData(link);
+      this.runningPreview.then(data => {
+        this.requestVids.splice(index, 1, data);
       });
     },
-    async acceptedWatchRequestHandler(data) {
+    async newWatchSession(data) {
       // TODO: in the future we should add a way for us to confirm that we're ready?
-      console.log("acceptedWatchRequestHandler");
-      if (data.userId === this.user.id) {
-        return;
-      }
-      this.playlist = data;
       this.currentIndex = 0;
       if (this.player) {
-        this.player.destroy();
-      }
-      this.setCurrentChat(data.friendship_id);
-      this.startPlayer(this.playlist.vids[0].url);
-    },
-    async watchSessRequestHandler(data) {
-      console.log(data);
-      if (data.userId === this.user.id) {
-        return;
-      }
-      this.pendingRequest = data;
-    },
-    async acceptWatchRequest() {
-      if (this.player) {
-        this.player.destroy();
-      }
-      this.playlist = this.pendingRequest;
-      this.pendingRequest = null;
-      this.setCurrentChat(this.playlist.friendship_id);
-      this.startPlayer(this.playlist.vids[0].url);
-      this.emitEvent({
-        eventName: "acceptWatchRequest",
-        data: { ...this.playlist, userId: this.user.id }
-      });
-    },
-    async denyWatchRequest() {
-      this.pendingRequest = null;
-      this.emitEvent({
-        eventName: "denyWatchRequest",
-        data: { ...data, userId: this.user.id }
-      });
-      // this.exit();
-    },
-    async watchRequestHandler(data) {
-      if (data.userId === this.user.id) {
-        return;
-      }
-      console.log(this.friendShips);
-      const accept = await confirm(
-        `your friend ${
-          this.friendShips.find(
-            friendship => friendship._id === data.friendship_id
-          ).username
-        } wants to watch a video with you from link: ${data.url}`
-      );
-      if (accept) {
-        if (this.player) {
-          this.player.destroy();
-        }
-        this.setCurrentChat(data.friendship_id);
-        this.startPlayer(data.url);
-        this.emitEvent({
-          eventName: "acceptWatchRequest",
-          data: { ...data, userId: this.user.id }
+        // this.player.destroy();
+        this.player = this.player.cueVideoById({
+          videoId: getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
         });
       } else {
-        this.exit();
+        this.startPlayer(this.sessionVidList[this.currentIndex].url);
       }
     },
-    sendWatchRequest(data) {
-      console.log(data);
-      if (this.vids.length === 0) {
+    async acceptWatchRequestHandler() {
+      this.acceptWatchRequest(this.pendingWatchRequest._id);
+      this.currentIndex = 0;
+      if (this.player) {
+        // this.player.destroy();
+        this.player = this.player.cueVideoById({
+          videoId: getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
+        });
+      } else {
+        this.startPlayer(this.sessionVidList[0].url);
+      }
+    },
+    // after request is clear and the modal disappears it will auto close YT if there is no ongoing session
+    async denyWatchRequestHandler() {
+      this.denyWatchRequest(this.pendingWatchRequest._id);
+    },
+    async sendWatchRequest(data) {
+      if (
+        !this.selectedPlaylistId &&
+        (this.requestVids.length === 0 || !data.name)
+      ) {
         return;
       }
-      let playlist = {
-        from: this.user.id,
+      await this.runningPreview;
+      let watchRequest = {
         friendship_id: this.currChatFriendshipId,
         uuid: uuid(),
         to: this.friendShips.find(
           friendship => friendship._id === this.currChatFriendshipId
         ).friendId
       };
+      // if it exists send the id if not the server will create it and attach the id for us
       if (this.selectedPlaylistId) {
-        playlist.playlistId = this.selectedPlaylistId;
+        watchRequest.playlistId = this.selectedPlaylistId;
       } else {
-        playlist.vids = this.vids;
-        playlist.name = data.name;
+        watchRequest.vids = this.requestVids;
+        watchRequest.name = data.name;
       }
-      this.emitEvent({
+      const request = await this.emitEvent({
         eventName: "watchSessRequest",
-        data: playlist
+        data: watchRequest
       });
-      this.addPlaylist(playlist);
+      if (request.newPlaylist) {
+        this.addPlaylist({
+          playlist: request.newPlaylist,
+          id: request.newPlaylist._id
+        });
+      }
     },
     startPlayer(link) {
-      let vidId;
-      try {
-        let url = new URL(link);
-        if (url.hostname === "www.youtube.com") {
-          vidId = url.searchParams.get("v");
-        } else if (url.hostname === "youtu.be") {
-          vidId = url.pathname.substr(1);
-        } else {
-          return;
-        }
-        console.log(url);
-      } catch (e) {
-        console.log(e);
-      }
+      let vidId = getYouTubeVideoID(link);
 
       if (!vidId) {
         return;
       }
-      //   this.showVideo = true;
       this.addLink = false;
       setTimeout(() => {
         // @ts-ignore
@@ -363,11 +353,10 @@ export default Vue.extend({
               // NB: for whatever reason this is the only version of 'player' that has the function
               window.player = event.target;
               this.player = event.target;
-              console.log(event);
-              console.log(window.player);
+              this.fitPlayer();
             },
             onStateChange: ({ target, data }) => {
-              console.log("statechanged", data, target);
+              console.log("state", data);
               if (data === 2) {
                 this.emitEvent({
                   eventName: "pauseVideo",
@@ -392,8 +381,15 @@ export default Vue.extend({
                 //     friendship_id: this.currChatFriendshipId
                 //   }
                 // });
-                this.player.destroy();
-                this.startPlayer(this.playlist.vids[++this.currentIndex].url);
+                if (this.sessionVidList[++this.currentIndex]) {
+                  this.player = this.player.cueVideoById({
+                    videoId: getYouTubeVideoID(
+                      this.sessionVidList[this.currentIndex].url
+                    )
+                  });
+                  // this.player.destroy();
+                  // this.startPlayer(this.sessionVidList[this.currentIndex].url);
+                }
               }
             }
           }
@@ -401,7 +397,7 @@ export default Vue.extend({
       }, 500);
     },
     exit() {
-      this.$emit("close");
+      console.log("exiting");
       if (this.player) {
         this.player.destroy();
       }
@@ -409,27 +405,57 @@ export default Vue.extend({
       // we need to restore it so we can watch videos again
       let newPlayerDiv = document.createElement("div");
       newPlayerDiv.id = "player";
-      this.$refs.playerContainer.$el.appendChild(newPlayerDiv);
+      this.$refs.playerContainer.appendChild(newPlayerDiv);
+      this.leaveYTSession(this.YTSessionFriendId);
+      // even though we destroy the whole container the modal still leaves residue if its not told explicitly to close
+      this.addLink = false;
+      this.$emit("close");
     },
     fitPlayer() {
+      const headerHeight = this.$refs.YTHeader
+        ? this.$refs.YTHeader.offsetHeight
+        : 0;
       document.getElementById("player").width =
         document.documentElement.clientWidth;
       document.getElementById("player").height = Math.min(
-        document.documentElement.clientHeight,
+        document.documentElement.clientHeight - headerHeight,
         document.documentElement.clientWidth / 2
       );
     }
   },
   computed: {
-    ...mapGetters(["currChatFriendshipId", "user", "friendShips"]),
+    ...mapGetters([
+      "currChatFriendshipId",
+      "user",
+      "friendShips",
+      "activeYTSession",
+      "YTSessionFriendId",
+      "sessionUid",
+      "playlists",
+      "currentYTSession",
+      "pendingWatchRequest"
+    ]),
     addLinkProp() {
       return this.addLink;
     },
+    // because we treat the request and the playlist as the same thing then sometimes a playlist has a list
+    // of vids and other times it has a playlistId, which is confusion and needs to be fixed (rename to sessoin instead)
+    pendingRequestVidList() {
+      return (
+        this.pendingWatchRequest.vids ||
+        this.playlists[this.pendingWatchRequest.playlistId].vids
+      );
+    },
+    sessionVidList() {
+      // move to state
+      return this.playlists[this.currentYTSession.playlistId].vids;
+    },
     modalText() {
-      return this.pendingRequest
+      return this.pendingWatchRequest
         ? `your friend ${
             this.friendShips.find(
-              friendship => friendship._id === this.pendingRequest.friendship_id
+              friendship =>
+                friendship._id === this.pendingWatchRequest.friendship_id
             ).username
           }  wants to watch YouTube with you`
         : "";

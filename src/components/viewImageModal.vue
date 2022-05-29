@@ -59,8 +59,6 @@ export default {
       keyboard: false
     });
     this.$refs.imageViewer.addEventListener("hidePrevented.bs.modal", event => {
-      console.log("do something");
-      // do something...
       this.$emit("close");
     });
   },

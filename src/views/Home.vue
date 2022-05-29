@@ -15,6 +15,21 @@
         <new-profile :details="modalData.visibleProfile" />
       </template>
     </newModal>
+    <newModal :showModal="sharedImage !== null" @close="clearSharedImage()">
+      <template v-slot:full-replace>
+        <img :src="sharedImage && sharedImage.url" style="width: 100%" />
+        <chatList
+          title="Chat"
+          :userList="friendShips"
+          :currentChat="currChatFriendshipId"
+          @open="({ _id }) => $router.push('/home?chat=' + _id)"
+        />
+      </template>
+    </newModal>
+    <watch-request-list
+      :showModal="watchRequestsModal"
+      @close="toggleWatchRequestsModal"
+    ></watch-request-list>
     <main class="main-section">
       <div
         :class="{
@@ -30,11 +45,29 @@
             reconnecting: !socketConnected
           }"
         >
+          <button class="btn" @click="sideMenuActive = !sideMenuActive">
+            <img src="/assets/img/menu.svg" alt="menu icon" />
+          </button>
           <button
-            class="mybt menubt notification-item"
-            @click="sideMenuActive = !sideMenuActive"
+            class="btn position-relative"
+            @click="toggleWatchRequestsModal"
           >
-            <img src="/assets/img/menu.svg" alt="notification icon" />
+            <img src="/assets/img/bell-fill.svg" alt="notification icon" />
+            <span
+              v-if="watchRequests && watchRequests.length > 0"
+              class="
+                position-absolute
+                top-0
+                start-100
+                translate-middle
+                badge
+                rounded-pill
+                bg-danger
+              "
+            >
+              {{ watchRequests.length }}
+              <span class="visually-hidden">unread messages</span>
+            </span>
           </button>
           <span v-if="!network">you are currently offline</span>
           <span v-if="!socketConnected && network"
@@ -43,7 +76,7 @@
         </header>
 
         <ul class="nav nav-tabs" id="myTab" role="tablist">
-          <li class="nav-item " role="presentation">
+          <li class="nav-item" role="presentation">
             <button
               class="nav-link active fw-bold"
               id="chat-tab"
@@ -81,8 +114,24 @@
               role="tab"
               aria-controls="requests"
               aria-selected="false"
+              style="position: relative"
             >
               requests
+              <span
+                v-if="friendRequests && friendRequests.length > 0"
+                class="
+                  position-absolute
+                  top-0
+                  start-100
+                  translate-middle
+                  badge
+                  rounded-pill
+                  bg-danger
+                "
+              >
+                {{ friendRequests.length }}
+                <span class="visually-hidden">unread messages</span>
+              </span>
             </button>
           </li>
         </ul>
@@ -95,7 +144,6 @@
           >
             <chatList
               title="Chat"
-              :filter="filter"
               :userList="friendShips"
               @open="({ _id }) => $router.push('/home?chat=' + _id)"
               :currentChat="currChatFriendshipId"
@@ -124,8 +172,7 @@
             <chatList
               v-if="user"
               title="Friend Requests"
-              :filter="filter"
-              :userList="user.interactions.receivedRequests"
+              :userList="friendRequests"
               @open="viewFriendship"
               :currentChat="currChatFriendshipId"
             />
@@ -157,7 +204,7 @@
                 x="0px"
                 y="0px"
                 viewBox="0 0 64 64"
-                style="enable-background:new 0 0 64 64;"
+                style="enable-background: new 0 0 64 64"
                 xml:space="preserve"
               >
                 <path
@@ -198,11 +245,9 @@
               </h1>
             </div>
             <button
+              v-if="!activeYTSession"
               class="btn btn-success"
-              @click="
-                showVideo = true;
-                player.loadComponent = true;
-              "
+              @click="loadYTComponent"
             >
               watch
             </button>
@@ -251,20 +296,21 @@
             @typing="handleTyping"
           ></chat-text>
         </div>
-        <div class="empty-chat" v-if="!currFriend">
-          Open a chat
+        <div class="empty-chat" v-if="!currFriend">Open a chat</div>
+        <div v-if="sharedImage">
+          <img :src="sharedImage.url" />
         </div>
-        <TYPlayer
-          v-if="player.loadComponent"
+
+        <!-- we can cause problems here if we remove the component without exiting the session -->
+        <YTPlayer
+          v-if="showYTComponent"
           :display="true"
-          :forwardedPendingRequest="player.pendingRequest"
-          @close="
-            player = { friendship_id: null, url: null, loadComponent: null }
-          "
+          @close="unloadYTComponent"
           @toggleChat="makeChatProminent"
         />
       </div>
     </main>
+    <center-toast> </center-toast>
   </div>
 </template>
 
@@ -276,6 +322,8 @@ import chatBody from "@/components/chatBody.vue";
 import sideMenu from "@/components/sideMenu.vue";
 import viewImageModal from "@/components/viewImageModal.vue";
 import newModal from "@/components/newModal.vue";
+import centerToast from "@/components/centerToast.vue";
+import watchRequestList from "@/components/watchRequestList.vue";
 import {
   getCookie,
   getMessagePage,
@@ -287,23 +335,23 @@ import {
   disableSound,
   subscribeToNotif,
   unsubscribeToNotif,
-  signOutOfFirebase
+  signOutOfFirebase,
+  getSharedImage
 } from "@/common";
 
 import { mapGetters, mapActions, mapMutations } from "vuex";
-import store from "../store";
+import store from "../store/index";
 import "notyf/notyf.min.css";
 import NewProfile from "@/components/newProfile.vue";
 import SmartProfile from "@/components/smartProfile.vue";
-import TYPlayer from "@/components/YTPlayer.vue";
+import YTPlayer from "@/components/YTPlayer.vue";
+import { eventBus } from "@/common/eventBus";
 
 export default Vue.extend({
   name: "home",
   props: ["chat"],
   mounted() {
     if (this.$route.query.chat) {
-      console.log(this.$route.query.chat);
-
       /** if the data isnt loaded yet then there is a line in the setup that will do this for us */
       if (this.dataLoaded) {
         this.openChat({ _id: this.$route.query.chat });
@@ -312,24 +360,20 @@ export default Vue.extend({
       this.setCurrentChat("");
       this.setHomeView("chatlist");
     }
-    // the handler for this listener will run ONLY if the component is not loaded
-    // if the component is loaded then it will handle this itself
-    this.addOneTimeListener({
-      customName: "Home",
-      event: "watchSessRequest",
-      handler: data => {
-        console.log("from home");
-
-        if (!this.player.loadComponent) {
-          this.player.pendingRequest = data;
-          this.player.loadComponent = true;
-        }
-      }
-    });
+    if ("share" in this.$route.query) {
+      getSharedImage().then(image => {
+        this.setSharedImage({ image, url: URL.createObjectURL(image) });
+      });
+      // might be sketch
+      this.$router.replace("/");
+    }
+    var myToastEl = document.getElementById("center-toast");
+    // @ts-ignore
+    this.myToast = window.bootstrap.Toast.getOrCreateInstance(myToastEl);
+    eventBus.$on("pendingWatchRequest", () => this.myToast.show());
   },
   data() {
     return {
-      chatProminent: false,
       sideMenuActive: false,
       profileImageOpen: false,
       modalData: { openProfile: false, visibleProfile: {} },
@@ -339,10 +383,9 @@ export default Vue.extend({
       typing: {},
       viewCurrentFriendProfile: false,
       loadingMore: false,
-      showVideo: false,
+      myToast: null,
       player: {
         loadComponent: false,
-        url: null,
         friendship_id: null
       }
     };
@@ -350,37 +393,35 @@ export default Vue.extend({
   methods: {
     ...mapActions([
       "addOneTimeListener",
-      "setNotifAudioFile",
       "setFriends",
       "setUpApp",
       "loadMessages",
+      "setCurrentChat",
       "emitEvent"
     ]),
     ...mapMutations([
+      "setNotifAudioFile",
+      "unloadYTComponent",
+      "loadYTComponent",
+      "toggleWatchRequestsModal",
       "updateLastMessage",
       "hideTyping",
+      "clearSharedImage",
       "showTyping",
       "addGroupToChatSart",
       "appendMessageToChat",
       "updateSentMessage",
-      "setCurrentChat",
       "setHomeView",
       "enablePopupNotif",
-      "disablePopupNotif"
+      "disablePopupNotif",
+      "makeChatBackdrop",
+      "makeChatProminent",
+      "setSharedImage"
     ]),
-    makeChatProminent() {
-      this.chatProminent = true;
-      this.disablePopupNotif();
-    },
-    makeChatBackdrop() {
-      this.chatProminent = false;
-      this.enablePopupNotif();
-    },
     tabChanged(tabId) {
       if (tabId === "tab-requests") {
         // clear unread requests
       }
-      console.log(tabId);
     },
     goToProfile() {
       this.$router.push("/profile");
@@ -448,7 +489,6 @@ export default Vue.extend({
       // massive performance issue
       if (message.hID) {
         for (const chatMessage of this.messages[this.currChatFriendshipId]) {
-          console.log(chatMessage);
           if (chatMessage.msgId === message.hID) {
             quoted = chatMessage;
             break;
@@ -567,42 +607,14 @@ export default Vue.extend({
     },
     openChat(friendShip) {
       let friendship_id = friendShip._id;
-
-      /** if we get this far and dont have any messages, will we ever?
-       * maybe just use the socket here directly to make absolutely surethat we dont have any
-       */
-      if (!this.messages[friendship_id]) {
-        return this.loadMessages({ friendship_id }).then(() => {
-          /**
-           * @todo this is a bit disconnected, we set the current messages using the
-           * argument, but then we set the currentMessages variable after
-           */
-          this.currentMessages = this.messages[friendship_id];
-          this.setCurrentChat(friendship_id);
-          this.socket.emit(
-            "checkin",
-            // FIXME: THIS SHOULD BE THE FRIENDSHIP ID OF THE FRIEND WE ARE CURRENTLY CHATTING WITH
-            {
-              friendship_id: this.currChatFriendshipId,
-              token: getCookie("token")
-            },
-            (err, data) =>
-              !err
-                ? console.log("checking successful")
-                : console.log("checking unsuccessful")
-          );
-        });
-      } else {
-        this.setCurrentChat(friendship_id);
-      }
-      console.log("setting home view");
-
+      this.setCurrentChat(friendship_id);
       this.setHomeView("chatbody");
     },
-    filter(filterString: string) {
-      getUsers(filterString).then(({ data }) => {
-        this.searchResults = data;
-      });
+    async filter(filterString: string) {
+      if (!filterString) {
+        return [];
+      }
+      return getUsers(filterString).then(({ data }) => data);
     },
     replyHandler(msgId) {
       this.highlightedMessageId = msgId;
@@ -630,14 +642,20 @@ export default Vue.extend({
       "friendShips",
       "network",
       "user",
+      "watchRequestsModal",
       "messages",
+      "watchRequests",
+      "friendRequests",
       "socket",
       "currChatFriendshipId",
       "currChatMessages",
       "socketConnected",
-      "events",
+      "sharedImage",
       "dataLoaded",
-      "homeView"
+      "chatProminent",
+      "homeView",
+      "activeYTSession",
+      "showYTComponent"
     ]),
     sideMenuData() {
       return [
@@ -713,13 +731,15 @@ export default Vue.extend({
   components: {
     chatBody,
     chatList,
+    centerToast,
     chatText,
     newModal,
     sideMenu,
     viewImageModal,
+    watchRequestList,
     NewProfile,
     SmartProfile,
-    TYPlayer
+    YTPlayer
   }
 });
 </script>
@@ -743,7 +763,46 @@ export default Vue.extend({
   background: #646464;
   animation-timing-function: cubic-bezier(0, 1, 1, 0);
 }
-
+.lds-ellipsis div:nth-child(1) {
+  left: 8px;
+  animation: lds-ellipsis1 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(2) {
+  left: 8px;
+  animation: lds-ellipsis2 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(3) {
+  left: 32px;
+  animation: lds-ellipsis2 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(4) {
+  left: 56px;
+  animation: lds-ellipsis3 0.6s infinite;
+}
+@keyframes lds-ellipsis1 {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes lds-ellipsis3 {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0);
+  }
+}
+@keyframes lds-ellipsis2 {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(24px, 0);
+  }
+}
 // END TYPING INDOCATOR
 .chat-header__name {
   cursor: pointer;
@@ -831,6 +890,10 @@ export default Vue.extend({
   border-bottom: 1px solid white;
   font-weight: bold;
   height: var(--main-header-height);
+}
+
+.btn img {
+  width: 20px;
 }
 
 .menubt {

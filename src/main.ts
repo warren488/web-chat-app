@@ -1,7 +1,7 @@
 import Vue from "vue";
 import App from "./App.vue";
 import router from "./router";
-import store from "./store";
+import store from "./store/index";
 import {
   getCookie,
   clearNotifications,
@@ -16,15 +16,21 @@ import { Notyf } from "notyf";
 import MdField from "vue-material/dist/components/MdField";
 Vue.config.productionTip = false;
 
-/** if we have a token then there's no possibility of running this a second time on login */
 let token = getCookie("token");
 if (token) {
   store.dispatch("setUpApp");
 }
 
 if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/worker.js", {
+      scope: "/"
+    })
+    .then(registration => {
+      return registration.update();
+    });
+
   navigator.serviceWorker.addEventListener("message", event => {
-    console.log(event.data, event.data);
     if (event.data.type === "openChat") {
       router.push("/home?chat=" + event.data.chat);
       // store.commit("setCurrentChat", event.data.chat);
@@ -65,38 +71,25 @@ let unsubInitialAuthCheck = firebase.auth().onAuthStateChanged(async user => {
     let { token } = await getFirebaseSigninToken();
     return signInToFirebase(token);
   }
+  // this funny syntax is basically unsubscribing to authstatechanged because onAuthStateChanged returns the
+  // the unsubscribe function
   unsubInitialAuthCheck();
 });
 
 clearNotifications();
 window.onfocus = () => {
-  store.state.focused = true;
-  if (store.state.currChatFriendshipId) {
-    console.log(store.state.currChatFriendshipId);
-
-    store.commit("markLocalChatMessagesAsRead", {
-      friendship_id: store.state.currChatFriendshipId
-    });
-    const messages = store.state.messages[store.state.currChatFriendshipId];
-    if (messages && messages.length > 0) {
-      markAsReceived(store.state.currChatFriendshipId, [
-        messages[0].createdAt,
-        messages[messages.length - 1].createdAt
-      ]);
-    }
-  }
+  store.commit("setFocused");
+  store.dispatch("appFocused");
   clearNotifications();
 };
 window.onblur = () => {
-  store.state.focused = false;
+  store.commit("setBlurred");
 };
 window.onoffline = () => {
-  eventBus.$emit("offline");
-  store.state.network = false;
+  store.commit("setOffline");
 };
 window.ononline = () => {
-  eventBus.$emit("online");
-  store.state.network = true;
+  store.commit("setOnline");
 };
 Vue.use(MdField);
 new Vue({

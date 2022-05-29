@@ -1,12 +1,12 @@
 import Vue from "vue";
 import Router from "vue-router";
-import Home from "./views/Home.vue";
-import Login from "./views/Login.vue";
-import Profile from "./views/Profile.vue";
-import Signup from "./views/Signup.vue";
-import { getCookie, authBeforeEnter } from "@/common";
+import { authBeforeEnter, upgradeToAuth } from "@/common";
 Vue.use(Router);
 
+const Home = () => import("./views/Home.vue");
+const Login = () => import("./views/Login.vue");
+const Signup = () => import("./views/Signup.vue");
+const Profile = () => import("./views/Profile.vue");
 export default new Router({
   mode: "history",
   base: process.env.BASE_URL,
@@ -19,6 +19,7 @@ export default new Router({
       props: route => ({ chat: route.query.chat })
     },
     {
+      beforeEnter: upgradeToAuth,
       path: "/login",
       name: "logn",
       component: Login

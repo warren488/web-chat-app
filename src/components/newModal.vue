@@ -55,7 +55,6 @@
   </div>
 </template>
 <script>
-import { FocusGrabber } from "@/common";
 export default {
   // NB!!! v-ifs dont work really well with this modal because the v-if destroys it before we can remove the
   // backdrop, i think this occurs because its created in js (maybe partially)
@@ -72,15 +71,17 @@ export default {
       backdrop: "static",
       keyboard: false
     });
-    console.log(this.myModal);
     this.$refs.modalContainer.addEventListener(
       "hidePrevented.bs.modal",
       event => {
+        // only emitted if the user tries to get away from the modal by esc or backdrop
         this.$emit("close");
       }
     );
+    this.$refs.modalContainer.addEventListener("hidden.bs.modal", event => {
+      this.$emit("closed");
+    });
     if (this.showModal === true) {
-      console.log(this.showModal);
       this.open();
     }
   },

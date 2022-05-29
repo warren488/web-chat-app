@@ -1,3 +1,49 @@
+// **************** TAKEN FORM SQUOOSH UTILS **************************
+
+const nextMessageResolveMap = new Map();
+
+/**
+ * Wait on a message with a particular event.data value.
+ *
+ * @param dataVal The event.data value.
+ */
+function nextMessage(dataVal) {
+  return new Promise(resolve => {
+    if (!nextMessageResolveMap.has(dataVal)) {
+      nextMessageResolveMap.set(dataVal, []);
+    }
+    nextMessageResolveMap.get(dataVal).push(resolve);
+  });
+}
+
+self.addEventListener("message", event => {
+  const resolvers = nextMessageResolveMap.get(event.data);
+  if (!resolvers) return;
+  nextMessageResolveMap.delete(event.data);
+  for (const resolve of resolvers) resolve();
+});
+
+function serveShareTarget(event) {
+  const dataPromise = event.request.formData();
+
+  // Redirect so the user can refresh the page without resending data.
+  event.respondWith(Response.redirect("/?share"));
+
+  event.waitUntil(
+    (async function() {
+      // The page sends this message to tell the service worker it's ready to receive the file.
+      await nextMessage("share-ready");
+      const client = await self.clients.get(event.resultingClientId);
+      const data = await dataPromise;
+      const file = data.get("image");
+      console.log(file);
+      client.postMessage({ file, action: "load-file" });
+    })()
+  );
+}
+
+// **************** END TAKEN FORM SQUOOSH UTILS **************************
+
 console.log("service worker loaded");
 // NB: because the tags allow us to replace notifications we use them to indicate a friend request
 // while at the same time we have a different one for each chat
@@ -36,8 +82,6 @@ self.addEventListener("push", async function(e) {
         .matchAll({ type: "window" })
         .then(clientsArr => {
           // If a Window tab is already in focus
-          console.log(clientsArr);
-          console.log(self.clients);
           return clientsArr.some(windowClient => {
             if (windowClient.focused) {
               return true;
@@ -60,7 +104,9 @@ self.addEventListener("push", async function(e) {
            * notifications on opening the app
            */
           data: notifData,
-          vibrate: [400],
+          renotify: true,
+          vibrate: [400, 200, 400],
+          image: data.url,
           timestamp: data.createdAt
         }
       );
@@ -77,10 +123,6 @@ self.addEventListener("notificationclick", e => {
     chat = e.notification.data.friendship_id;
     openUrl = `${self.location.hostname}?chat=${chat}`;
   }
-  console.log(e.notification);
-  console.log(self.clients);
-  // Close the notification popout
-  // e.notification.close();
   // Get all the Window clients
   e.waitUntil(
     self.clients.matchAll({ type: "window" }).then(clientsArr => {
@@ -125,13 +167,53 @@ self.addEventListener("fetch", event => {
   // If this is an incoming POST request for the
   // registered "action" URL, respond to it.
   if (event.request.method === "POST" && url.pathname === "/share-target") {
+    serveShareTarget(event);
+  }
+  if (isCachable(event.request)) {
+    let requestToFind = event.request;
+    if (isAppPage(url)) {
+      // there is the odd chance we may have this url in the chance but not /home
+      // that chance is very very low though
+      requestToFind = "/home";
+    }
     event.respondWith(
-      (async () => {
-        const formData = await event.request.formData();
-        const image = formData.get("image") || "";
-        console.log(image);
-        return Response.redirect("/home", 303);
-      })()
+      caches.match(requestToFind).then(resp => {
+        // try the cache first, if not go to the network update the cache and then give us
+        return (
+          resp ||
+          fetch(event.request).then(response => {
+            return caches.open("v2").then(async cache => {
+              // TODO: do i need to await this?
+              await cache.put(event.request, response.clone());
+              return response;
+            });
+          })
+        );
+      })
     );
   }
 });
+
+function isCachable(request) {
+  const url = new URL(request.url);
+  return (
+    !url.hostname.includes("localhost") &&
+    url.hostname === self.location.hostname &&
+    request.method !== "POST" &&
+    !(
+      url.pathname.startsWith("/io") ||
+      url.pathname.startsWith("/sockjs-node") ||
+      url.pathname.startsWith("/socket.io") ||
+      url.pathname.startsWith("/api") ||
+      url.pathname.startsWith("/versionuid.json")
+    )
+  );
+}
+
+function isAppPage(url) {
+  return (
+    url.pathname.startsWith("/profile") ||
+    url.pathname.startsWith("/home") ||
+    url.pathname == "/"
+  );
+}

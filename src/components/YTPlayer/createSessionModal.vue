@@ -1,5 +1,9 @@
 <template>
-  <new-modal :showModal="showModal" @close="$emit('close')">
+  <new-modal
+    :showModal="showModal"
+    @close="$emit('close')"
+    @closed="$emit('closed')"
+  >
     <template v-slot:full-replace>
       <div style="padding: 1rem">
         <h5 class="mb-3 h5">Select playlist</h5>
@@ -32,7 +36,7 @@
         >
           <option selected :value="null">Choose Playlist</option>
           <option
-            v-for="playlist of playlists"
+            v-for="playlist of Object.values(playlists)"
             :key="playlist._id"
             :value="playlist._id"
           >
@@ -86,7 +90,6 @@
 </template>
 
 <script>
-import { getPlaylists } from "@/common";
 import LinkPreview from "../linkPreview.vue";
 import newModal from "../newModal.vue";
 export default {
@@ -98,7 +101,6 @@ export default {
   mounted() {},
   methods: {
     selected(event) {
-      console.log(event.target.value);
       this.$emit("selected", event.target.value);
     }
   }

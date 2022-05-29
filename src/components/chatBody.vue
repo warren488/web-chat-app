@@ -225,7 +225,8 @@ export default Vue.extend({
     scrollBottom2({
       force: true,
       test: false,
-      element: this.$refs.messageScroll
+      element: this.$refs.messageScroll,
+      noAnim: true
     });
 
     const date = new Date(new Date().toLocaleDateString());
@@ -284,7 +285,6 @@ export default Vue.extend({
         }
       }
 
-      console.log(messageMap);
       return messageMap;
     }
   },
@@ -327,6 +327,7 @@ export default Vue.extend({
 .chat__main {
   display: flex;
   flex-direction: column;
+  max-height: 100vh;
   max-height: 100vh;
   overflow-y: scroll;
 }

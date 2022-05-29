@@ -3,14 +3,14 @@ import {
   AuthResponse,
   RegisterResponse,
   UserInfo,
-  UpdatedUserInfo,
-  getFriendsResponse
+  UpdatedUserInfo
 } from "./interfaces";
 import * as firebase from "firebase/app";
 import "firebase/storage";
 import "firebase/auth";
 import { Notyf } from "notyf";
-import store from "@/store";
+import store from "@/store/index";
+import { deleteDB } from "idb";
 
 // Your web app's Firebase configuration
 var firebaseConfig = {
@@ -25,8 +25,11 @@ var firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// export const baseURI = "https://dry-savannah-78912.herokuapp.com";
-export const baseURI = "http://localhost:3000";
+export const baseURI =
+  process.env.NODE_ENV === "production"
+    ? "https://dry-savannah-78912.herokuapp.com"
+    : "http://localhost:3000";
+export const defaultPageLimit = 50;
 
 let pubKey =
   "BGtw8YFtyrySJpt8TrAIwqU5tlBlmcsdEinKxRKUDdb6fgQAnjVsS9N-ZhpAQzbwf78TMysYrMcuOY6T4BGJlwo";
@@ -58,7 +61,6 @@ export const clearNotifications = async (searchOptions?: Object) => {
 };
 
 export const subscribeToNotif = async () => {
-  console.log("subscribing");
   let notification = new Notyf({
     duration: 7000,
     dismissible: true,
@@ -74,10 +76,12 @@ export const subscribeToNotif = async () => {
       );
       await registration.update();
       await requestPermission();
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(pubKey)
-      });
+      const subscription =
+        (await registration.pushManager.getSubscription()) ||
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(pubKey)
+        }));
       await fetch(`${baseURI}/api/users/${store.state.user.id}/subscribe`, {
         method: "POST",
         body: JSON.stringify(subscription),
@@ -139,6 +143,23 @@ export const updateDOMMessageStatus = (msgId, read) => {
     messageElement.classList.add(read ? "read" : "received");
   }
 };
+
+// from squoosh file sharing
+export function getSharedImage(): Promise<File> {
+  return new Promise(resolve => {
+    const onmessage = (event: MessageEvent) => {
+      if (event.data.action !== "load-file") return;
+      resolve(event.data.file);
+      navigator.serviceWorker.removeEventListener("message", onmessage);
+    };
+
+    navigator.serviceWorker.addEventListener("message", onmessage);
+
+    // This message is picked up by the service worker - it's how it knows we're ready to receive
+    // the file.
+    navigator.serviceWorker.controller!.postMessage("share-ready");
+  });
+}
 
 export const uploadToFireBase = (file, location?: string) => {
   // Create a root reference
@@ -230,7 +251,17 @@ export const login = async (userData: Object): Promise<AuthResponse> => {
 
 export const logout = async () => {
   try {
-    await Promise.all([unsubscribeToNotif(), signOutOfFirebase()]);
+    await Promise.all([
+      unsubscribeToNotif(),
+      signOutOfFirebase(),
+      // @ts-ignore
+      store.state.db.clear("users"),
+      // @ts-ignore
+      store.state.db.clear("messages"),
+      // @ts-ignore
+      store.state.db.clear("friendShips")
+      // deleteDB("app")
+    ]);
     let data = await axios({
       method: "POST",
       headers: {
@@ -241,6 +272,7 @@ export const logout = async () => {
     await store.commit("resetState");
     setCookie("token", "", -1000);
     setCookie("username", "", -1000);
+    setCookie("io", "", -1000);
     return data;
   } catch (error) {
     console.log(error.response);
@@ -366,13 +398,49 @@ export const updateInfo = async (
   });
 };
 
+// adapted from https://bobbyhadz.com/blog/javascript-convert-timestamp-to-time-ago
+export function relativeDays(timestamp) {
+  if (!timestamp) {
+    return "n/a";
+  }
+  // @ts-ignore
+  const rtf = new Intl.RelativeTimeFormat("en", {
+    numeric: "auto"
+  });
+  const oneDayInMs = 1000 * 60 * 60 * 24;
+  const oneHourInMs = 1000 * 60 * 60;
+  const oneMinuteInMs = 1000 * 60;
+  const oneSecondInMs = 1000;
+  const daysDifference = Math.round(
+    (timestamp - new Date().getTime()) / oneDayInMs
+  );
+  const hoursDifference = Math.round(
+    (timestamp - new Date().getTime()) / oneHourInMs
+  );
+  const minutesDifference = Math.round(
+    (timestamp - new Date().getTime()) / oneMinuteInMs
+  );
+  const secondsDifference = Math.round(
+    (timestamp - new Date().getTime()) / oneSecondInMs
+  );
+  if (daysDifference < 0) {
+    return rtf.format(daysDifference, "day");
+  } else if (hoursDifference < 0) {
+    return rtf.format(hoursDifference, "hour");
+  } else if (minutesDifference < 0) {
+    return rtf.format(minutesDifference, "minute");
+  } else if (secondsDifference < 0) {
+    return rtf.format(secondsDifference, "second");
+  }
+}
+
 export function getCookie(name: string): string | null {
   let exp = new RegExp(`(?:(?:^|.*;\\s*)${name}\\s*\\=\\s*([^;]*).*$)|^.*$`);
   let cookieValue = document.cookie.replace(exp, "$1");
   return cookieValue !== "" ? cookieValue : null;
 }
 
-export const getFriendShips = async (): Promise<getFriendsResponse> => {
+export const getFriendShips = async () => {
   return await axios({
     method: "GET",
     headers: {
@@ -380,18 +448,11 @@ export const getFriendShips = async (): Promise<getFriendsResponse> => {
     },
     url: `${baseURI}/api/users/me/friends`
   }).then(({ data }) => {
-    let friendshipIds = [];
-    for (const friend of data) {
-      friendshipIds.push(friend._id);
-    }
-    return { data, friendshipIds };
+    return data;
   });
 };
 
-export const addFriend = async ({
-  username,
-  id
-}): Promise<getFriendsResponse> => {
+export const addFriend = async ({ username, id }) => {
   return await axios({
     method: "POST",
     headers: {
@@ -402,9 +463,7 @@ export const addFriend = async ({
     url: `${baseURI}/api/users/me/friends`
   });
 };
-export const sendRequest = async (
-  friendId: string
-): Promise<getFriendsResponse> => {
+export const sendRequest = async (friendId: string) => {
   return await axios({
     method: "POST",
     headers: {
@@ -412,6 +471,9 @@ export const sendRequest = async (
     },
     data: { friendId },
     url: `${baseURI}/api/users/me/friendRequests`
+  }).then(({ data }) => {
+    store.commit("updateInteractions", data.interactions);
+    return data;
   });
 };
 
@@ -442,9 +504,44 @@ export const markAsReceived = async (friendship_id, range) => {
     data: {
       range,
       friendship_id,
-      read:
-        store.state.focused &&
-        friendship_id === store.state.currChatFriendshipId
+      read: store.getters.isInChat == friendship_id
+    }
+  });
+};
+
+export const getYouTubeVideoID = link => {
+  let vidId;
+  try {
+    let url = new URL(link);
+    if (url.hostname === "www.youtube.com") {
+      vidId = url.searchParams.get("v");
+    } else if (url.hostname === "youtu.be") {
+      vidId = url.pathname.substr(1);
+    } else {
+      return;
+    }
+  } catch (e) {
+    console.log(e);
+  }
+  return vidId;
+};
+
+export const checkAndLoadAppUpdate = () => {
+  fetch("/versionuid.json").then(async resp => {
+    let respJSON = await resp.json();
+    console.log(respJSON.uuid, process.env.VUE_APP_VER);
+
+    if (respJSON.uuid !== process.env.VUE_APP_VER) {
+      // we need to update app (cache)
+      caches.delete("v2").then(async () => {
+        store.state.messageNotification.success(
+          "New app version available refresh to see"
+        );
+        // TODO: for now we wont do this because it causes sync issues when doing multiple updates
+        // we need to get list of assets here
+        // let v2Cache = await caches.open("v2");
+        // v2Cache.addAll(["/home", "/profile"]);
+      });
     }
   });
 };
@@ -461,15 +558,12 @@ export const countUnreads = ({ chat, user_id }) => {
       }
     }
   }
-  console.log(unreads);
 
   return unreads;
 };
 
 export const isInChat = friendship_id => {
-  return (
-    store.state.focused && friendship_id === store.state.currChatFriendshipId
-  );
+  return store.getters.isInChat === friendship_id;
 };
 
 export function markLocalChatMessagesAsRead(messages, userId) {
@@ -480,8 +574,6 @@ export function markLocalChatMessagesAsRead(messages, userId) {
   const unreadLimit = 50;
   const start = Math.max(messages.length - unreadLimit, 0);
   for (let i = start; i < messages.length; i++) {
-    /** @todo only mark as read if its not sent by me */
-    // console.log("markLocalChatMessagesAsRead", messages[i]);
     if (userId !== messages[i].fromId) {
       messages[i].status = "read";
     }
@@ -534,7 +626,7 @@ export const getMessages = async (
 
 export const getMessagePage = async ({
   friendship_id,
-  limit = 50,
+  limit = defaultPageLimit,
   timestamp,
   msgId
 }) => {
@@ -583,6 +675,19 @@ export function uuid() {
   return id;
 }
 
+export const sortByCreatedAt = (friendshipA, friendshipB) => {
+  if (!friendshipB.lastMessage[0]) {
+    return -1;
+  }
+  if (!friendshipA.lastMessage[0]) {
+    return 1;
+  }
+  return (
+    (friendshipB.lastMessage[0].createdAt || 0) -
+    (friendshipA.lastMessage[0].createdAt || 0)
+  );
+};
+
 export const binaryCustomSearch = function(arr, x) {
   if (!arr || arr.length === 0) {
     return -1;
@@ -630,11 +735,10 @@ export const getLastMessage = async (friendship_id: string) => {
 export const eventWrapper = (eventName, handler) => {
   return data => {
     if (data && data.eventData) {
-      console.log("addEvent");
       store.commit("addEvent", data.eventData);
     }
+    // FIXME:  doing this here defeats the entire purpose of having one time listeners
     let OThandlers = store.state.oneTimeListeners.get(eventName);
-    console.log(eventName, OThandlers);
     if (OThandlers) {
       for (const OThandler of OThandlers.values()) {
         OThandler(data);
@@ -649,6 +753,15 @@ export const authBeforeEnter = (to, from, next) => {
   let token = getCookie("token");
   if (!token) {
     next("/login");
+    return;
+  }
+  next();
+};
+
+export const upgradeToAuth = (to, from, next) => {
+  let token = getCookie("token");
+  if (token) {
+    next("/");
     return;
   }
   next();
@@ -699,14 +812,14 @@ export const notifyMe = data => {
      */
     else if (Notification.permission !== "denied") {
       // Potentially do something in the app to show we cant give them notifs
-      // Notification.requestPermission()
-      //   .then(function(permission) {
-      //     // If the user accepts, let's create a notification
-      //     if (permission === "granted") {
-      //       var notification = new Notification(text);
-      //     }
-      //   })
-      //   .catch(err => {});
+      Notification.requestPermission()
+        .then(function(permission) {
+          // If the user accepts, let's create a notification
+          if (permission === "granted") {
+            var notification = new Notification(text);
+          }
+        })
+        .catch(err => {});
     }
 
     // At last, if the user has denied notifications, and you
@@ -809,7 +922,12 @@ export const scrollBottom = function scrollBottom({ force, test }) {
 };
 
 /** @todo eventually refactor and let this replace the old one */
-export const scrollBottom2 = function scrollBottom({ element, force, test }) {
+export const scrollBottom2 = function scrollBottom({
+  element,
+  force,
+  test,
+  ...optionals
+}) {
   let newMessage: HTMLElement = element.querySelector(
     ".date__group:last-of-type li:last-of-type"
   );
@@ -832,7 +950,7 @@ export const scrollBottom2 = function scrollBottom({ element, force, test }) {
     if (doScroll && !test) {
       element.scrollTo({
         top: scrollHeight + newMessageHeight + newMessageHeight,
-        behavior: "smooth"
+        behavior: optionals.noAnim ? "instant" : "smooth"
       });
 
       return scrollHeight + newMessageHeight + newMessageHeight;
