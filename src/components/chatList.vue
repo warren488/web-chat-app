@@ -32,7 +32,7 @@
           <img
             class="profile-img"
             v-if="!friendShip.imgUrl"
-            src="/assets/img/abstract-user-flat-1.svg"
+            src="/assets/empty-profile-2.svg"
             alt=""
           />
           <img
@@ -164,6 +164,7 @@ export default Vue.extend({
   display: flex;
   justify-content: space-between;
   align-items: center;
+  // padding: 1rem;
   --notif-bottom-pos: 4px;
   --notif-right-pos: 4px;
 }
@@ -182,10 +183,10 @@ export default Vue.extend({
 
 .profile-img {
   border-radius: 50%;
-  min-width: 50px;
-  min-height: 50px;
-  width: 50px;
-  height: 50px;
+  min-width: 60px;
+  min-height: 60px;
+  width: 60px;
+  height: 60px;
   margin-right: 5px;
 }
 
@@ -216,7 +217,9 @@ ol {
     margin: 0px;
     padding: 5px 5px 5px;
     width: 100%;
-    border-bottom: thin beige solid;
+    // border-bottom: thin beige solid;
+    $col: #198754;
+    border-bottom: thin darken($col, 5%) solid;
     h1 {
       text-transform: uppercase;
       font-weight: bold;

@@ -12,8 +12,8 @@ import { Notyf } from "notyf";
 import store from "@/store/index";
 import { deleteDB } from "idb";
 
-// Your web app's Firebase configuration
-var firebaseConfig = {
+// Initialize Firebase
+firebase.initializeApp({
   apiKey: "AIzaSyBD4TjGeZXKw7fWYR8X0UGfHAIvQqzUmF0",
   authDomain: "myapp-4f894.firebaseapp.com",
   databaseURL: "https://myapp-4f894.firebaseio.com",
@@ -21,9 +21,7 @@ var firebaseConfig = {
   storageBucket: "myapp-4f894.appspot.com",
   messagingSenderId: "410181839308",
   appId: "1:410181839308:web:7249de84cc8fdd3cc5d569"
-};
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+});
 
 export const baseURI =
   process.env.NODE_ENV === "production"
@@ -242,11 +240,19 @@ export const uploadImage = async ({ data, name }) => {
 };
 
 export const login = async (userData: Object): Promise<AuthResponse> => {
-  return await axios({
+  const { data: authData } = await axios({
     method: "POST",
     url: `${baseURI}/api/login`,
     data: userData
   });
+  setCookie("username", authData.username, 1000000);
+  setCookie("token", authData.token, 1000000);
+  /** i dont think we necessarily need to wait on or keep track of this
+   * it should complete before the user tries to send any images or audio,
+   * remember this is required for only writes and not reads */
+  getFirebaseSigninToken().then(({ token }) => signInToFirebase(token));
+  await store.dispatch("setUpApp");
+  return authData;
 };
 
 export const logout = async () => {

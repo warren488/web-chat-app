@@ -6,6 +6,7 @@ Vue.use(Router);
 const Home = () => import("./views/Home.vue");
 const Login = () => import("./views/Login.vue");
 const Signup = () => import("./views/Signup.vue");
+const Landing = () => import("./views/Landing.vue");
 const Profile = () => import("./views/Profile.vue");
 export default new Router({
   mode: "history",
@@ -34,6 +35,11 @@ export default new Router({
       path: "/signup",
       name: "signup",
       component: Signup
+    },
+    {
+      path: "/landing",
+      name: "landing",
+      component: Landing
     },
     {
       beforeEnter: authBeforeEnter,

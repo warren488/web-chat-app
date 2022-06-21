@@ -27,6 +27,7 @@
             type="text"
             name="username"
             id="username"
+            class="form-control border-light"
             autofocus
             required
           />
@@ -71,7 +72,7 @@
           {{ feedbackText }}
         </div>
         <div class="form-field">
-          <button class="mybt">Signup</button>
+          <button class="btn btn-success btn-lg">Signup</button>
         </div>
       </form>
     </div>
@@ -173,10 +174,11 @@ form.invalid {
 }
 
 .loader-backdrop {
-  position: absolute;
+  position: fixed;
   z-index: 999;
   display: flex;
   justify-content: center;
+  backdrop-filter: blur(1px);
   align-items: center;
   top: 0;
   bottom: 0;
@@ -196,9 +198,12 @@ form.invalid {
 .form-label {
   font-weight: bold;
   color: rgb(0, 51, 0);
+  // color: white;
 }
 .centered-form__form {
   background: rgba(250, 250, 250, 0.9);
+  // background: var(--bs-green);
+  // color: white;
   border: 1px solid #e1e1e1;
   border-radius: 5px;
   padding: 0 20px;
@@ -210,6 +215,7 @@ form.invalid {
 }
 
 .form-field label {
+  text-transform: capitalize;
   display: block;
   margin-bottom: 7px;
 }
@@ -222,7 +228,7 @@ form.invalid {
 .centered-form {
   display: flex;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
   width: 100vw;
   justify-content: center;
   background: var(--bs-green);

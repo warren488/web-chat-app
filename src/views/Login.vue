@@ -13,10 +13,8 @@
         <div class="form-field">
           <h3 class="">Login</h3>
         </div>
-        <div class="mb-3">
-          <label for="username" class="form-label fw-bold">
-            Userame
-          </label>
+        <div class="form-field">
+          <label for="username" class="form-label fw-bold"> Userame </label>
           <input
             v-model.lazy="userData.username"
             type="text"
@@ -24,28 +22,30 @@
             id="username"
           />
         </div>
-        <label for="password" class="form-label fw-bold">Password</label>
-        <div class="input-group mb-3">
-          <input
-            v-model.lazy="userData.password"
-            type="password"
-            ref="passwordinput"
-            class="form-control border-light"
-            id="password"
-            aria-describedby="basic-addon3"
-          />
-          <button
-            class="btn btn-outline-light bg-white p-0 px-1"
-            type="button"
-            id="button-addon2"
-            @click="seePassword"
-          >
-            <img
-              class="toggle password visibility"
-              src="/assets/img/eye-fill.svg"
-              style="width: 32px;"
+        <div class="form-field">
+          <label for="password" class="form-label fw-bold">Password</label>
+          <div class="input-group mb-3">
+            <input
+              v-model.lazy="userData.password"
+              type="password"
+              ref="passwordinput"
+              class="form-control border-light"
+              id="password"
+              aria-describedby="basic-addon3"
             />
-          </button>
+            <button
+              class="btn btn-outline-light bg-white p-0 px-1"
+              type="button"
+              id="button-addon2"
+              @click="seePassword"
+            >
+              <img
+                class="toggle password visibility"
+                src="/assets/img/eye.svg"
+                style="width: 32px"
+              />
+            </button>
+          </div>
         </div>
         <div v-if="feedbackText" class="feedback" ref="feedback">
           {{ feedbackText }}
@@ -114,13 +114,13 @@ export default Vue.extend({
       try {
         this.loading = true;
         authData = (await login(this.userData)).data;
-        setCookie("username", authData.username, 1000000);
-        setCookie("token", authData.token, 1000000);
-        /** i dont think we necessarily need to wait on or keep track of this
-         * it should complete before the user tries to send any images or audio,
-         * remember this is required for only writes and not reads */
-        getFirebaseSigninToken().then(({ token }) => signInToFirebase(token));
-        await this.setUpApp();
+        // setCookie("username", authData.username, 1000000);
+        // setCookie("token", authData.token, 1000000);
+        // /** i dont think we necessarily need to wait on or keep track of this
+        //  * it should complete before the user tries to send any images or audio,
+        //  * remember this is required for only writes and not reads */
+        // getFirebaseSigninToken().then(({ token }) => signInToFirebase(token));
+        // await this.setUpApp();
         this.$router.push("/home");
         this.loading = false;
         return true;
@@ -154,7 +154,7 @@ export default Vue.extend({
 }
 
 .loader-backdrop {
-  position: absolute;
+  position: fixed;
   z-index: 999;
   display: flex;
   justify-content: center;
@@ -207,7 +207,7 @@ export default Vue.extend({
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  min-height: 100vh;
   width: 100vw;
   background: var(--bs-green);
 }
