@@ -157,7 +157,7 @@ export default Vue.extend({
   width: 0%;
   min-width: 0px;
   max-width: 350px;
-  z-index: 1000;
+  z-index: 999;
   height: 100vh;
   overflow: hidden;
 }

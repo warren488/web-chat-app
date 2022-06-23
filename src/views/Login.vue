@@ -13,6 +13,25 @@
         <div class="form-field">
           <h3 class="">Login</h3>
         </div>
+        <button
+          @click.prevent="googleLogin"
+          class="btn btn-danger w-100 fw-bold"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="currentColor"
+            class="bi bi-google"
+            viewBox="0 0 16 16"
+          >
+            <path
+              d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z"
+            />
+          </svg>
+          Sign in with Google
+        </button>
+        <separator style="margin-top: var(--form-separation)">or</separator>
         <div class="form-field">
           <label for="username" class="form-label fw-bold"> Userame </label>
           <input
@@ -64,20 +83,16 @@
 <script lang="ts">
 import Modal from "@/components/modal.vue"; // @ is an alias to /src
 import Loader from "@/components/loader.vue"; // @ is an alias to /src
-import {
-  login,
-  setCookie,
-  getFriendShips,
-  signInToFirebase,
-  getFirebaseSigninToken
-} from "@/common/index.ts";
+import { login, loginWithGoogle } from "@/common/index.ts";
 import { errorToMessage } from "@/common/network";
 import Vue from "vue";
 import axios, { AxiosPromise } from "axios";
 import { mapActions } from "vuex";
+import {} from "@/common";
+import Separator from "../components/Separator.vue";
 
 export default Vue.extend({
-  components: { Modal, Loader },
+  components: { Modal, Loader, Separator },
   data() {
     return {
       loading: false,
@@ -101,6 +116,16 @@ export default Vue.extend({
         this.$refs.passwordinput.type = "text";
       }
     },
+    async googleLogin() {
+      this.loading = true;
+      try {
+        await loginWithGoogle();
+        this.$router.push("/home");
+      } catch (error) {
+        console.log(error);
+      }
+      this.loading = false;
+    },
     async login(): Promise<Boolean> {
       this.feedback = "";
       if (
@@ -114,20 +139,11 @@ export default Vue.extend({
       try {
         this.loading = true;
         authData = (await login(this.userData)).data;
-        // setCookie("username", authData.username, 1000000);
-        // setCookie("token", authData.token, 1000000);
-        // /** i dont think we necessarily need to wait on or keep track of this
-        //  * it should complete before the user tries to send any images or audio,
-        //  * remember this is required for only writes and not reads */
-        // getFirebaseSigninToken().then(({ token }) => signInToFirebase(token));
-        // await this.setUpApp();
         this.$router.push("/home");
-        this.loading = false;
         return true;
       } catch (error) {
         console.log(error);
         this.feedback = errorToMessage(error);
-        this.loading = false;
       }
       this.loading = false;
     },
@@ -146,24 +162,20 @@ export default Vue.extend({
 });
 </script>
 <style lang="scss" scoped>
+.form-container {
+  --form-separation: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100vw;
+  background: var(--bs-green);
+}
 .newerror {
   --error-color: rgb(200, 0, 0);
 }
 .olderror {
   --error-color: darkred;
-}
-
-.loader-backdrop {
-  position: fixed;
-  z-index: 999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(100, 100, 100, 0.5);
 }
 
 .feedback {
@@ -179,7 +191,7 @@ export default Vue.extend({
   font-size: 1.5rem;
 }
 .form-field {
-  margin: 20px 0;
+  margin: var(--form-separation) 0;
 }
 .centered-form__form {
   background: rgba(250, 250, 250, 0.9);
@@ -202,13 +214,5 @@ export default Vue.extend({
 .form-field select {
   border: 1px solid #e1e1e1;
   padding: 10px;
-}
-.form-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  width: 100vw;
-  background: var(--bs-green);
 }
 </style>

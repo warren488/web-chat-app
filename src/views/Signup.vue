@@ -173,20 +173,6 @@ form.invalid {
   box-shadow: 1px 1px 1px red;
 }
 
-.loader-backdrop {
-  position: fixed;
-  z-index: 999;
-  display: flex;
-  justify-content: center;
-  backdrop-filter: blur(1px);
-  align-items: center;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(100, 100, 100, 0.5);
-}
-
 .form-field h3 {
   font-weight: 600;
   text-align: center;

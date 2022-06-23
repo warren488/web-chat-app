@@ -175,7 +175,8 @@ export const uploadToFireBase = (file, location?: string) => {
 export const addAudioToFirebase = (blob, friendship_id) => {
   var storageRef = firebase.storage().ref();
   var ref = storageRef.child(
-    `voicenotes/${store.state.user.id}/${friendship_id}/${Date.now()}`
+    `voicenotes/${store.state.user.firebaseUid ||
+      store.state.user.id}/${friendship_id}/${Date.now()}`
   );
   return ref.put(blob, { contentType: "audio/webm" }).then(function(snapshot) {
     return snapshot.ref.getDownloadURL();
@@ -255,9 +256,45 @@ export const login = async (userData: Object): Promise<AuthResponse> => {
   return authData;
 };
 
+export const loginWithGoogle = async (): Promise<AuthResponse> => {
+  await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  const provider = new firebase.auth.GoogleAuthProvider();
+  return firebase
+    .auth()
+    .signInWithPopup(provider)
+    .then(async data => {
+      console.log(data);
+      const userData = {
+        username:
+          data.additionalUserInfo.username ||
+          // @ts-ignore
+          data.additionalUserInfo.profile.given_name,
+        email: data.user.email,
+        firebaseUid: data.user.uid,
+        firebaseCreated: true
+      };
+      // let authData = (await signup(userData)).data;
+      const { data: authData } = await axios({
+        method: "POST",
+        url: `${baseURI}/api/loginWithCustomProvider`,
+        data: userData
+      });
+      setCookie("username", authData.username, 1000000);
+      setCookie("token", authData.token, 1000000);
+      /** i dont think we necessarily need to wait on or keep track of this
+       * it should complete before the user tries to send any images or audio,
+       * remember this is required for only writes and not reads */
+      await store.dispatch("setUpApp");
+      return authData;
+    });
+};
+
 export const logout = async () => {
   try {
     await Promise.all([
+      /** @todo send some indication this was an automatic unsubcription, maybe in
+       * the future we can treat this user differently
+       */
       unsubscribeToNotif(),
       signOutOfFirebase(),
       // @ts-ignore
