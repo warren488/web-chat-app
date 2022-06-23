@@ -446,7 +446,7 @@ export default Vue.extend({
     logout() {
       this.loading = true;
       return logout()
-        .then(data => this.$router.push("/landing"))
+        .then(data => this.$router.push("/login"))
         .catch(err => console.log(err))
         .finally(() => {
           this.loading = false;
