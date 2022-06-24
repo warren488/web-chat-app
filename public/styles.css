@@ -1,5 +1,5 @@
 :root {
-    --main-text: #697d7d;
+    --main-text: #697d6e;
 }
 
 body {
@@ -11,10 +11,12 @@ body,
 html {
     scroll-behavior: smooth;
     height: 100%;
+    color: var(--main-text)
 }
 
 * {
     box-sizing: border-box;
+    color: inherit;
     margin: 0;
     margin-bottom: 0px;
     /* padding: 0; */
