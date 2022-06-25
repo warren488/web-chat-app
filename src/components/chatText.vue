@@ -36,7 +36,10 @@
             height="32"
           />
         </button>
-        <md-field v-if="!hasAudio && !isRecording" style="width: 100%">
+        <md-field
+          :style="{ display: !hasAudio && !isRecording ? 'block' : 'none' }"
+          style="width: 100%"
+        >
           <!-- v-model produces some slightly unexpected behavior below so we may want to do it manually -->
           <md-textarea
             ref="msgText"
@@ -412,7 +415,7 @@ export default Vue.extend({
       this.$refs.emojis.classList.toggle("show");
     },
     sendMessage() {
-      let msg = this.$refs.msgText ? this.messageText : null;
+      let msg = this.hasText || null;
       if (!msg && this.audioBlob === null && this.file === null) {
         return;
       }

@@ -256,7 +256,7 @@ export const login = async (userData: Object): Promise<AuthResponse> => {
   return authData;
 };
 
-export const loginWithGoogle = async (): Promise<AuthResponse> => {
+export const loginWithGoogle = async (): Promise<AuthResponse | Object> => {
   await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   const provider = new firebase.auth.GoogleAuthProvider();
   return firebase
@@ -273,11 +273,22 @@ export const loginWithGoogle = async (): Promise<AuthResponse> => {
         firebaseUid: data.user.uid,
         firebaseCreated: true
       };
+      // if the account already exists then we kinda do this for nothing
+      const unique = await checkusername(userData.username);
+      if (!unique) userData.username += Math.floor(Math.random() * 1000);
       // let authData = (await signup(userData)).data;
       const { data: authData } = await axios({
         method: "POST",
         url: `${baseURI}/api/loginWithCustomProvider`,
         data: userData
+      }).catch(error => {
+        if (error.response && error.response.status == 409) {
+          if (error.response.data.fields.includes("username")) {
+            return {
+              newUsername: true
+            };
+          }
+        } else throw error;
       });
       setCookie("username", authData.username, 1000000);
       setCookie("token", authData.token, 1000000);
