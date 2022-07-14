@@ -415,7 +415,7 @@ export default Vue.extend({
       this.$refs.emojis.classList.toggle("show");
     },
     sendMessage() {
-      let msg = this.hasText || null;
+      let msg = this.hasText ? this.messageText : null;
       if (!msg && this.audioBlob === null && this.file === null) {
         return;
       }

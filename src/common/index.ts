@@ -281,15 +281,16 @@ export const loginWithGoogle = async (): Promise<AuthResponse | Object> => {
         method: "POST",
         url: `${baseURI}/api/loginWithCustomProvider`,
         data: userData
-      }).catch(error => {
-        if (error.response && error.response.status == 409) {
-          if (error.response.data.fields.includes("username")) {
-            return {
-              newUsername: true
-            };
-          }
-        } else throw error;
       });
+      // .catch(error => {
+      //   if (error.response && error.response.status == 409) {
+      //     if (error.response.data.fields.includes("username")) {
+      //       return {
+      //         newUsername: true
+      //       };
+      //     }
+      //   } else throw error;
+      // });
       setCookie("username", authData.username, 1000000);
       setCookie("token", authData.token, 1000000);
       /** i dont think we necessarily need to wait on or keep track of this
