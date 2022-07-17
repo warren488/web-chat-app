@@ -179,6 +179,11 @@ export default {
         eventWrapper("pauseVideo", null)
       );
       context.rootState.socket.on("playVideo", eventWrapper("playVideo", null));
+      context.rootState.socket.on("nextVideo", eventWrapper("nextVideo", null));
+      context.rootState.socket.on(
+        "previousVideo",
+        eventWrapper("previousVideo", null)
+      );
       context.rootState.socket.on(
         "playListUpdated",
         eventWrapper("playListUpdated", null)

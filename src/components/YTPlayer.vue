@@ -46,6 +46,10 @@
         <button class="btn btn-success" @click="$emit('toggleChat')">
           Show chat
         </button>
+        <button class="btn btn-success" @click="previousVid">
+          Previous Video
+        </button>
+        <button class="btn btn-success" @click="nextVid">Next Video</button>
         <div class="btn-group dropdown" v-if="currentYTSession">
           <button
             class="btn btn-success dropdown-toggle"
@@ -143,6 +147,27 @@ export default Vue.extend({
         if (this.player) {
           this.player.pauseVideo();
           this.player.seekTo(data.time);
+        }
+      }
+    });
+    this.addOneTimeListener({
+      customName: "YT",
+      event: "nextVideo",
+      handler: data => {
+        console.log("nextVideo");
+        if (data.sessionUid === this.sessionUid) return;
+        if (this.player) {
+          this.nextVid(true);
+        }
+      }
+    });
+    this.addOneTimeListener({
+      customName: "YT",
+      event: "previousVideo",
+      handler: data => {
+        if (data.sessionUid === this.sessionUid) return;
+        if (this.player) {
+          this.previousVid(true);
         }
       }
     });
@@ -381,7 +406,8 @@ export default Vue.extend({
                 //     friendship_id: this.currChatFriendshipId
                 //   }
                 // });
-                if (this.sessionVidList[++this.currentIndex]) {
+                if (this.sessionVidList[this.currentIndex + 1]) {
+                  ++this.currentIndex;
                   this.player = this.player.cueVideoById({
                     videoId: getYouTubeVideoID(
                       this.sessionVidList[this.currentIndex].url
@@ -395,6 +421,38 @@ export default Vue.extend({
           }
         });
       }, 500);
+    },
+    nextVid(reaction) {
+      if (this.sessionVidList[this.currentIndex + 1]) {
+        ++this.currentIndex;
+        this.player = this.player.cueVideoById({
+          videoId: getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
+        });
+        if (reaction !== true) {
+          this.emitEvent({
+            eventName: "nextVideo",
+            data: {
+              friendship_id: this.currChatFriendshipId
+            }
+          });
+        }
+      }
+    },
+    previousVid(reaction) {
+      if (this.sessionVidList[this.currentIndex - 1]) {
+        --this.currentIndex;
+        this.player = this.player.cueVideoById({
+          videoId: getYouTubeVideoID(this.sessionVidList[this.currentIndex].url)
+        });
+        if (reaction !== true) {
+          this.emitEvent({
+            eventName: "previousVideo",
+            data: {
+              friendship_id: this.currChatFriendshipId
+            }
+          });
+        }
+      }
     },
     exit() {
       console.log("exiting");

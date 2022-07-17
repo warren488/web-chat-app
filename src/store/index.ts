@@ -500,6 +500,7 @@ export default new Vuex.Store({
           context.state.socket.emit(
             eventName,
             {
+              sessionUid: context.state.sessionUid,
               token: getCookie("token"),
               data
             },
