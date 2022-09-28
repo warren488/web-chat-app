@@ -12,8 +12,8 @@ import { Notyf } from "notyf";
 import store from "@/store/index";
 import { deleteDB } from "idb";
 
-// Your web app's Firebase configuration
-var firebaseConfig = {
+// Initialize Firebase
+firebase.initializeApp({
   apiKey: "AIzaSyBD4TjGeZXKw7fWYR8X0UGfHAIvQqzUmF0",
   authDomain: "myapp-4f894.firebaseapp.com",
   databaseURL: "https://myapp-4f894.firebaseio.com",
@@ -21,9 +21,7 @@ var firebaseConfig = {
   storageBucket: "myapp-4f894.appspot.com",
   messagingSenderId: "410181839308",
   appId: "1:410181839308:web:7249de84cc8fdd3cc5d569"
-};
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+});
 
 export const baseURI =
   process.env.NODE_ENV === "production"
@@ -177,7 +175,8 @@ export const uploadToFireBase = (file, location?: string) => {
 export const addAudioToFirebase = (blob, friendship_id) => {
   var storageRef = firebase.storage().ref();
   var ref = storageRef.child(
-    `voicenotes/${store.state.user.id}/${friendship_id}/${Date.now()}`
+    `voicenotes/${store.state.user.firebaseUid ||
+      store.state.user.id}/${friendship_id}/${Date.now()}`
   );
   return ref.put(blob, { contentType: "audio/webm" }).then(function(snapshot) {
     return snapshot.ref.getDownloadURL();
@@ -242,16 +241,72 @@ export const uploadImage = async ({ data, name }) => {
 };
 
 export const login = async (userData: Object): Promise<AuthResponse> => {
-  return await axios({
+  const { data: authData } = await axios({
     method: "POST",
     url: `${baseURI}/api/login`,
     data: userData
   });
+  setCookie("username", authData.username, 1000000);
+  setCookie("token", authData.token, 1000000);
+  /** i dont think we necessarily need to wait on or keep track of this
+   * it should complete before the user tries to send any images or audio,
+   * remember this is required for only writes and not reads */
+  getFirebaseSigninToken().then(({ token }) => signInToFirebase(token));
+  await store.dispatch("setUpApp");
+  return authData;
+};
+
+export const loginWithGoogle = async (): Promise<AuthResponse | Object> => {
+  await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  const provider = new firebase.auth.GoogleAuthProvider();
+  return firebase
+    .auth()
+    .signInWithPopup(provider)
+    .then(async data => {
+      console.log(data);
+      const userData = {
+        username:
+          data.additionalUserInfo.username ||
+          // @ts-ignore
+          data.additionalUserInfo.profile.given_name,
+        email: data.user.email,
+        firebaseUid: data.user.uid,
+        firebaseCreated: true
+      };
+      // if the account already exists then we kinda do this for nothing
+      const unique = await checkusername(userData.username);
+      if (!unique) userData.username += Math.floor(Math.random() * 1000);
+      // let authData = (await signup(userData)).data;
+      const { data: authData } = await axios({
+        method: "POST",
+        url: `${baseURI}/api/loginWithCustomProvider`,
+        data: userData
+      });
+      // .catch(error => {
+      //   if (error.response && error.response.status == 409) {
+      //     if (error.response.data.fields.includes("username")) {
+      //       return {
+      //         newUsername: true
+      //       };
+      //     }
+      //   } else throw error;
+      // });
+      setCookie("username", authData.username, 1000000);
+      setCookie("token", authData.token, 1000000);
+      /** i dont think we necessarily need to wait on or keep track of this
+       * it should complete before the user tries to send any images or audio,
+       * remember this is required for only writes and not reads */
+      await store.dispatch("setUpApp");
+      return authData;
+    });
 };
 
 export const logout = async () => {
   try {
     await Promise.all([
+      /** @todo send some indication this was an automatic unsubcription, maybe in
+       * the future we can treat this user differently
+       */
       unsubscribeToNotif(),
       signOutOfFirebase(),
       // @ts-ignore

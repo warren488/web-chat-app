@@ -1,6 +1,9 @@
 <template>
   <div class="home">
     <div id="sound"></div>
+    <div class="loader-backdrop" v-if="loading">
+      <Loader type="ring" :display="true" />
+    </div>
     <sideMenu
       @close="sideMenuActive = false"
       :active="sideMenuActive"
@@ -346,6 +349,7 @@ import NewProfile from "@/components/newProfile.vue";
 import SmartProfile from "@/components/smartProfile.vue";
 import YTPlayer from "@/components/YTPlayer.vue";
 import { eventBus } from "@/common/eventBus";
+import Loader from "../components/loader.vue";
 
 export default Vue.extend({
   name: "home",
@@ -383,6 +387,7 @@ export default Vue.extend({
       typing: {},
       viewCurrentFriendProfile: false,
       loadingMore: false,
+      loading: false,
       myToast: null,
       player: {
         loadComponent: false,
@@ -439,12 +444,13 @@ export default Vue.extend({
       disableNotifs();
     },
     logout() {
-      /** @todo send some indication this was an automatic unsubcription, maybe in
-       * the future we can treat this user differently
-       */
+      this.loading = true;
       return logout()
         .then(data => this.$router.push("/login"))
-        .catch(err => console.log(err)); //alert("error logging out, please try again!"));
+        .catch(err => console.log(err))
+        .finally(() => {
+          this.loading = false;
+        }); //alert("error logging out, please try again!"));
     },
     viewMore() {
       /** get the next 100 message from the chat history
@@ -739,7 +745,8 @@ export default Vue.extend({
     watchRequestList,
     NewProfile,
     SmartProfile,
-    YTPlayer
+    YTPlayer,
+    Loader
   }
 });
 </script>

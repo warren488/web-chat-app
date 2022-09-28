@@ -385,6 +385,11 @@ export default Vue.extend({
 .heading-text {
   display: inline;
 }
+
+.editable {
+  max-height: 44px;
+  overflow: hidden;
+}
 .img-container {
   position: relative;
   overflow: hidden;
