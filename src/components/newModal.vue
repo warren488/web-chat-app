@@ -37,7 +37,7 @@
                   class="btn btn-danger mx-1"
                   @click="$emit('deny')"
                 >
-                  Deny
+                  {{ denyText || "Deny" }}
                 </button>
                 <button
                   ref="closeButton"
@@ -59,7 +59,7 @@ export default {
   // NB!!! v-ifs dont work really well with this modal because the v-if destroys it before we can remove the
   // backdrop, i think this occurs because its created in js (maybe partially)
   name: "modal",
-  props: ["showModal", "text", "header", "confirm"],
+  props: ["showModal", "text", "header", "confirm", "denyText"],
   data() {
     return {
       myModal: null

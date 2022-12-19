@@ -2,7 +2,7 @@
   <!-- FIXME: send in the id to avoid issues -->
   <div
     id="center-toast"
-    class="toast position-absolute top-0 end-0 p-3"
+    class="toast position-absolute top-0 end-0 hide fw-bold m-3"
     role="alert"
     aria-live="assertive"
     aria-atomic="true"

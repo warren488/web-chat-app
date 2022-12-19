@@ -17,6 +17,7 @@
       :confirm="true"
       :header="'Watch session request'"
       :text="modalText"
+      denyText="Not now"
       @closed="!activeYTSession ? exit() : null"
       @accept="acceptWatchRequestHandler"
       @deny="denyWatchRequestHandler"

@@ -1,6 +1,9 @@
 {
-  "compilerOptions": {
-    "target": "es5",
+  "vueCompilerOptions": {
+    "target": 2
+  },
+  "compilerOptions": { 
+    "target": "es6",
     "module": "esnext",
     "strict": false,
     "jsx": "preserve",

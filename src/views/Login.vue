@@ -102,7 +102,7 @@
 <script lang="ts">
 import Modal from "@/components/modal.vue"; // @ is an alias to /src
 import Loader from "@/components/loader.vue"; // @ is an alias to /src
-import { login, loginWithGoogle } from "@/common/index.ts";
+import { login, loginWithGoogle } from "@/common/index";
 import { errorToMessage } from "@/common/network";
 import Vue from "vue";
 import axios, { AxiosPromise } from "axios";
@@ -171,7 +171,7 @@ export default Vue.extend({
     }
   },
   computed: {
-    modalData(): Object {
+    modalData() {
       return { show: this.modal.show, text: this.modal.text };
     },
     feedbackText() {

@@ -25,8 +25,8 @@ firebase.initializeApp({
 
 export const baseURI =
   process.env.NODE_ENV === "production"
-    ? "https://dry-savannah-78912.herokuapp.com"
-    : "http://localhost:3000";
+    ? "https://web-chat-backend.onrender.com"
+    : "http://localhost:3001";
 export const defaultPageLimit = 50;
 
 let pubKey =
