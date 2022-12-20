@@ -115,6 +115,8 @@ import {
 import { eventBus } from "@/common/eventBus";
 import LinkPreview from "./linkPreview.vue";
 import CreateSessionModal from "./YTPlayer/createSessionModal.vue";
+import { Notyf } from "notyf";
+
 const states = {
   GET_lINK: 0,
   PLAYING: 1
@@ -356,6 +358,13 @@ export default Vue.extend({
           id: request.newPlaylist._id
         });
       }
+      this.addLink = false;
+      let notification = new Notyf({
+        duration: 5000,
+        dismissible: true,
+        position: { x: "center", y: "top" }
+      });
+      notification.success("watch request sent");
     },
     startPlayer(link) {
       let vidId = getYouTubeVideoID(link);
@@ -534,6 +543,7 @@ export default Vue.extend({
 .banner {
   background: white;
 }
+
 .in-chat-player {
   position: fixed;
   top: 0;
@@ -542,6 +552,7 @@ export default Vue.extend({
   right: 0;
   z-index: 2;
 }
+
 .list-group-item {
   height: 5rem;
   padding: 0px;

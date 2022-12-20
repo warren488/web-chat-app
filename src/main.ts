@@ -9,7 +9,7 @@ import {
   signInToFirebase,
   markAsReceived
 } from "./common";
-import * as firebase from "firebase/app";
+import firebase from "firebase/app";
 import "firebase/auth";
 import { eventBus } from "@/common/eventBus";
 import { Notyf } from "notyf";
@@ -37,6 +37,14 @@ if ("serviceWorker" in navigator) {
       // store.commit("setHomeView", "chatbody");
     }
   });
+}
+
+if (process.env.NODE_ENV === "development") {
+  const auth = firebase.auth();
+  const storage = firebase.storage();
+  // @ts-ignore
+  auth.useEmulator("http://localhost:9099");
+  storage.useEmulator("localhost", 9199);
 }
 
 eventBus.$on("newFriend", function(data) {

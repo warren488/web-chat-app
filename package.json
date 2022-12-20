@@ -19,7 +19,7 @@
     "core-js": "^2.6.5",
     "create-file-webpack": "^1.0.2",
     "debounce": "^1.2.0",
-    "firebase": "^7.14.2",
+    "firebase": "^8.10.1",
     "idb": "^7.0.1",
     "notyf": "^3.7.0",
     "socket.io-client": "^2.2.0",

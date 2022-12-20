@@ -128,7 +128,7 @@
 </template>
 
 <script lang="ts">
-import * as firebase from "firebase/app";
+import firebase from "firebase/app";
 import { loginWithGoogle, signup } from "@/common";
 import Loader from "../components/loader.vue";
 export default {

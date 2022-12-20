@@ -72,6 +72,15 @@
               <span class="visually-hidden">unread messages</span>
             </span>
           </button>
+          <!-- <button
+            class="btn"
+            @click="
+              modalData.openProfile = true;
+              modalData.visibleProfile = user;
+            "
+          >
+            <img src="/assets/img/person-fill.svg" alt="menu icon" />
+          </button> -->
           <span v-if="!network">you are currently offline</span>
           <span v-if="!socketConnected && network"
             >connecting to server...</span

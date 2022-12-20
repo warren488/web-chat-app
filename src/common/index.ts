@@ -5,7 +5,7 @@ import {
   UserInfo,
   UpdatedUserInfo
 } from "./interfaces";
-import * as firebase from "firebase/app";
+import firebase from "firebase/app";
 import "firebase/storage";
 import "firebase/auth";
 import { Notyf } from "notyf";
@@ -266,6 +266,7 @@ export const loginWithGoogle = async (): Promise<AuthResponse | Object> => {
       console.log(data);
       const userData = {
         username:
+          data.user.displayName ||
           data.additionalUserInfo.username ||
           // @ts-ignore
           data.additionalUserInfo.profile.given_name,
