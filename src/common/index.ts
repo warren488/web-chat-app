@@ -100,7 +100,6 @@ export const subscribeToNotif = async () => {
         message: error.message
       };
     }
-    console.log(parsedError);
 
     notification.error(
       `there was an error subscribing to the push notifications `
@@ -111,6 +110,27 @@ export const subscribeToNotif = async () => {
         error: parsedError,
         userId: store.state.user.id,
         userAgent: navigator.userAgent
+      }),
+      headers: {
+        "content-type": "application/json",
+        "x-auth": getCookie("token")
+      }
+    });
+  }
+};
+
+export const checkForDups = (messages, message) => {
+  if (messages.find(({ msgId }) => message.msgId === msgId)) {
+    console.error("received message that was previously already sent", message);
+    const stack = new Error().stack;
+    fetch(`${baseURI}/api/crashreport`, {
+      method: "POST",
+      body: JSON.stringify({
+        error: "received message that was previously already sent",
+        message,
+        userId: store.state.user.id,
+        userAgent: navigator.userAgent,
+        stack
       }),
       headers: {
         "content-type": "application/json",

@@ -22,7 +22,8 @@ import {
   checkAndLoadAppUpdate,
   sortByCreatedAt,
   getPlaylists,
-  uuid
+  uuid,
+  checkForDups
 } from "@/common";
 
 import { eventBus } from "@/common/eventBus";
@@ -777,6 +778,7 @@ export default new Vuex.Store({
           [friendship_id]: state.unreads[friendship_id] + 1
         };
       }
+      checkForDups(state.messages[friendship_id], message);
       state.messages[friendship_id].push(message);
       // @ts-ignore
       state.db.put("messages", {
